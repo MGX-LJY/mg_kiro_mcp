@@ -10,6 +10,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
+import { PromptManager } from './prompt-manager.js';
 
 /**
  * MCP Server Class
@@ -31,6 +32,13 @@ export class MCPServer {
     this.mcpConnections = new Map();
     this.currentMode = 'init';
     this.heartbeatInterval = null;
+    
+    // Initialize Prompt Manager
+    this.promptManager = new PromptManager({
+      version: '2.0.0',
+      cacheEnabled: true,
+      watchFiles: true
+    });
     
     this._setupMiddleware();
     this._setupRoutes();
@@ -144,16 +152,33 @@ export class MCPServer {
       }
     });
 
-    this.app.get('/prompt/system', (req, res) => {
-      res.json({
-        status: 'success',
-        data: {
-          system_prompt: this._getSystemPrompt(),
-          version: '2.0.0',
-          mode: this.currentMode,
-          timestamp: new Date().toISOString()
-        }
-      });
+    this.app.get('/prompt/system', async (req, res) => {
+      try {
+        const variables = {
+          project_name: 'mg_kiro MCP Server',
+          current_mode: this.currentMode
+        };
+        
+        const systemPrompt = await this.promptManager.loadPrompt('modes', 'init', variables);
+        
+        res.json({
+          status: 'success',
+          data: {
+            system_prompt: systemPrompt.content,
+            metadata: systemPrompt.metadata,
+            version: '2.0.0',
+            mode: this.currentMode,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error('Failed to load system prompt:', error);
+        res.status(500).json({
+          status: 'error',
+          error: 'Failed to load system prompt',
+          fallback: this._getSystemPrompt()
+        });
+      }
     });
 
     this.app.post('/mode/switch', (req, res) => {
@@ -169,6 +194,9 @@ export class MCPServer {
 
         const previousMode = this.currentMode;
         this.currentMode = mode;
+
+        // Update prompt manager's current mode
+        this.promptManager.setGlobalVariable('current_mode', () => mode);
 
         this._broadcastModeChange(previousMode, mode, context);
 
@@ -186,22 +214,122 @@ export class MCPServer {
       }
     });
 
-    this.app.get('/prompt/mode/:mode', (req, res) => {
-      const { mode } = req.params;
-      
-      if (!['init', 'create', 'fix', 'analyze'].includes(mode)) {
-        return res.status(404).json({ error: 'Mode not found' });
-      }
-
-      res.json({
-        status: 'success',
-        data: {
-          mode,
-          prompt: `Mode ${mode} prompt placeholder`,
-          templates: this._getModeTemplates(mode),
-          timestamp: new Date().toISOString()
+    this.app.get('/prompt/mode/:mode', async (req, res) => {
+      try {
+        const { mode } = req.params;
+        
+        if (!['init', 'create', 'fix', 'analyze'].includes(mode)) {
+          return res.status(404).json({ error: 'Mode not found' });
         }
-      });
+
+        const variables = {
+          project_name: 'mg_kiro MCP Server',
+          current_mode: mode
+        };
+
+        const modePrompt = await this.promptManager.loadPrompt('modes', mode, variables);
+
+        res.json({
+          status: 'success',
+          data: {
+            mode,
+            prompt: modePrompt.content,
+            metadata: modePrompt.metadata,
+            templates: this._getModeTemplates(mode),
+            version: modePrompt.version,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error(`Failed to load prompt for mode ${req.params.mode}:`, error);
+        res.status(500).json({
+          status: 'error',
+          error: `Failed to load prompt for mode ${req.params.mode}`,
+          fallback: {
+            mode: req.params.mode,
+            prompt: `Mode ${req.params.mode} prompt placeholder`,
+            templates: this._getModeTemplates(req.params.mode)
+          }
+        });
+      }
+    });
+
+    // Prompt management endpoints
+    this.app.get('/prompts/list', async (req, res) => {
+      try {
+        const { category } = req.query;
+        const prompts = await this.promptManager.listPrompts(category);
+        
+        res.json({
+          status: 'success',
+          data: prompts,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Failed to list prompts:', error);
+        res.status(500).json({
+          status: 'error',
+          error: 'Failed to list prompts'
+        });
+      }
+    });
+
+    this.app.get('/prompts/status', (req, res) => {
+      try {
+        const status = this.promptManager.getStatus();
+        
+        res.json({
+          status: 'success',
+          data: status,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Failed to get prompt manager status:', error);
+        res.status(500).json({
+          status: 'error',
+          error: 'Failed to get prompt manager status'
+        });
+      }
+    });
+
+    this.app.post('/prompts/cache/clear', (req, res) => {
+      try {
+        this.promptManager.clearCache();
+        
+        res.json({
+          status: 'success',
+          message: 'Cache cleared successfully',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Failed to clear cache:', error);
+        res.status(500).json({
+          status: 'error',
+          error: 'Failed to clear cache'
+        });
+      }
+    });
+
+    this.app.get('/template/:name', async (req, res) => {
+      try {
+        const { name } = req.params;
+        const { variables } = req.query;
+        
+        const parsedVariables = variables ? JSON.parse(variables) : {};
+        const template = await this.promptManager.loadPrompt('templates', name, parsedVariables);
+        
+        res.json({
+          status: 'success',
+          data: template,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error(`Failed to load template ${req.params.name}:`, error);
+        res.status(404).json({
+          status: 'error',
+          error: 'Template not found'
+        });
+      }
     });
 
     this.app.post('/mcp/heartbeat', (req, res) => {
@@ -398,6 +526,11 @@ export class MCPServer {
 
       if (this.wsServer) {
         this.wsServer.close();
+      }
+
+      // Cleanup prompt manager
+      if (this.promptManager) {
+        this.promptManager.destroy();
       }
 
       this.server.close(() => {
