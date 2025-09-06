@@ -24,6 +24,61 @@
 | {{module2_name}} | {{module2_responsibility}} | {{module2_deps}} | {{module2_apis}} |
 | {{module3_name}} | {{module3_responsibility}} | {{module3_deps}} | {{module3_apis}} |
 
+## 系统架构图
+
+### 整体架构
+```mermaid
+graph TB
+    User["用户端"] --> LB["负载均衡器"]
+    LB --> App1["应用实例1<br/>{{framework_name}}"]
+    LB --> App2["应用实例2<br/>{{framework_name}}"]
+    
+    App1 --> Cache["缓存层<br/>{{cache_name}}"]
+    App2 --> Cache
+    
+    App1 --> DB["数据库<br/>{{database_name}}"]
+    App2 --> DB
+    
+    App1 --> Queue["消息队列<br/>{{queue_name}}"]
+    App2 --> Queue
+    
+    Queue --> Worker["后台任务<br/>{{worker_name}}"]
+    
+    subgraph "监控系统"
+        Monitor["监控服务"]
+        Logs["日志收集"]
+        Metrics["指标采集"]
+    end
+    
+    App1 -.-> Monitor
+    App2 -.-> Monitor
+    DB -.-> Metrics
+    Cache -.-> Metrics
+```
+
+### 数据流向图
+```mermaid
+sequenceDiagram
+    participant C as 客户端
+    participant A as 应用服务
+    participant D as 数据库
+    participant R as 缓存
+    participant Q as 消息队列
+    
+    C->>A: 1. 发送请求
+    A->>R: 2. 查询缓存
+    alt 缓存命中
+        R-->>A: 3a. 返回缓存数据
+    else 缓存未命中
+        A->>D: 3b. 查询数据库
+        D-->>A: 4. 返回数据
+        A->>R: 5. 更新缓存
+    end
+    A->>Q: 6. 异步任务入队
+    A-->>C: 7. 返回响应
+    Q->>A: 8. 处理异步任务
+```
+
 ## 安全架构
 ### 安全层级
 1. **网络安全**: HTTPS/TLS 加密传输
