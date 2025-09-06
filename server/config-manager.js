@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 class ConfigManager {
   constructor(configDir = './config') {
@@ -287,4 +287,4 @@ class ConfigManager {
   }
 }
 
-module.exports = ConfigManager;
+export default ConfigManager;

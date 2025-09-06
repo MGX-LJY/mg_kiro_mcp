@@ -83,12 +83,12 @@
   - [x] changelog.md模板
 
 ### 🔧 配置系统
-- [ ] 解析mcp.config.json
-- [ ] 解析modes.config.json
-- [ ] 解析templates.config.json
-- [ ] 实现环境变量覆盖
-- [ ] 添加配置验证器
-- [ ] 实现热重载配置
+- [x] 解析mcp.config.json
+- [x] 解析modes.config.json
+- [x] 解析templates.config.json
+- [x] 实现环境变量覆盖
+- [x] 添加配置验证器
+- [x] 实现热重载配置
 
 ---
 
