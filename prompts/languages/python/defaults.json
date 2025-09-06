@@ -1,0 +1,170 @@
+{
+  "template_variables": {
+    "system-architecture": {
+      "frontend_stack": "React/Vue.js (前后端分离)",
+      "frontend_desc": "现代化前端框架，API驱动",
+      "backend_stack": "Django/FastAPI + Python",
+      "backend_desc": "企业级Web框架，快速开发",
+      "database_stack": "PostgreSQL/MySQL",
+      "database_desc": "关系型数据库，ACID特性",
+      "cache_stack": "Redis + Memcached",
+      "cache_desc": "多层缓存策略",
+      "deploy_stack": "Docker + Kubernetes",
+      "deploy_desc": "容器化微服务部署",
+      "auth_method": "Django Auth + JWT",
+      "authz_method": "基于组和权限的访问控制",
+      "encryption_method": "Django内置加密 + Fernet",
+      "target_response_time": "150ms",
+      "target_concurrent": "2000",
+      "target_qps": "800",
+      "target_availability": "99.95%"
+    },
+    "dependencies": {
+      "web_framework": "django",
+      "web_version": "4.2.0",
+      "web_middleware1": "django-cors-headers",
+      "middleware1_version": "4.0.0",
+      "web_middleware2": "django-rest-framework",
+      "middleware2_version": "3.14.0",
+      "db_driver1": "psycopg2",
+      "db_version1": "2.9.6",
+      "db_compat1": "PostgreSQL 12+",
+      "pool_size1": "20",
+      "date_lib": "python-dateutil",
+      "date_version": "2.8.2",
+      "date_desc": "扩展日期时间处理",
+      "crypto_lib": "cryptography",
+      "crypto_version": "40.0.2",
+      "crypto_desc": "现代加密算法库",
+      "validation_lib": "pydantic",
+      "validation_version": "1.10.7",
+      "validation_desc": "数据验证和序列化",
+      "logging_lib": "structlog",
+      "logging_version": "23.1.0", 
+      "logging_desc": "结构化日志处理",
+      "http_lib": "httpx",
+      "http_version": "0.24.1",
+      "http_desc": "异步HTTP客户端",
+      "test_framework1": "pytest",
+      "test_version1": "7.3.1",
+      "test_config1": "pytest.ini",
+      "linter1": "black",
+      "linter1_version": "23.3.0",
+      "linter1_config": "pyproject.toml",
+      "linter1_rules": "88字符行长度",
+      "formatter1": "isort",
+      "formatter1_version": "5.12.0",
+      "formatter1_config": ".isort.cfg"
+    },
+    "modules-catalog": {
+      "auth_version": "v2.1.0",
+      "auth_status": "生产就绪",
+      "auth_description": "Django内置认证系统 + DRF Token认证",
+      "dal_version": "v1.5.0",
+      "dal_status": "稳定",
+      "dal_description": "Django ORM数据访问层，支持多数据库",
+      "user_version": "v1.3.0",
+      "user_status": "稳定", 
+      "notification_version": "v0.9.0",
+      "notification_status": "beta测试",
+      "logger_version": "v1.2.0",
+      "logger_status": "稳定",
+      "config_version": "v1.1.0",
+      "config_status": "稳定"
+    }
+  },
+  "naming_conventions": {
+    "files": {
+      "modules": "snake_case (user_service.py)",
+      "classes": "PascalCase (UserManager)",
+      "constants": "UPPER_SNAKE_CASE",
+      "test": "test_*.py"
+    },
+    "variables": {
+      "functions": "snake_case",
+      "classes": "PascalCase", 
+      "constants": "UPPER_SNAKE_CASE",
+      "private": "_prefixed",
+      "dunder": "__magic_methods__"
+    },
+    "django": {
+      "models": "PascalCase (User, BlogPost)",
+      "views": "snake_case functions or PascalCase classes",
+      "urls": "kebab-case (/user-profile/)",
+      "templates": "snake_case (user_profile.html)"
+    }
+  },
+  "project_structure": {
+    "django": [
+      "myproject/",
+      "myapp/",
+      "myapp/models/",
+      "myapp/views/",
+      "myapp/serializers/",
+      "myapp/urls.py",
+      "templates/",
+      "static/",
+      "media/",
+      "requirements/",
+      "config/",
+      "tests/"
+    ],
+    "fastapi": [
+      "app/",
+      "app/api/",
+      "app/core/",
+      "app/models/",
+      "app/schemas/",
+      "app/crud/",
+      "tests/",
+      "requirements.txt",
+      "Dockerfile"
+    ],
+    "general": [
+      "src/",
+      "tests/",
+      "docs/",
+      "scripts/",
+      "requirements/",
+      "config/"
+    ]
+  },
+  "best_practices": [
+    "遵循PEP 8代码风格指南",
+    "使用虚拟环境隔离项目依赖",
+    "编写docstring文档字符串", 
+    "使用类型提示提升代码可读性",
+    "配置pre-commit钩子自动化代码检查",
+    "使用logging模块而非print调试",
+    "遵循DRY(Don't Repeat Yourself)原则",
+    "使用pytest编写测试用例",
+    "配置.env文件管理敏感信息",
+    "使用requirements.txt锁定依赖版本"
+  ],
+  "common_patterns": {
+    "error_handling": "try-except + 自定义异常类",
+    "async_operations": "asyncio + async/await",
+    "validation": "Pydantic模型验证",
+    "logging": "structlog结构化日志",
+    "testing": "pytest + fixtures + parametrize",
+    "configuration": "python-decouple环境变量管理"
+  },
+  "django_specifics": {
+    "settings": {
+      "structure": "settings包分环境配置",
+      "secret_key": "使用环境变量",
+      "debug": "生产环境设为False", 
+      "allowed_hosts": "配置允许的主机"
+    },
+    "models": {
+      "meta_options": "verbose_name, ordering等",
+      "relationships": "ForeignKey, ManyToMany正确使用",
+      "validation": "clean()方法自定义验证"
+    },
+    "views": {
+      "cbv": "优先使用Class-based Views",
+      "permissions": "使用DRF权限类",
+      "pagination": "配置分页器"
+    }
+  }
+}

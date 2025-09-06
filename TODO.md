@@ -45,12 +45,36 @@
   - [x] 添加模式切换状态机
 
 ### 📄 核心文档模板
-- [ ] **项目级模板**
-  - [ ] system-architecture.md模板
-  - [ ] modules-catalog.md模板
-  - [ ] module-template.md模板
-  - [ ] integration-contracts.md模板
-  - [ ] dependencies.md模板
+- [x] **语言模块支持系统**
+  - [x] 语言识别引擎（通过文件扩展名、配置文件等）
+  - [x] 语言配置框架（JavaScript/Python/Java/Go/Rust/C#）
+  - [x] 语言特定的默认变量和约定
+  - [x] 多语言模板变体生成逻辑
+
+- [ ] **项目级模板（基础版）**
+  - [ ] system-architecture.md模板（通用版本）
+  - [ ] modules-catalog.md模板（通用版本）
+  - [ ] module-template.md模板（通用版本）
+  - [ ] integration-contracts.md模板（通用版本）
+  - [ ] dependencies.md模板（通用版本）
+
+- [ ] **项目级模板（语言特定版）**
+  - [ ] JavaScript/Node.js 语言变体
+    - [ ] dependencies.md（支持npm/yarn/pnpm）
+    - [ ] system-architecture.md（Express/React/Vue生态）
+    - [ ] module-template.md（CommonJS/ESM规范）
+  - [ ] Python 语言变体
+    - [ ] dependencies.md（支持pip/conda/poetry）
+    - [ ] system-architecture.md（Django/Flask/FastAPI生态）
+    - [ ] module-template.md（Python包结构）
+  - [ ] Java 语言变体
+    - [ ] dependencies.md（支持Maven/Gradle）
+    - [ ] system-architecture.md（Spring/Micronaut生态）
+    - [ ] module-template.md（Java包结构）
+  - [ ] Go 语言变体
+    - [ ] dependencies.md（支持go.mod）
+    - [ ] system-architecture.md（Gin/Echo/Fiber生态）
+    - [ ] module-template.md（Go模块结构）
 
 - [ ] **需求级模板**
   - [ ] user-stories.md模板

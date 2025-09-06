@@ -1,0 +1,318 @@
+{
+  "name": "Java",
+  "version": "1.0.0", 
+  "description": "Java项目的语言配置",
+  "detection": {
+    "extensions": [".java", ".jar", ".war", ".ear"],
+    "config_files": [
+      "pom.xml",
+      "build.gradle",
+      "gradle.properties", 
+      "settings.gradle",
+      "build.xml",
+      "ivy.xml",
+      "application.properties",
+      "application.yml"
+    ],
+    "directories": [
+      "src/main/java",
+      "src/test/java",
+      "src/main/resources",
+      "target",
+      "build",
+      ".gradle",
+      "lib",
+      "classes"
+    ]
+  },
+  "package_managers": [
+    {
+      "name": "Maven",
+      "config_file": "pom.xml",
+      "lock_file": null,
+      "install_command": "mvn install",
+      "clean_command": "mvn clean",
+      "compile_command": "mvn compile",
+      "test_command": "mvn test",
+      "package_command": "mvn package",
+      "typical_structure": [
+        "src/main/java/",
+        "src/main/resources/",
+        "src/test/java/",
+        "target/"
+      ]
+    },
+    {
+      "name": "Gradle",
+      "config_file": "build.gradle",
+      "lock_file": "gradle.lockfile",
+      "install_command": "./gradlew build",
+      "clean_command": "./gradlew clean",
+      "compile_command": "./gradlew compileJava",
+      "test_command": "./gradlew test",
+      "package_command": "./gradlew jar",
+      "typical_structure": [
+        "src/main/java/",
+        "src/main/resources/", 
+        "src/test/java/",
+        "build/"
+      ]
+    },
+    {
+      "name": "SBT",
+      "config_file": "build.sbt",
+      "lock_file": null,
+      "install_command": "sbt compile",
+      "clean_command": "sbt clean",
+      "test_command": "sbt test",
+      "package_command": "sbt package"
+    }
+  ],
+  "frameworks": [
+    {
+      "name": "Spring Boot",
+      "category": "web_framework",
+      "detection_files": [
+        "src/main/java/**/Application.java",
+        "application.properties",
+        "application.yml"
+      ],
+      "dependencies": ["spring-boot-starter"],
+      "typical_structure": [
+        "src/main/java/",
+        "src/main/resources/",
+        "src/test/java/",
+        "target/",
+        "mvnw"
+      ],
+      "commands": {
+        "start": "mvn spring-boot:run",
+        "build": "mvn clean package",
+        "test": "mvn test"
+      }
+    },
+    {
+      "name": "Spring Framework",
+      "category": "enterprise_framework",
+      "detection_files": ["applicationContext.xml", "web.xml"],
+      "dependencies": ["spring-core", "spring-context"],
+      "typical_structure": [
+        "src/main/java/",
+        "src/main/webapp/",
+        "src/main/resources/"
+      ]
+    },
+    {
+      "name": "Micronaut",
+      "category": "microservice_framework", 
+      "detection_files": ["src/main/java/**/Application.java"],
+      "dependencies": ["micronaut-core"],
+      "commands": {
+        "start": "./gradlew run",
+        "build": "./gradlew shadowJar"
+      }
+    },
+    {
+      "name": "Quarkus",
+      "category": "cloud_native_framework",
+      "detection_files": ["src/main/java/**/QuarkusApplication.java"],
+      "dependencies": ["quarkus-core"],
+      "commands": {
+        "start": "./mvnw quarkus:dev", 
+        "build": "./mvnw package"
+      }
+    },
+    {
+      "name": "Android",
+      "category": "mobile_framework",
+      "detection_files": ["AndroidManifest.xml", "build.gradle"],
+      "dependencies": ["android"],
+      "typical_structure": [
+        "app/src/main/java/",
+        "app/src/main/res/",
+        "app/build.gradle"
+      ]
+    }
+  ],
+  "build_tools": [
+    {
+      "name": "Maven",
+      "config_file": "pom.xml",
+      "wrapper": "mvnw",
+      "commands": {
+        "clean": "mvn clean",
+        "compile": "mvn compile", 
+        "test": "mvn test",
+        "package": "mvn package",
+        "install": "mvn install",
+        "deploy": "mvn deploy"
+      }
+    },
+    {
+      "name": "Gradle", 
+      "config_file": "build.gradle",
+      "wrapper": "gradlew",
+      "commands": {
+        "clean": "./gradlew clean",
+        "build": "./gradlew build",
+        "test": "./gradlew test", 
+        "jar": "./gradlew jar",
+        "bootJar": "./gradlew bootJar"
+      }
+    },
+    {
+      "name": "Ant",
+      "config_file": "build.xml",
+      "commands": {
+        "clean": "ant clean",
+        "compile": "ant compile",
+        "jar": "ant jar"
+      }
+    }
+  ],
+  "test_frameworks": [
+    {
+      "name": "JUnit 5",
+      "config_file": null,
+      "dependencies": ["junit-jupiter"],
+      "annotations": ["@Test", "@BeforeEach", "@AfterEach"],
+      "run_command": "mvn test"
+    },
+    {
+      "name": "JUnit 4",
+      "config_file": null, 
+      "dependencies": ["junit"],
+      "annotations": ["@Test", "@Before", "@After"],
+      "run_command": "mvn test"
+    },
+    {
+      "name": "TestNG",
+      "config_file": "testng.xml",
+      "dependencies": ["testng"],
+      "annotations": ["@Test", "@BeforeMethod", "@AfterMethod"],
+      "run_command": "mvn test"
+    },
+    {
+      "name": "Mockito",
+      "config_file": null,
+      "dependencies": ["mockito-core"],
+      "annotations": ["@Mock", "@InjectMocks", "@MockBean"]
+    }
+  ],
+  "runtime_environments": [
+    {
+      "name": "Oracle JDK",
+      "version_managers": ["SDKMAN", "jenv"],
+      "typical_versions": ["8", "11", "17", "21"],
+      "version_check": "java -version"
+    },
+    {
+      "name": "OpenJDK",
+      "version_managers": ["SDKMAN", "jenv"],
+      "typical_versions": ["8", "11", "17", "21"],
+      "version_check": "java -version"
+    },
+    {
+      "name": "GraalVM", 
+      "version_managers": ["SDKMAN"],
+      "typical_versions": ["17", "21"],
+      "native_image": true
+    }
+  ],
+  "application_servers": [
+    {
+      "name": "Tomcat",
+      "config_files": ["server.xml", "web.xml"],
+      "deployment_format": "WAR",
+      "default_port": 8080
+    },
+    {
+      "name": "Jetty",
+      "config_files": ["jetty.xml"],
+      "deployment_format": "WAR", 
+      "default_port": 8080
+    },
+    {
+      "name": "WildFly",
+      "config_files": ["standalone.xml"],
+      "deployment_format": "WAR/EAR",
+      "default_port": 8080
+    }
+  ],
+  "deployment_targets": [
+    {
+      "name": "Docker",
+      "config_file": "Dockerfile",
+      "base_images": [
+        "openjdk:11-jre-slim",
+        "openjdk:17-jre-slim", 
+        "eclipse-temurin:17-jre"
+      ]
+    },
+    {
+      "name": "Kubernetes",
+      "config_files": ["deployment.yaml", "service.yaml"],
+      "health_check": "/actuator/health"
+    },
+    {
+      "name": "AWS Elastic Beanstalk",
+      "deployment_format": "JAR/WAR",
+      "config_file": ".ebextensions/"
+    },
+    {
+      "name": "Heroku",
+      "config_file": "Procfile",
+      "buildpack": "heroku/java"
+    }
+  ],
+  "code_quality_tools": [
+    {
+      "name": "Checkstyle",
+      "config_file": "checkstyle.xml",
+      "purpose": "代码风格检查",
+      "maven_plugin": "maven-checkstyle-plugin"
+    },
+    {
+      "name": "PMD",
+      "config_file": "pmd.xml", 
+      "purpose": "静态代码分析",
+      "maven_plugin": "maven-pmd-plugin"
+    },
+    {
+      "name": "SpotBugs",
+      "config_file": "spotbugs.xml",
+      "purpose": "bug检测",
+      "maven_plugin": "spotbugs-maven-plugin"
+    },
+    {
+      "name": "SonarQube",
+      "config_file": "sonar-project.properties",
+      "purpose": "代码质量平台",
+      "maven_plugin": "sonar-maven-plugin"
+    }
+  ],
+  "database_frameworks": [
+    {
+      "name": "Spring Data JPA",
+      "dependencies": ["spring-boot-starter-data-jpa"],
+      "purpose": "ORM框架"
+    },
+    {
+      "name": "Hibernate",
+      "dependencies": ["hibernate-core"],
+      "config_file": "hibernate.cfg.xml",
+      "purpose": "ORM框架"
+    },
+    {
+      "name": "MyBatis",
+      "dependencies": ["mybatis"],
+      "config_file": "mybatis-config.xml",
+      "purpose": "SQL映射框架"
+    },
+    {
+      "name": "JDBC",
+      "dependencies": ["database-driver"],
+      "purpose": "数据库连接"
+    }
+  ]
+}

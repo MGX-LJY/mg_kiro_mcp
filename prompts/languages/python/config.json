@@ -1,0 +1,299 @@
+{
+  "name": "Python",
+  "version": "1.0.0",
+  "description": "Python项目的语言配置",
+  "detection": {
+    "extensions": [".py", ".pyw", ".pyx", ".pyi"],
+    "config_files": [
+      "requirements.txt",
+      "setup.py",
+      "pyproject.toml",
+      "Pipfile",
+      "Pipfile.lock",
+      "environment.yml",
+      "conda.yml",
+      "poetry.lock",
+      "tox.ini",
+      "pytest.ini"
+    ],
+    "directories": [
+      "venv",
+      ".venv",
+      "env",
+      "__pycache__", 
+      ".pytest_cache",
+      "site-packages",
+      "src",
+      "lib",
+      "tests",
+      "docs"
+    ]
+  },
+  "package_managers": [
+    {
+      "name": "pip",
+      "config_file": "requirements.txt",
+      "lock_file": null,
+      "install_command": "pip install -r requirements.txt",
+      "add_command": "pip install {package}",
+      "dev_add_command": "pip install {package}",
+      "freeze_command": "pip freeze > requirements.txt",
+      "virtual_env": "python -m venv venv"
+    },
+    {
+      "name": "poetry",
+      "config_file": "pyproject.toml",
+      "lock_file": "poetry.lock", 
+      "install_command": "poetry install",
+      "add_command": "poetry add {package}",
+      "dev_add_command": "poetry add --group dev {package}",
+      "scripts": {
+        "shell": "poetry shell",
+        "run": "poetry run {command}"
+      }
+    },
+    {
+      "name": "pipenv",
+      "config_file": "Pipfile",
+      "lock_file": "Pipfile.lock",
+      "install_command": "pipenv install",
+      "add_command": "pipenv install {package}",
+      "dev_add_command": "pipenv install --dev {package}",
+      "scripts": {
+        "shell": "pipenv shell",
+        "run": "pipenv run {command}"
+      }
+    },
+    {
+      "name": "conda",
+      "config_file": "environment.yml",
+      "lock_file": null,
+      "install_command": "conda env create -f environment.yml",
+      "add_command": "conda install {package}",
+      "dev_add_command": "conda install {package}",
+      "scripts": {
+        "activate": "conda activate {env_name}",
+        "create": "conda create -n {env_name} python={version}"
+      }
+    }
+  ],
+  "frameworks": [
+    {
+      "name": "Django",
+      "category": "web_framework",
+      "detection_files": ["manage.py", "settings.py", "urls.py"],
+      "dependencies": ["django"],
+      "dev_dependencies": ["django-debug-toolbar"],
+      "typical_structure": [
+        "myproject/",
+        "myapp/",
+        "templates/",
+        "static/",
+        "media/",
+        "requirements/"
+      ],
+      "commands": {
+        "start": "python manage.py runserver",
+        "migrate": "python manage.py migrate",
+        "shell": "python manage.py shell"
+      }
+    },
+    {
+      "name": "Flask",
+      "category": "web_framework",
+      "detection_files": ["app.py", "wsgi.py"],
+      "dependencies": ["flask"],
+      "dev_dependencies": ["flask-debugtoolbar"],
+      "typical_structure": [
+        "app/",
+        "templates/",
+        "static/",
+        "migrations/"
+      ],
+      "commands": {
+        "start": "flask run",
+        "shell": "flask shell"
+      }
+    },
+    {
+      "name": "FastAPI",
+      "category": "api_framework",
+      "detection_files": ["main.py", "app.py"],
+      "dependencies": ["fastapi", "uvicorn"],
+      "dev_dependencies": [],
+      "typical_structure": [
+        "app/",
+        "routers/",
+        "models/",
+        "schemas/"
+      ],
+      "commands": {
+        "start": "uvicorn main:app --reload",
+        "docs": "访问 http://localhost:8000/docs"
+      }
+    },
+    {
+      "name": "Jupyter",
+      "category": "data_science",
+      "detection_files": ["*.ipynb"],
+      "dependencies": ["jupyter"],
+      "dev_dependencies": ["ipykernel"],
+      "commands": {
+        "start": "jupyter notebook",
+        "lab": "jupyter lab"
+      }
+    },
+    {
+      "name": "Streamlit",
+      "category": "data_app",
+      "detection_files": ["streamlit_app.py", "app.py"],
+      "dependencies": ["streamlit"],
+      "commands": {
+        "start": "streamlit run app.py"
+      }
+    }
+  ],
+  "build_tools": [
+    {
+      "name": "setuptools",
+      "config_file": "setup.py",
+      "commands": {
+        "build": "python setup.py build",
+        "install": "python setup.py install",
+        "wheel": "python setup.py bdist_wheel"
+      }
+    },
+    {
+      "name": "poetry",
+      "config_file": "pyproject.toml",
+      "commands": {
+        "build": "poetry build",
+        "publish": "poetry publish"
+      }
+    },
+    {
+      "name": "flit",
+      "config_file": "pyproject.toml", 
+      "commands": {
+        "build": "flit build",
+        "publish": "flit publish"
+      }
+    }
+  ],
+  "test_frameworks": [
+    {
+      "name": "pytest",
+      "config_file": "pytest.ini",
+      "dependencies": ["pytest"],
+      "run_command": "pytest",
+      "watch_command": "pytest --watch",
+      "coverage_command": "pytest --cov"
+    },
+    {
+      "name": "unittest",
+      "config_file": null,
+      "dependencies": [],
+      "run_command": "python -m unittest",
+      "discover_command": "python -m unittest discover"
+    },
+    {
+      "name": "nose2",
+      "config_file": "nose2.cfg",
+      "dependencies": ["nose2"],
+      "run_command": "nose2"
+    }
+  ],
+  "linting_tools": [
+    {
+      "name": "black",
+      "config_file": "pyproject.toml",
+      "dependencies": ["black"],
+      "run_command": "black --check .",
+      "fix_command": "black ."
+    },
+    {
+      "name": "flake8",
+      "config_file": ".flake8",
+      "dependencies": ["flake8"],
+      "run_command": "flake8 ."
+    },
+    {
+      "name": "pylint",
+      "config_file": ".pylintrc",
+      "dependencies": ["pylint"],
+      "run_command": "pylint ."
+    },
+    {
+      "name": "isort",
+      "config_file": ".isort.cfg",
+      "dependencies": ["isort"],
+      "run_command": "isort --check-only .",
+      "fix_command": "isort ."
+    },
+    {
+      "name": "mypy",
+      "config_file": "mypy.ini",
+      "dependencies": ["mypy"],
+      "run_command": "mypy ."
+    }
+  ],
+  "runtime_environments": [
+    {
+      "name": "CPython",
+      "version_managers": ["pyenv", "conda", "venv"],
+      "version_file": ".python-version",
+      "typical_versions": ["3.8", "3.9", "3.10", "3.11", "3.12"]
+    },
+    {
+      "name": "PyPy",
+      "version_managers": ["pyenv"],
+      "typical_versions": ["3.8", "3.9", "3.10"]
+    }
+  ],
+  "deployment_targets": [
+    {
+      "name": "Heroku",
+      "config_file": "Procfile",
+      "requirements": "requirements.txt",
+      "runtime_file": "runtime.txt"
+    },
+    {
+      "name": "AWS Lambda",
+      "config_file": "serverless.yml",
+      "requirements": "requirements.txt",
+      "handler": "lambda_function.lambda_handler"
+    },
+    {
+      "name": "Docker",
+      "config_file": "Dockerfile",
+      "base_images": ["python:3.11-slim", "python:3.11-alpine"]
+    },
+    {
+      "name": "Google Cloud Run",
+      "config_file": "Dockerfile",
+      "requirements": "requirements.txt"
+    }
+  ],
+  "data_science_tools": [
+    {
+      "name": "pandas",
+      "purpose": "数据处理",
+      "typical_imports": ["import pandas as pd"]
+    },
+    {
+      "name": "numpy", 
+      "purpose": "数值计算",
+      "typical_imports": ["import numpy as np"]
+    },
+    {
+      "name": "matplotlib",
+      "purpose": "数据可视化",
+      "typical_imports": ["import matplotlib.pyplot as plt"]
+    },
+    {
+      "name": "scikit-learn",
+      "purpose": "机器学习",
+      "typical_imports": ["from sklearn import ..."]
+    }
+  ]
+}
