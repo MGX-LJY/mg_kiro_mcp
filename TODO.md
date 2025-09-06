@@ -76,13 +76,11 @@
     - [x] system-architecture.md（Gin/Echo/Fiber生态）
     - [x] module-template.md（Go模块结构）
 
-
-
-- [ ] **需求级模板**
-  - [ ] user-stories.md模板
-  - [ ] technical-analysis.md模板
-  - [ ] action-items.md模板
-  - [ ] changelog.md模板
+- [x] **需求级模板**
+  - [x] user-stories.md模板
+  - [x] technical-analysis.md模板
+  - [x] action-items.md模板
+  - [x] changelog.md模板
 
 ### 🔧 配置系统
 - [ ] 解析mcp.config.json
