@@ -1,0 +1,54 @@
+{
+  "server": {
+    "name": "mg_kiro_mcp",
+    "version": "1.0.0",
+    "port": 3000,
+    "host": "localhost",
+    "protocol": "http",
+    "cors": {
+      "enabled": true,
+      "origins": ["*"]
+    }
+  },
+  "mcp": {
+    "protocol_version": "2024-11-05",
+    "capabilities": {
+      "logging": {},
+      "prompts": {},
+      "resources": {},
+      "tools": {}
+    },
+    "client_info": {
+      "name": "claude-code",
+      "version": "1.0.0"
+    }
+  },
+  "auth": {
+    "enabled": false,
+    "api_key": "",
+    "rate_limit": {
+      "enabled": true,
+      "max_requests": 100,
+      "time_window": 60
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "file": {
+      "enabled": true,
+      "path": "./logs/mcp-server.log",
+      "max_size": "10mb",
+      "max_files": 5
+    },
+    "console": {
+      "enabled": true,
+      "colorize": true
+    }
+  },
+  "features": {
+    "hot_reload": true,
+    "health_check": true,
+    "metrics": true
+  }
+}

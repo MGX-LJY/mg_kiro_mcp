@@ -1,0 +1,88 @@
+{
+  "modes": {
+    "init": {
+      "id": "init",
+      "name": "初始化模式",
+      "description": "项目初始化和文档生成",
+      "priority": 1,
+      "enabled": true,
+      "prompt_path": "./prompts/modes/init.md",
+      "templates": [
+        "system-architecture",
+        "modules-catalog", 
+        "user-stories",
+        "technical-analysis"
+      ],
+      "capabilities": [
+        "project_setup",
+        "doc_generation",
+        "architecture_design"
+      ]
+    },
+    "create": {
+      "id": "create", 
+      "name": "创建模式",
+      "description": "新功能和模块创建",
+      "priority": 2,
+      "enabled": true,
+      "prompt_path": "./prompts/modes/create.md",
+      "templates": [
+        "module-template",
+        "integration-contracts",
+        "action-items"
+      ],
+      "capabilities": [
+        "module_creation",
+        "api_design",
+        "task_planning"
+      ]
+    },
+    "fix": {
+      "id": "fix",
+      "name": "修复模式", 
+      "description": "问题修复和调试",
+      "priority": 3,
+      "enabled": true,
+      "prompt_path": "./prompts/modes/fix.md",
+      "templates": [
+        "technical-analysis",
+        "action-items",
+        "changelog"
+      ],
+      "capabilities": [
+        "bug_fixing",
+        "root_cause_analysis",
+        "regression_testing"
+      ]
+    },
+    "analyze": {
+      "id": "analyze",
+      "name": "分析模式",
+      "description": "代码分析和质量审查", 
+      "priority": 4,
+      "enabled": true,
+      "prompt_path": "./prompts/modes/analyze.md",
+      "templates": [
+        "technical-analysis",
+        "dependencies",
+        "development-workflow"
+      ],
+      "capabilities": [
+        "code_review",
+        "quality_analysis",
+        "performance_audit"
+      ]
+    }
+  },
+  "default_mode": "init",
+  "mode_switching": {
+    "enabled": true,
+    "auto_detection": false,
+    "transition_prompts": true
+  },
+  "validation": {
+    "required_fields": ["id", "name", "prompt_path"],
+    "templates_validation": true,
+    "capabilities_check": true
+  }
+}

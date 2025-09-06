@@ -1,0 +1,166 @@
+{
+  "templates": {
+    "system-architecture": {
+      "id": "system-architecture",
+      "name": "系统架构",
+      "path": "./prompts/templates/system-architecture.md",
+      "category": "architecture",
+      "priority": 1,
+      "variables": [
+        "project_name",
+        "system_overview", 
+        "core_components",
+        "data_flow"
+      ],
+      "required": true,
+      "modes": ["init", "analyze"]
+    },
+    "modules-catalog": {
+      "id": "modules-catalog",
+      "name": "模块目录",
+      "path": "./prompts/templates/modules-catalog.md",
+      "category": "documentation",
+      "priority": 2,
+      "variables": [
+        "total_modules",
+        "core_modules_count",
+        "business_modules_count"
+      ],
+      "required": true,
+      "modes": ["init", "create"]
+    },
+    "module-template": {
+      "id": "module-template", 
+      "name": "模块模板",
+      "path": "./prompts/templates/module-template.md",
+      "category": "development",
+      "priority": 3,
+      "variables": [
+        "module_name",
+        "module_id",
+        "module_version",
+        "module_description"
+      ],
+      "required": false,
+      "modes": ["create", "fix"]
+    },
+    "integration-contracts": {
+      "id": "integration-contracts",
+      "name": "集成契约",
+      "path": "./prompts/templates/integration-contracts.md", 
+      "category": "integration",
+      "priority": 4,
+      "variables": [
+        "base_url",
+        "api_version",
+        "auth_method"
+      ],
+      "required": false,
+      "modes": ["create", "analyze"]
+    },
+    "dependencies": {
+      "id": "dependencies",
+      "name": "依赖管理",
+      "path": "./prompts/templates/dependencies.md",
+      "category": "maintenance",
+      "priority": 5,
+      "variables": [
+        "audit_frequency",
+        "vulnerability_response_time"
+      ],
+      "required": false,
+      "modes": ["analyze"]
+    },
+    "user-stories": {
+      "id": "user-stories",
+      "name": "用户故事",
+      "path": "./prompts/templates/user-stories.md",
+      "category": "requirements", 
+      "priority": 6,
+      "variables": [
+        "project_name",
+        "user_persona",
+        "story_priority"
+      ],
+      "required": false,
+      "modes": ["init", "create"]
+    },
+    "technical-analysis": {
+      "id": "technical-analysis",
+      "name": "技术分析",
+      "path": "./prompts/templates/technical-analysis.md",
+      "category": "analysis",
+      "priority": 7,
+      "variables": [
+        "analysis_date",
+        "analysis_scope",
+        "decision_criteria"
+      ],
+      "required": false,
+      "modes": ["init", "fix", "analyze"]
+    },
+    "action-items": {
+      "id": "action-items",
+      "name": "行动项目",
+      "path": "./prompts/templates/action-items.md",
+      "category": "planning",
+      "priority": 8,
+      "variables": [
+        "project_name",
+        "sprint_number",
+        "team_size"
+      ],
+      "required": false,
+      "modes": ["create", "fix"]
+    },
+    "changelog": {
+      "id": "changelog",
+      "name": "变更日志", 
+      "path": "./prompts/templates/changelog.md",
+      "category": "maintenance",
+      "priority": 9,
+      "variables": [
+        "current_version",
+        "release_type",
+        "release_date"
+      ],
+      "required": false,
+      "modes": ["fix"]
+    },
+    "development-workflow": {
+      "id": "development-workflow",
+      "name": "开发工作流",
+      "path": "./prompts/templates/development-workflow.md",
+      "category": "process",
+      "priority": 10,
+      "variables": [
+        "project_name",
+        "git_strategy",
+        "ci_cd_pipeline"
+      ],
+      "required": false,
+      "modes": ["analyze"]
+    }
+  },
+  "categories": [
+    "architecture",
+    "documentation", 
+    "development",
+    "integration",
+    "maintenance",
+    "requirements",
+    "analysis", 
+    "planning",
+    "process"
+  ],
+  "validation": {
+    "template_exists": true,
+    "variables_defined": true,
+    "mode_compatibility": true
+  },
+  "rendering": {
+    "variable_format": "{{variable_name}}",
+    "escape_html": false,
+    "preserve_formatting": true
+  }
+}
