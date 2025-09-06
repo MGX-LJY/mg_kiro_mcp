@@ -36,13 +36,13 @@
   - [x] 实现模板变量替换
   - [x] 创建提示词版本控制
 
-- [ ] **模式处理器**
-  - [ ] 创建ModeHandler基类
-  - [ ] 实现InitModeHandler
-  - [ ] 实现CreateModeHandler
-  - [ ] 实现FixModeHandler
-  - [ ] 实现AnalyzeModeHandler
-  - [ ] 添加模式切换状态机
+- [x] **模式处理器**
+  - [x] 创建ModeHandler基类
+  - [x] 实现InitModeHandler
+  - [x] 实现CreateModeHandler
+  - [x] 实现FixModeHandler
+  - [x] 实现AnalyzeModeHandler
+  - [x] 添加模式切换状态机
 
 ### 📄 核心文档模板
 - [ ] **项目级模板**
@@ -59,10 +59,10 @@
   - [ ] changelog.md模板
 
 ### 🔧 配置系统
-- [x] 解析mcp.config.json ✅ **已完成**
+- [ ] 解析mcp.config.json
 - [ ] 解析modes.config.json
 - [ ] 解析templates.config.json
-- [x] 实现环境变量覆盖 ✅ **已完成**
+- [ ] 实现环境变量覆盖
 - [ ] 添加配置验证器
 - [ ] 实现热重载配置
 
