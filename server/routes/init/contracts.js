@@ -39,6 +39,7 @@ export function createContractsRoutes(services) {
             console.log(`[Contracts] 开始生成集成契约文档: ${workflowId}`);
 
             const workflow = workflowService.getWorkflow(workflowId);
+            
             if (!workflow) {
                 return error(res, '工作流不存在', 404);
             }
@@ -70,7 +71,8 @@ export function createContractsRoutes(services) {
                 promptService
             );
 
-            const executionTime = Date.now() - startTime;
+            const routeExecutionTime = Date.now() - startTime;
+            const totalExecutionTime = Math.max(1, routeExecutionTime + (integrationAnalysis.analysis?.executionTime || 0));
 
             // 构建响应数据
             const responseData = {
@@ -82,7 +84,8 @@ export function createContractsRoutes(services) {
                     sections: contractDocument.sections
                 },
                 generation: {
-                    executionTime,
+                    executionTime: totalExecutionTime,
+                    analysisTime: integrationAnalysis.analysis.executionTime,
                     templateUsed: 'integration-contracts',
                     timestamp: new Date().toISOString()
                 },
@@ -107,7 +110,7 @@ export function createContractsRoutes(services) {
             // 更新步骤状态为已完成
             workflowService.updateStep(workflowId, 7, 'completed', responseData);
 
-            console.log(`[Contracts] 集成契约文档生成完成: ${executionTime}ms`);
+            console.log(`[Contracts] 集成契约文档生成完成: ${totalExecutionTime}ms`);
             console.log(`[Contracts] - 模块数量: ${responseData.summary.totalModules}`);
             console.log(`[Contracts] - 集成点: ${responseData.summary.integrationPoints}`);
             console.log(`[Contracts] - API契约: ${responseData.summary.apiContracts}`);
@@ -171,9 +174,9 @@ export function createContractsRoutes(services) {
                     // 返回摘要信息
                     responseData = {
                         format: 'summary',
-                        summary: contractsResult.summary,
-                        metadata: contractsResult.document.metadata,
-                        generation: contractsResult.generation
+                        summary: contractsResult.summary || {},
+                        metadata: contractsResult.document?.metadata || {},
+                        generation: contractsResult.generation || {}
                     };
                     break;
 
@@ -238,37 +241,41 @@ export function createContractsRoutes(services) {
 
             switch (type.toLowerCase()) {
                 case 'modules':
+                    const moduleRelations = contractsResult.analysis.moduleRelations || { modules: [], relations: [], statistics: {} };
                     relationData = {
                         type: 'module-relations',
-                        nodes: contractsResult.analysis.moduleRelations.modules,
-                        edges: contractsResult.analysis.moduleRelations.relations,
-                        statistics: contractsResult.analysis.moduleRelations.statistics
+                        nodes: moduleRelations.modules || [],
+                        edges: moduleRelations.relations || [],
+                        statistics: moduleRelations.statistics || {}
                     };
                     break;
 
                 case 'integration':
+                    const integrationPoints = contractsResult.analysis.integrationPoints || [];
                     relationData = {
                         type: 'integration-points',
-                        points: contractsResult.analysis.integrationPoints,
-                        count: contractsResult.analysis.integrationPoints.length
+                        points: integrationPoints,
+                        count: integrationPoints.length
                     };
                     break;
 
                 case 'dataflow':
+                    const dataFlow = contractsResult.analysis.dataFlow || { flows: [], flowsByType: {}, statistics: {} };
                     relationData = {
                         type: 'data-flow',
-                        flows: contractsResult.analysis.dataFlow.flows,
-                        flowsByType: contractsResult.analysis.dataFlow.flowsByType,
-                        statistics: contractsResult.analysis.dataFlow.statistics
+                        flows: dataFlow.flows || [],
+                        flowsByType: dataFlow.flowsByType || {},
+                        statistics: dataFlow.statistics || {}
                     };
                     break;
 
                 case 'dependencies':
+                    const externalDependencies = contractsResult.analysis.externalDependencies || { dependencies: [], securityRisks: [], statistics: {} };
                     relationData = {
                         type: 'external-dependencies',
-                        dependencies: contractsResult.analysis.externalDependencies.dependencies,
-                        securityRisks: contractsResult.analysis.externalDependencies.securityRisks,
-                        statistics: contractsResult.analysis.externalDependencies.statistics
+                        dependencies: externalDependencies.dependencies || [],
+                        securityRisks: externalDependencies.securityRisks || [],
+                        statistics: externalDependencies.statistics || {}
                     };
                     break;
 
@@ -304,35 +311,35 @@ export function createContractsRoutes(services) {
  */
 async function _generateContractMarkdown(integrationAnalysis, workflowResults, promptService) {
     const { analysis, moduleRelations, integrationPoints, apiContracts, dataFlow, externalDependencies } = integrationAnalysis;
-    const projectName = workflowResults.step_1.projectPath.split('/').pop();
-    const primaryLanguage = workflowResults.step_2.detection.primaryLanguage;
+    const projectName = workflowResults.step_1?.projectPath?.split('/').pop() || 'Unknown Project';
+    const primaryLanguage = workflowResults.step_2?.detection?.primaryLanguage || 'Unknown';
     
     // 准备模板变量
     const templateVars = {
         // 项目基本信息
         project_name: projectName,
-        project_path: workflowResults.step_1.projectPath,
+        project_path: workflowResults.step_1?.projectPath || '',
         primary_language: primaryLanguage,
         generated_at: new Date().toISOString(),
         
         // 统计数据
-        total_modules: analysis.statistics.totalModules,
-        total_relations: analysis.statistics.totalRelations,
-        integration_points_count: analysis.statistics.integrationPoints,
-        api_contracts_count: analysis.statistics.apiContracts,
-        data_flows_count: analysis.statistics.dataFlows,
-        external_deps_count: analysis.statistics.externalDependencies,
+        total_modules: analysis?.statistics?.totalModules || 0,
+        total_relations: analysis?.statistics?.totalRelations || 0,
+        integration_points_count: analysis?.statistics?.integrationPoints || 0,
+        api_contracts_count: analysis?.statistics?.apiContracts || 0,
+        data_flows_count: analysis?.statistics?.dataFlows || 0,
+        external_deps_count: analysis?.statistics?.externalDependencies || 0,
         
         // 核心数据
-        module_relations: moduleRelations,
-        integration_points: integrationPoints,
-        api_contracts: apiContracts,
-        data_flow: dataFlow,
-        external_dependencies: externalDependencies,
+        module_relations: moduleRelations || {},
+        integration_points: integrationPoints || [],
+        api_contracts: apiContracts || {},
+        data_flow: dataFlow || {},
+        external_dependencies: externalDependencies || {},
         
         // 分析结果
-        recommendations: integrationAnalysis.recommendations,
-        risks: integrationAnalysis.risks,
+        recommendations: integrationAnalysis.recommendations || [],
+        risks: integrationAnalysis.risks || [],
         
         // 概览描述
         project_overview: _generateProjectOverview(integrationAnalysis, workflowResults),
@@ -384,13 +391,13 @@ async function _generateContractMarkdown(integrationAnalysis, workflowResults, p
  * @private
  */
 function _generateProjectOverview(integrationAnalysis, workflowResults) {
-    const projectName = workflowResults.step_1.projectPath.split('/').pop();
-    const primaryLanguage = workflowResults.step_2.detection.primaryLanguage;
-    const stats = integrationAnalysis.analysis.statistics;
+    const projectName = workflowResults.step_1?.projectPath?.split('/').pop() || '未知项目';
+    const primaryLanguage = workflowResults.step_2?.detection?.primaryLanguage || '未知语言';
+    const stats = integrationAnalysis.analysis?.statistics || {};
     
-    return `${projectName} 是一个基于 ${primaryLanguage} 的项目，包含 ${stats.totalModules} 个模块，` +
-           `${stats.integrationPoints} 个集成点，${stats.apiContracts} 个API契约。` +
-           `系统具有 ${stats.dataFlows} 个数据流和 ${stats.externalDependencies} 个外部依赖。`;
+    return `${projectName} 是一个基于 ${primaryLanguage} 的项目，包含 ${stats.totalModules || 0} 个模块，` +
+           `${stats.integrationPoints || 0} 个集成点，${stats.apiContracts || 0} 个API契约。` +
+           `系统具有 ${stats.dataFlows || 0} 个数据流和 ${stats.externalDependencies || 0} 个外部依赖。`;
 }
 
 /**
@@ -401,7 +408,7 @@ function _generateProjectOverview(integrationAnalysis, workflowResults) {
  * @private
  */
 function _generateArchitectureSummary(integrationAnalysis, workflowResults) {
-    const relations = integrationAnalysis.moduleRelations.relations;
+    const relations = integrationAnalysis.moduleRelations?.relations || [];
     const strongRelations = relations.filter(r => r.strength > 0.7).length;
     const weakRelations = relations.filter(r => r.strength < 0.3).length;
     

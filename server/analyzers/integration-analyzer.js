@@ -36,7 +36,7 @@ export class IntegrationAnalyzer {
    * @returns {Object} 集成契约分析结果
    */
   async analyzeIntegration(workflowResults) {
-    this.startTime = Date.now();
+    this.startTime = process.hrtime.bigint();
     
     try {
       console.log('[IntegrationAnalyzer] 开始集成契约分析');
@@ -55,7 +55,7 @@ export class IntegrationAnalyzer {
       // 生成集成契约文档数据
       const contractDocument = this._generateContractDocument(analysisSteps, extractedData);
       
-      const executionTime = Date.now() - this.startTime;
+      const executionTime = Math.max(1, Math.round(Number(process.hrtime.bigint() - this.startTime) / 1000000)); // Convert nanoseconds to milliseconds, minimum 1ms
       
       const result = {
         success: true,
@@ -101,7 +101,7 @@ export class IntegrationAnalyzer {
       return {
         success: false,
         error: error.message,
-        executionTime: Date.now() - this.startTime,
+        executionTime: Math.max(1, Math.round(Number(process.hrtime.bigint() - this.startTime) / 1000000)),
         timestamp: new Date().toISOString()
       };
     }
@@ -782,7 +782,52 @@ export class IntegrationAnalyzer {
   }
 
   _detectCircularDependencies(moduleRelations) {
-    return [];
+    const visited = new Set();
+    const recursionStack = new Set();
+    const circularDeps = [];
+    
+    const detectCycle = (moduleName, path = []) => {
+      if (recursionStack.has(moduleName)) {
+        // Found a cycle
+        const cycleStart = path.indexOf(moduleName);
+        const cycle = path.slice(cycleStart).concat(moduleName);
+        circularDeps.push(cycle);
+        return true;
+      }
+      
+      if (visited.has(moduleName)) {
+        return false;
+      }
+      
+      visited.add(moduleName);
+      recursionStack.add(moduleName);
+      
+      // Find dependencies of this module
+      const dependencies = moduleRelations.relations?.filter(rel => 
+        rel.source?.moduleName === moduleName
+      ) || [];
+      
+      for (const dep of dependencies) {
+        const targetModule = dep.target?.moduleName;
+        if (targetModule && detectCycle(targetModule, path.concat(moduleName))) {
+          return true;
+        }
+      }
+      
+      recursionStack.delete(moduleName);
+      return false;
+    };
+    
+    // Check all modules
+    const modules = moduleRelations.modules || [];
+    for (const module of modules) {
+      const moduleName = module.name || module.moduleName;
+      if (moduleName && !visited.has(moduleName)) {
+        detectCycle(moduleName);
+      }
+    }
+    
+    return circularDeps;
   }
 
   _identifyCriticalModules(moduleRelations) {
