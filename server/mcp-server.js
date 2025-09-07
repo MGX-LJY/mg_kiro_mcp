@@ -15,9 +15,7 @@ import { ProjectScanner } from './analyzers/project-scanner.js';
 import { WorkflowState } from './workflow/workflow-state.js';
 import { EnhancedLanguageDetector } from './analyzers/enhanced-language-detector.js';
 import { FileContentAnalyzer } from './analyzers/file-content-analyzer.js';
-import { createDocumentRoutes } from './document-generator.js';
-import { createModuleAnalyzerRoutes } from './module-analyzer.js';
-import { createLanguagePromptRoutes } from './language-prompt-routes.js';
+import { createAppRoutes } from './routes/index.js';
 
 /**
  * MCP Server Class
@@ -193,7 +191,22 @@ export class MCPServer {
       }
     });
 
-    // ========== Init模式工作流API - 第1步：项目结构分析 ==========
+    // ========== 集成所有工作模式路由 ==========
+    
+    // 使用新的路由架构，集成所有4种模式的路由
+    const services = {
+      promptService: this.promptManager,
+      workflowService: this.workflowState,
+      projectScanner: this.projectScanner,
+      languageDetector: this.enhancedLanguageDetector,
+      fileAnalyzer: this.fileContentAnalyzer,
+      configService: { config: this.config }
+    };
+    
+    const appRoutes = createAppRoutes(services, this);
+    this.app.use('/', appRoutes);
+
+    // ========== DEPRECATED: 以下路由已迁移到新架构，保留用于兼容性测试 ==========
     
     // 第1步-A: 扫描项目结构
     this.app.post('/mode/init/scan-structure', async (req, res) => {
@@ -735,27 +748,13 @@ export class MCPServer {
 
     // ========== Init模式工作流API - 第4步：生成基础架构文档 ==========
     
-    // 集成文档生成路由
-    const documentRouter = createDocumentRoutes({
-      promptManager: this.promptManager,
-      workflowState: this.workflowState
-    });
-    this.app.use('/mode/init', documentRouter);
+    // 第4步：生成基础架构文档 - 已迁移到新架构 /server/routes/init/documents.js
 
     // ========== Init模式工作流API - 第5步：深度模块分析 ==========
     
-    // 集成模块分析路由
-    const moduleAnalyzerRouter = createModuleAnalyzerRoutes({
-      promptManager: this.promptManager,
-      workflowState: this.workflowState
-    });
-    this.app.use('/mode/init', moduleAnalyzerRouter);
+    // 第5步：深度模块分析 - 已迁移到新架构 /server/routes/init/modules.js
 
-    // 集成语言提示词路由
-    const languagePromptRouter = createLanguagePromptRoutes({
-      workflowState: this.workflowState
-    });
-    this.app.use('/mode/init', languagePromptRouter);
+    // 第6步：语言提示词生成 - 已迁移到新架构 /server/routes/init/prompts.js
 
     this.app.post('/mcp/handshake', (req, res) => {
       try {
