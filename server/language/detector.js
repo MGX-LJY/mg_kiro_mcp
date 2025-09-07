@@ -3,8 +3,8 @@
  * 通过文件扩展名、配置文件、目录结构等自动识别项目语言
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
 class LanguageDetector {
     constructor() {
@@ -374,4 +374,4 @@ class LanguageDetector {
     }
 }
 
-module.exports = LanguageDetector;
+export default LanguageDetector;

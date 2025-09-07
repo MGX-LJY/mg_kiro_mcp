@@ -95,14 +95,223 @@
 ## 🟡 P1 - 重要（下周完成）
 
 ### 🌐 API开发
-- [ ] **RESTful API**
-  - [ ] GET `/prompt/system` - 获取系统提示词
-  - [ ] GET `/prompt/mode/:mode` - 获取模式提示词
-  - [ ] POST `/mode/switch` - 切换模式
-  - [ ] GET `/template/:name` - 获取模板
-  - [ ] GET `/status` - 服务状态
-  - [ ] GET `/health` - 健康检查
-  - [ ] GET `/metrics` - 性能指标
+- [x] **RESTful API**
+  - [x] GET `/prompt/system` - 获取系统提示词
+  - [x] GET `/prompt/mode/:mode` - 获取模式提示词
+  - [x] POST `/mode/switch` - 切换模式
+  - [x] GET `/template/:name` - 获取模板
+  - [x] GET `/status` - 服务状态
+  - [x] GET `/health` - 健康检查
+  - [x] GET `/metrics` - 性能指标
+
+### 🔄 智能工作流系统架构设计
+
+#### 📋 核心理念
+**文档驱动开发** + **语言智能感知** + **模块化管理** + **影响度评估**
+
+#### 🎯 工作流总览
+```mermaid
+graph LR
+    A[Init模式] --> B[Create模式]
+    B --> C[Fix模式] 
+    C --> D[Analyze模式]
+    D --> A
+    
+    A -.-> E[语言检测系统]
+    B -.-> E
+    C -.-> E
+    D -.-> E
+    
+    E --> F[模板生成器]
+    F --> G[文档更新引擎]
+```
+
+#### 🚀 **Init模式 - 项目初始化智能工作流**
+
+**总体目标**: 深度理解项目，生成完整文档体系
+
+- [x] **第1步: 项目结构分析** 
+  - [x] `POST /mode/init/scan-structure` - 分析README、项目文件结构
+  - [x] `GET /mode/init/structure-summary` - 获取结构分析结果
+  - [x] 扫描目标：README.md, package.json, 目录结构, 配置文件
+
+- [ ] **第2步: 智能语言识别** 
+  - [ ] `POST /mode/init/detect-language` - 启动语言检测引擎
+  - [ ] `GET /mode/init/language-report` - 获取语言检测报告
+  - [ ] 输出：主语言、框架、置信度、技术栈建议
+
+- [ ] **第3步: 文件内容通读**
+  - [ ] `POST /mode/init/scan-files` - 智能文件内容分析
+  - [ ] `GET /mode/init/files-overview` - 获取文件概览
+  - [ ] 分析范围：核心源码、配置文件、测试文件
+
+- [ ] **第4步: 生成基础架构文档**
+  - [ ] `POST /mode/init/generate-architecture` - 基于语言生成system-architecture.md
+  - [ ] `POST /mode/init/generate-catalog` - 基于扫描结果生成modules-catalog.md
+  - [ ] 使用语言特定模板 + 项目特征变量
+
+- [ ] **第5步: 深度模块分析**
+  - [ ] `POST /mode/init/analyze-modules` - 逐个模块详细分析
+  - [ ] `GET /mode/init/modules-detail/:moduleId` - 获取单个模块详情
+  - [ ] 分析内容：依赖关系、接口定义、功能职责
+
+- [ ] **第6步: 语言特定提示词生成**
+  - [ ] `POST /mode/init/generate-prompts` - 基于检测语言生成专业提示词
+  - [ ] `GET /mode/init/prompts/:language` - 获取语言特定提示词
+  - [ ] 涵盖：最佳实践、常见模式、框架约定
+
+- [ ] **第7步: 单独模块文档生成**
+  - [ ] `POST /mode/init/generate-module-docs` - 为每个模块生成独立文档
+  - [ ] `GET /mode/init/module-docs/:moduleName` - 获取模块文档
+  - [ ] 包含：接口定义、使用示例、依赖说明
+
+- [ ] **第8步: 集成契约文档生成**
+  - [ ] `POST /mode/init/generate-contracts` - 生成integration-contracts.md
+  - [ ] `GET /mode/init/contracts` - 获取集成契约文档
+  - [ ] 映射：模块间调用关系、数据流向、API契约
+
+#### ✨ **Create模式 - 功能创建智能工作流**
+
+**总体目标**: 需求驱动的功能开发，确保文档先行
+
+- [ ] **第1步: 需求理解与拆解**
+  - [ ] `POST /mode/create/analyze-requirements` - 用户需求智能分析
+  - [ ] `POST /mode/create/update-user-stories` - 更新需求文档
+  - [ ] 功能：需求验证、优先级评估、可行性分析
+
+- [ ] **第2步: 技术设计文档生成**
+  - [ ] `POST /mode/create/generate-tech-design` - 基于语言特征生成技术设计
+  - [ ] `GET /mode/create/tech-design/:featureId` - 获取技术设计文档
+  - [ ] 内容：架构设计、接口定义、数据库设计
+
+- [ ] **第3步: 开发任务分解**
+  - [ ] `POST /mode/create/generate-todo` - 自动生成开发任务清单
+  - [ ] `GET /mode/create/todo/:featureId` - 获取任务列表
+  - [ ] 包含：优先级、工作量估算、依赖关系
+
+- [ ] **第4步: 代码架构生成**
+  - [ ] `POST /mode/create/generate-architecture` - 为新功能生成架构文档
+  - [ ] 基于现有项目语言特性和最佳实践
+
+- [ ] **第5步: 模块文档生成**
+  - [ ] `POST /mode/create/generate-modules` - 生成新功能相关模块文档
+  - [ ] 确保与现有模块的兼容性
+
+- [ ] **第6步: 集成契约更新**
+  - [ ] `POST /mode/create/update-contracts` - 更新集成契约文档
+  - [ ] 反映新功能对现有系统的影响
+
+#### 🔧 **Fix模式 - 问题修复智能工作流**
+
+**总体目标**: 精准修复，最小化影响范围
+
+- [ ] **第1步: 问题范围识别**
+  - [ ] `POST /mode/fix/identify-scope` - 智能识别问题影响范围
+  - [ ] `GET /mode/fix/affected-modules` - 获取受影响模块列表
+
+- [ ] **第2步: 相关文档检索**
+  - [ ] `POST /mode/fix/find-docs` - 只检索相关模块文档
+  - [ ] `GET /mode/fix/relevant-docs` - 获取相关文档列表
+  - [ ] 范围：问题模块 + 连接模块 + 架构文档
+
+- [ ] **第3步: 影响度评估**
+  - [ ] `POST /mode/fix/assess-impact` - 深度影响分析
+  - [ ] `GET /mode/fix/impact-report` - 获取影响评估报告
+  - [ ] 评估：向上依赖、向下依赖、数据流影响
+
+- [ ] **第4步: 修复方案设计**
+  - [ ] `POST /mode/fix/design-solution` - 基于语言特性设计修复方案
+  - [ ] `GET /mode/fix/solution/:issueId` - 获取修复方案
+
+- [ ] **第5步: 代码更新执行**
+  - [ ] `POST /mode/fix/apply-changes` - 执行代码修复
+  - [ ] `GET /mode/fix/changes-status` - 获取修复状态
+
+- [ ] **第6步: 文档同步更新**
+  - [ ] `POST /mode/fix/update-docs` - 同步更新相关文档
+  - [ ] `GET /mode/fix/updated-docs` - 获取更新的文档列表
+
+#### 📊 **Analyze模式 - 分析评估智能工作流**
+
+**总体目标**: 全面代码健康度评估和优化建议
+
+- [ ] **代码质量分析流程**
+  - [ ] `POST /mode/analyze/quality-scan` - 启动代码质量扫描
+  - [ ] `GET /mode/analyze/quality-report` - 获取质量报告
+  
+- [ ] **性能分析流程**  
+  - [ ] `POST /mode/analyze/performance-scan` - 性能瓶颈分析
+  - [ ] `GET /mode/analyze/performance-report` - 获取性能报告
+
+- [ ] **安全分析流程**
+  - [ ] `POST /mode/analyze/security-scan` - 安全漏洞扫描
+  - [ ] `GET /mode/analyze/security-report` - 获取安全报告
+
+- [ ] **依赖分析流程**
+  - [ ] `POST /mode/analyze/deps-scan` - 依赖关系分析
+  - [ ] `GET /mode/analyze/deps-report` - 获取依赖报告
+
+#### 🧠 **语言智能系统集成API**
+
+- [ ] **语言检测引擎API**
+  - [ ] `POST /language/detect` - 项目语言检测
+  - [ ] `GET /language/supported` - 支持的语言列表
+  - [ ] `GET /language/frameworks/:lang` - 语言支持的框架
+
+- [ ] **模板生成引擎API**  
+  - [ ] `POST /template/generate` - 基于语言生成模板
+  - [ ] `GET /template/variants/:lang` - 语言特定模板变体
+  - [ ] `POST /template/batch-generate` - 批量模板生成
+
+- [ ] **提示词智能系统API**
+  - [ ] `GET /prompts/language-specific/:lang` - 语言特定提示词
+  - [ ] `POST /prompts/context-generate` - 基于上下文生成提示词
+  - [ ] `GET /prompts/best-practices/:lang` - 语言最佳实践提示
+
+#### 📊 **工作流状态管理API**
+
+- [ ] **流程控制API**
+  - [ ] `GET /workflow/status` - 获取当前工作流状态
+  - [ ] `POST /workflow/step/complete` - 标记步骤完成
+  - [ ] `POST /workflow/step/skip` - 跳过当前步骤
+  - [ ] `GET /workflow/history` - 获取工作流历史
+
+- [ ] **进度追踪API**
+  - [ ] `GET /workflow/progress` - 获取整体进度
+  - [ ] `GET /workflow/progress/:mode` - 获取特定模式进度
+  - [ ] `POST /workflow/checkpoint` - 创建检查点
+
+#### 🎯 **智能决策系统API**
+
+- [ ] **上下文分析API**
+  - [ ] `POST /context/analyze` - 项目上下文分析
+  - [ ] `GET /context/summary` - 获取上下文摘要
+  - [ ] `POST /context/update` - 更新上下文信息
+
+- [ ] **建议引擎API**
+  - [ ] `GET /suggestions/next-steps` - 获取下一步建议
+  - [ ] `POST /suggestions/evaluate` - 评估建议可行性
+  - [ ] `GET /suggestions/history` - 历史建议记录
+
+### 📋 **工作流最佳实践**
+
+#### 🔄 **推荐使用模式**
+1. **新项目**: `Init → Create → Analyze`
+2. **功能开发**: `Create → Fix → Analyze`  
+3. **Bug修复**: `Fix → Analyze`
+4. **项目维护**: `Analyze → Fix → Create`
+
+#### ⚡ **性能优化策略**
+- 并行执行语言检测和文件扫描
+- 缓存模板生成结果
+- 增量式文档更新
+- 智能跳过无变化模块
+
+#### 🛡️ **错误处理机制**
+- 优雅降级到通用模板
+- 步骤失败时的回滚策略  
+- 断点续传机制
+- 详细的错误报告和恢复建议
 
 - [ ] **WebSocket API**
   - [ ] 模式变更通知
