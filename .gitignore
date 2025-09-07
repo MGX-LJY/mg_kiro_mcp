@@ -134,6 +134,14 @@ Thumbs.db
 test-results/
 junit.xml
 
+# Temporary test files
+test-*.js
+test-*.mjs
+*-test.js
+*-test.mjs
+temp-*.js
+temp-*.mjs
+
 # MCP Server specific files
 daemon.log
 nohup.out

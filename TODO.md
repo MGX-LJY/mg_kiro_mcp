@@ -145,10 +145,10 @@ graph LR
   - [x] `GET /mode/init/files-overview` - 获取文件概览
   - [x] 分析范围：核心源码、配置文件、测试文件
 
-- [ ] **第4步: 生成基础架构文档**
-  - [ ] `POST /mode/init/generate-architecture` - 基于语言生成system-architecture.md
-  - [ ] `POST /mode/init/generate-catalog` - 基于扫描结果生成modules-catalog.md
-  - [ ] 使用语言特定模板 + 项目特征变量
+- [x] **第4步: 生成基础架构文档**
+  - [x] `POST /mode/init/generate-architecture` - 基于语言生成system-architecture.md
+  - [x] `POST /mode/init/generate-catalog` - 基于扫描结果生成modules-catalog.md
+  - [x] 使用语言特定模板 + 项目特征变量
 
 - [ ] **第5步: 深度模块分析**
   - [ ] `POST /mode/init/analyze-modules` - 逐个模块详细分析

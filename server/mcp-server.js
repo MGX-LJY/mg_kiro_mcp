@@ -15,6 +15,7 @@ import { ProjectScanner } from './analyzers/project-scanner.js';
 import { WorkflowState } from './workflow/workflow-state.js';
 import { EnhancedLanguageDetector } from './analyzers/enhanced-language-detector.js';
 import { FileContentAnalyzer } from './analyzers/file-content-analyzer.js';
+import { createDocumentRoutes } from './document-generator.js';
 
 /**
  * MCP Server Class
@@ -729,6 +730,15 @@ export class MCPServer {
         });
       }
     });
+
+    // ========== Init模式工作流API - 第4步：生成基础架构文档 ==========
+    
+    // 集成文档生成路由
+    const documentRouter = createDocumentRoutes({
+      promptManager: this.promptManager,
+      workflowState: this.workflowState
+    });
+    this.app.use('/mode/init', documentRouter);
 
     this.app.post('/mcp/handshake', (req, res) => {
       try {
