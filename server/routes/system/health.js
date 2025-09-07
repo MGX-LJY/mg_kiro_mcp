@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { success, error } from '../../utils/response.js';
+import { success, error } from '../../services/response-service.js';
 
 /**
  * 创建健康检查路由

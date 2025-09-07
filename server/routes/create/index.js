@@ -7,7 +7,7 @@ import express from 'express';
 import { createModuleRoutes } from './modules.js';
 import { createAPIRoutes } from './api.js';
 import { createFeatureRoutes } from './features.js';
-import { success, error } from '../../utils/response.js';
+import { success, error } from '../../services/response-service.js';
 
 /**
  * 创建Create模式主路由

@@ -8,7 +8,7 @@ import { createQualityRoutes } from './quality.js';
 import { createDependenciesRoutes } from './dependencies.js';
 import { createSecurityRoutes } from './security.js';
 import { createReportsRoutes } from './reports.js';
-import { success, error } from '../../utils/response.js';
+import { success, error } from '../../services/response-service.js';
 
 /**
  * 创建Analyze模式主路由

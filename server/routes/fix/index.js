@@ -7,7 +7,7 @@ import express from 'express';
 import { createIssuesRoutes } from './issues.js';
 import { createDiagnosisRoutes } from './diagnosis.js';
 import { createFixesRoutes } from './fixes.js';
-import { success, error } from '../../utils/response.js';
+import { success, error } from '../../services/response-service.js';
 
 /**
  * 创建Fix模式主路由

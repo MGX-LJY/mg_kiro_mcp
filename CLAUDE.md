@@ -161,12 +161,15 @@ export MCP_API_KEY=your-key      # API密钥(可选)
 
 ## 🎉 重构完成摘要
 
-### ✅ 已完成 (2023-09-07)
+### ✅ 已完成 (2025-09-07)
 - **全量重构**: 所有4种工作模式完全迁移到新架构
 - **模块化路由**: 22个路由模块，分层服务架构
-- **代码清理**: 删除4个旧文件，无功能损失
-- **功能测试**: 所有API端点测试通过
-- **文档更新**: README.md和CLAUDE.md同步更新
+- **目录结构优化**: 删除双架构系统，统一services目录
+  - 删除架构2: main.js, mcp-server-new.js, core/目录
+  - 删除未使用目录: middleware/, utils/, workflow/
+  - 迁移到services: response-service.js, workflow-state-service.js
+- **功能测试**: 所有API端点测试通过，系统完整性100%
+- **文档更新**: README.md和CLAUDE.md同步更新架构变更
 
 ### 🏗️ 新架构特点
 - **分层设计**: routes → services → infrastructure  

@@ -3,7 +3,7 @@
  * 管理mg_kiro MCP的8步工作流程状态和转换
  */
 
-import { WorkflowState } from '../workflow/workflow-state.js';
+import { WorkflowState } from './workflow-state-service.js';
 
 class WorkflowService {
     constructor() {

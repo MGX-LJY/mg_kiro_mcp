@@ -6,7 +6,7 @@
 import express from 'express';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { success, error, workflowSuccess } from '../../utils/response.js';
+import { success, error, workflowSuccess } from '../../services/response-service.js';
 
 /**
  * 创建模块分析路由

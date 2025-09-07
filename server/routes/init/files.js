@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { success, error, workflowSuccess } from '../../utils/response.js';
+import { success, error, workflowSuccess } from '../../services/response-service.js';
 
 /**
  * 创建文件内容分析路由

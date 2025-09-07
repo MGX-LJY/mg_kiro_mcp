@@ -12,7 +12,7 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { PromptManager } from './prompt-manager.js';
 import { ProjectScanner } from './analyzers/project-scanner.js';
-import { WorkflowState } from './workflow/workflow-state.js';
+import { WorkflowState } from './services/workflow-state-service.js';
 import { EnhancedLanguageDetector } from './analyzers/enhanced-language-detector.js';
 import { FileContentAnalyzer } from './analyzers/file-content-analyzer.js';
 import { createAppRoutes } from './routes/index.js';
