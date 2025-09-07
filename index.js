@@ -147,12 +147,16 @@ async function createApp(config = {}, wsManager = null) {
     configService: { config: serverConfig }
   };
 
-  // 创建服务器对象，包含WebSocket连接信息
+  // 创建服务器对象，包含WebSocket连接信息和分析器
   const serverObject = {
     config: serverConfig,
     currentMode: 'init',
     clients: wsManager ? wsManager.clients : new Map(),
-    mcpConnections: wsManager ? wsManager.mcpConnections : new Map()
+    mcpConnections: wsManager ? wsManager.mcpConnections : new Map(),
+    projectScanner,
+    languageDetector: enhancedLanguageDetector,
+    enhancedLanguageDetector,
+    fileAnalyzer: fileContentAnalyzer
   };
 
   // 集成模块化路由系统

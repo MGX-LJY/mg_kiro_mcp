@@ -17,6 +17,7 @@ import { createFilesRoutes } from './init/files.js';
 import { createDocumentsRoutes } from './init/documents.js';
 import { createModulesRoutes } from './init/modules.js';
 import { createLanguagePromptsRoutes } from './init/prompts.js';
+import { createContractsRoutes } from './init/contracts.js';
 
 // Create模式路由
 import { createCreateModeRoutes } from './create/index.js';
@@ -83,6 +84,10 @@ export function createAppRoutes(services, server) {
         workflowState: services.workflowService
     });
     router.use('/mode/init', languagePromptRouter);
+
+    // 第8步：集成契约文档生成
+    const contractsRouter = createContractsRoutes(routerServices);
+    router.use('/mode/init', contractsRouter);
 
     // ========== Create模式工作流路由 ==========
     

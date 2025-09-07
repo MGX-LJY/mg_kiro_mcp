@@ -160,10 +160,10 @@ graph LR
   - [x] `GET /mode/init/prompts/:language` - 获取语言特定提示词
   - [x] 涵盖：最佳实践、常见模式、框架约定
 
-- [ ] **第7步: 单独模块文档生成**
-  - [ ] `POST /mode/init/generate-module-docs` - 为每个模块生成独立文档
-  - [ ] `GET /mode/init/module-docs/:moduleName` - 获取模块文档
-  - [ ] 包含：接口定义、使用示例、依赖说明
+- [x] **第7步: 单独模块文档生成**
+  - [x] `POST /mode/init/generate-module-docs` - 为每个模块生成独立文档
+  - [x] `GET /mode/init/module-docs/:moduleName` - 获取模块文档
+  - [x] 包含：接口定义、使用示例、依赖说明
 
 - [ ] **第8步: 集成契约文档生成**
   - [ ] `POST /mode/init/generate-contracts` - 生成integration-contracts.md
