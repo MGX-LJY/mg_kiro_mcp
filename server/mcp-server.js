@@ -548,7 +548,7 @@ export class MCPServer {
           });
         }
 
-        // 检查前置步骤是否完成
+        // 检查前置步骤是否完成 (需要完成步骤1和2才能执行步骤3)
         if (workflow.currentStep < 2) {
           return res.status(400).json({
             success: false,
@@ -568,8 +568,8 @@ export class MCPServer {
 
         console.log(`[MCP-API] 开始文件内容分析: ${workflow.projectPath}`);
         
-        // 更新步骤状态为运行中
-        this.workflowState.updateStep(workflowId, 2, 'running');
+        // 更新步骤状态为运行中 (第3步：文件内容通读)
+        this.workflowState.updateStep(workflowId, 3, 'running');
         
         // 准备项目数据
         const projectData = {
@@ -586,8 +586,8 @@ export class MCPServer {
         // 执行文件内容分析
         const analysisResult = await this.fileContentAnalyzer.analyzeFiles(projectData);
         
-        // 更新步骤状态为已完成
-        this.workflowState.updateStep(workflowId, 2, 'completed', analysisResult);
+        // 更新步骤状态为已完成 (第3步：文件内容通读)
+        this.workflowState.updateStep(workflowId, 3, 'completed', analysisResult);
         
         res.json({
           success: true,
@@ -604,9 +604,9 @@ export class MCPServer {
       } catch (error) {
         console.error('[MCP-API] 文件内容分析失败:', error);
         
-        // 更新步骤状态为失败
+        // 更新步骤状态为失败 (第3步：文件内容通读)
         if (req.body.workflowId) {
-          this.workflowState.updateStep(req.body.workflowId, 2, 'failed', null, error.message);
+          this.workflowState.updateStep(req.body.workflowId, 3, 'failed', null, error.message);
         }
         
         res.status(500).json({
@@ -640,9 +640,15 @@ export class MCPServer {
 
         const analysisResult = workflow.results.step_3;
         if (!analysisResult) {
+          console.warn(`[MCP-API] 文件分析结果不存在 - workflowId: ${workflowId}, 可用步骤结果: ${Object.keys(workflow.results || {}).join(', ')}`);
           return res.status(404).json({
             success: false,
-            error: '文件内容分析结果不存在，请先执行 POST /mode/init/scan-files'
+            error: '文件内容分析结果不存在，请先执行 POST /mode/init/scan-files',
+            debug: {
+              workflowId,
+              currentStep: workflow.currentStep,
+              availableResults: Object.keys(workflow.results || {})
+            }
           });
         }
 

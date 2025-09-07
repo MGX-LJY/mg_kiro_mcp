@@ -140,10 +140,10 @@ graph LR
   - [x] `GET /mode/init/language-report` - 获取语言检测报告
   - [x] 输出：主语言、框架、置信度、技术栈建议
 
-- [ ] **第3步: 文件内容通读**
-  - [ ] `POST /mode/init/scan-files` - 智能文件内容分析
-  - [ ] `GET /mode/init/files-overview` - 获取文件概览
-  - [ ] 分析范围：核心源码、配置文件、测试文件
+- [x] **第3步: 文件内容通读**
+  - [x] `POST /mode/init/scan-files` - 智能文件内容分析
+  - [x] `GET /mode/init/files-overview` - 获取文件概览
+  - [x] 分析范围：核心源码、配置文件、测试文件
 
 - [ ] **第4步: 生成基础架构文档**
   - [ ] `POST /mode/init/generate-architecture` - 基于语言生成system-architecture.md

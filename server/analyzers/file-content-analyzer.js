@@ -45,6 +45,15 @@ export class FileContentAnalyzer {
       const extractedData = this._extractProjectData(projectData);
       const { projectPath, languageData } = extractedData;
       
+      // 验证必需参数
+      if (!projectPath) {
+        throw new Error('项目路径不能为空');
+      }
+      
+      console.log(`[FileContentAnalyzer] 分析项目路径: ${projectPath}`);
+      console.log(`[FileContentAnalyzer] 主要语言: ${languageData.primaryLanguage || '未知'}`);
+      console.log(`[FileContentAnalyzer] 可用文件数: ${extractedData.files ? extractedData.files.length : 0}`);
+      
       // 选择要分析的文件
       const filesToAnalyze = await this._selectFilesToAnalyze(projectPath, extractedData);
       console.log(`[FileContentAnalyzer] 选定 ${filesToAnalyze.length} 个文件进行分析`);
@@ -96,15 +105,21 @@ export class FileContentAnalyzer {
     const result = {
       projectPath: projectData.projectPath || projectData.structure?.path,
       structure: projectData.structure || projectData,
-      languageData: projectData.languageData || projectData.language || {}
+      languageData: projectData.languageData || projectData.language || { primaryLanguage: 'unknown', confidence: 0 }
     };
     
     // 如果structure中的files存在，重构文件列表
     if (result.structure?.files) {
       result.files = this._flattenFileStructure(result.structure, result.projectPath);
+    } else if (result.structure?.subdirectories) {
+      // 如果只有subdirectories，也尝试提取文件
+      result.files = this._flattenFileStructure(result.structure, result.projectPath);
     } else {
+      console.warn('[FileContentAnalyzer] 没有找到文件结构数据');
       result.files = [];
     }
+    
+    console.log(`[FileContentAnalyzer] 提取数据完成 - 路径: ${result.projectPath}, 文件数: ${result.files.length}`);
     
     return result;
   }
@@ -115,24 +130,63 @@ export class FileContentAnalyzer {
   _flattenFileStructure(structure, projectPath) {
     const allFiles = [];
     
+    if (!structure) {
+      console.warn('[FileContentAnalyzer] 文件结构为空');
+      return allFiles;
+    }
+    
     // 处理根目录的文件
-    if (structure.files) {
+    if (structure.files && Array.isArray(structure.files)) {
       structure.files.forEach(file => {
+        // 构建正确的绝对路径
+        let fullPath;
+        
+        // ProjectScanner已经提供了完整的绝对路径
+        if (file.path && path.isAbsolute(file.path)) {
+          fullPath = file.path;
+        } else if (file.path) {
+          // 如果path是相对路径，检查是否已经相对于projectPath
+          const testPath = path.resolve(projectPath, file.path);
+          // 验证这个路径是否存在，如果不存在，说明可能已经包含了项目名重复
+          try {
+            // 先尝试直接使用file.path作为相对于当前工作目录的路径
+            if (file.path.startsWith(path.basename(projectPath))) {
+              // 如果路径以项目名开头，直接从当前工作目录解析
+              fullPath = path.resolve(file.path);
+            } else {
+              fullPath = testPath;
+            }
+          } catch {
+            fullPath = testPath;
+          }
+        } else {
+          fullPath = path.resolve(projectPath, file.name);
+        }
+        
+        const relativePath = path.relative(projectPath, fullPath);
+        
         allFiles.push({
           ...file,
-          relativePath: file.path.replace(projectPath, '').replace(/^\//, ''),
-          fullPath: file.path,
-          size: 0 // 初始大小，后面会更新
+          relativePath,
+          fullPath,
+          size: file.size || 0 // 使用实际文件大小，如果没有则为0
         });
       });
     }
     
     // 递归处理子目录
-    if (structure.subdirectories) {
+    if (structure.subdirectories && typeof structure.subdirectories === 'object') {
       Object.entries(structure.subdirectories).forEach(([dirName, dirData]) => {
-        const subFiles = this._flattenFileStructure(dirData, projectPath);
-        allFiles.push(...subFiles);
+        if (dirData && typeof dirData === 'object') {
+          const subFiles = this._flattenFileStructure(dirData, projectPath);
+          allFiles.push(...subFiles);
+        }
       });
+    }
+    
+    console.log(`[FileContentAnalyzer] 从结构中提取到 ${allFiles.length} 个文件`);
+    if (allFiles.length > 0) {
+      console.log(`[FileContentAnalyzer] 文件示例: ${allFiles.slice(0, 3).map(f => f.relativePath).join(', ')}`);
     }
     
     return allFiles;
@@ -177,7 +231,7 @@ export class FileContentAnalyzer {
       selectedFiles.push(...filesToAdd.map(file => ({
         ...file,
         category,
-        fullPath: file.fullPath || path.join(projectPath, file.relativePath),
+        fullPath: file.fullPath || path.resolve(projectPath, file.relativePath),
         priority: this._calculateFilePriority(file, category, languageData)
       })));
       
@@ -290,15 +344,28 @@ export class FileContentAnalyzer {
    */
   async _analyzeFileContent(fileInfo) {
     try {
+      // 获取文件真实大小（如果size为0或未知）
+      let realSize = fileInfo.size;
+      if (realSize === 0 || !realSize) {
+        try {
+          const stats = await fs.stat(fileInfo.fullPath);
+          realSize = stats.size;
+          fileInfo.size = realSize; // 更新文件信息
+        } catch (statError) {
+          console.warn(`[FileContentAnalyzer] 无法获取文件大小: ${fileInfo.relativePath}`, statError.message);
+          return null;
+        }
+      }
+
       // 检查缓存
-      const cacheKey = `${fileInfo.fullPath}-${fileInfo.size}`;
+      const cacheKey = `${fileInfo.fullPath}-${realSize}`;
       if (this.analysisCache.has(cacheKey)) {
         return this.analysisCache.get(cacheKey);
       }
 
       // 文件大小检查
-      if (fileInfo.size > this.options.maxFileSize) {
-        console.warn(`[FileContentAnalyzer] 文件过大跳过: ${fileInfo.relativePath} (${fileInfo.size} bytes)`);
+      if (realSize > this.options.maxFileSize) {
+        console.warn(`[FileContentAnalyzer] 文件过大跳过: ${fileInfo.relativePath} (${realSize} bytes)`);
         return null;
       }
 

@@ -12,7 +12,7 @@ class LanguageDetector {
             javascript: {
                 name: 'JavaScript/Node.js',
                 weight: 0,
-                extensions: ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs'],
+                extensions: ['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs', '.vue'],
                 configFiles: ['package.json', 'yarn.lock', 'package-lock.json', 'pnpm-lock.yaml'],
                 directories: ['node_modules', 'src', 'lib', 'dist', 'public'],
                 frameworks: {
