@@ -150,10 +150,10 @@ graph LR
   - [x] `POST /mode/init/generate-catalog` - 基于扫描结果生成modules-catalog.md
   - [x] 使用语言特定模板 + 项目特征变量
 
-- [ ] **第5步: 深度模块分析**
-  - [ ] `POST /mode/init/analyze-modules` - 逐个模块详细分析
-  - [ ] `GET /mode/init/modules-detail/:moduleId` - 获取单个模块详情
-  - [ ] 分析内容：依赖关系、接口定义、功能职责
+- [x] **第5步: 深度模块分析**
+  - [x] `POST /mode/init/analyze-modules` - 逐个模块详细分析
+  - [x] `GET /mode/init/modules-detail/:moduleId` - 获取单个模块详情
+  - [x] 分析内容：依赖关系、接口定义、功能职责
 
 - [ ] **第6步: 语言特定提示词生成**
   - [ ] `POST /mode/init/generate-prompts` - 基于检测语言生成专业提示词

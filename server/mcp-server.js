@@ -16,6 +16,7 @@ import { WorkflowState } from './workflow/workflow-state.js';
 import { EnhancedLanguageDetector } from './analyzers/enhanced-language-detector.js';
 import { FileContentAnalyzer } from './analyzers/file-content-analyzer.js';
 import { createDocumentRoutes } from './document-generator.js';
+import { createModuleAnalyzerRoutes } from './module-analyzer.js';
 
 /**
  * MCP Server Class
@@ -739,6 +740,15 @@ export class MCPServer {
       workflowState: this.workflowState
     });
     this.app.use('/mode/init', documentRouter);
+
+    // ========== Init模式工作流API - 第5步：深度模块分析 ==========
+    
+    // 集成模块分析路由
+    const moduleAnalyzerRouter = createModuleAnalyzerRoutes({
+      promptManager: this.promptManager,
+      workflowState: this.workflowState
+    });
+    this.app.use('/mode/init', moduleAnalyzerRouter);
 
     this.app.post('/mcp/handshake', (req, res) => {
       try {
