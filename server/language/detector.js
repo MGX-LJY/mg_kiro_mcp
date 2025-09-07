@@ -26,13 +26,46 @@ class LanguageDetector {
             python: {
                 name: 'Python',
                 weight: 0,
-                extensions: ['.py', '.pyw', '.pyx', '.pyi'],
-                configFiles: ['requirements.txt', 'setup.py', 'pyproject.toml', 'Pipfile', 'environment.yml'],
-                directories: ['venv', '.env', '__pycache__', 'site-packages'],
+                extensions: ['.py', '.pyw', '.pyx', '.pyi', '.ipynb'],
+                configFiles: [
+                    'requirements.txt', 'setup.py', 'pyproject.toml', 'Pipfile', 'Pipfile.lock',
+                    'poetry.lock', 'environment.yml', 'conda.yaml', 'tox.ini', 'pytest.ini',
+                    'setup.cfg', '.python-version', 'requirements-dev.txt', 'dev-requirements.txt'
+                ],
+                directories: [
+                    'venv', '.venv', 'env', '.env', '__pycache__', 'site-packages', 
+                    '.pytest_cache', '.mypy_cache', '.tox', 'build', 'dist', 
+                    'src', 'tests', 'test', 'docs', '.conda'
+                ],
                 frameworks: {
-                    'django': ['manage.py', 'settings.py', 'urls.py'],
-                    'flask': ['app.py', 'wsgi.py', 'requirements.txt'],
-                    'fastapi': ['main.py', 'app.py', 'requirements.txt']
+                    // Web框架
+                    'django': ['manage.py', 'settings.py', 'urls.py', 'wsgi.py', 'asgi.py'],
+                    'flask': ['app.py', 'wsgi.py', 'requirements.txt', 'run.py'],
+                    'fastapi': ['main.py', 'app.py', 'requirements.txt', 'uvicorn'],
+                    'pyramid': ['development.ini', 'production.ini', 'setup.py'],
+                    'tornado': ['app.py', 'main.py', 'handlers'],
+                    'bottle': ['app.py', 'main.py'],
+                    'cherrypy': ['app.py', 'main.py'],
+                    
+                    // 数据科学/ML框架
+                    'jupyter': ['.ipynb', 'jupyter_notebook_config.py'],
+                    'streamlit': ['streamlit_app.py', 'requirements.txt'],
+                    'dash': ['app.py', 'dashboard.py'],
+                    
+                    // 测试框架
+                    'pytest': ['pytest.ini', 'conftest.py', 'tests/', 'test_'],
+                    'unittest': ['test_*.py', 'tests/', 'unittest'],
+                    
+                    // 包管理/构建工具
+                    'poetry': ['pyproject.toml', 'poetry.lock'],
+                    'pipenv': ['Pipfile', 'Pipfile.lock'],
+                    'conda': ['environment.yml', 'conda.yaml'],
+                    'setuptools': ['setup.py', 'setup.cfg'],
+                    
+                    // 异步框架
+                    'aiohttp': ['aiohttp', 'main.py'],
+                    'sanic': ['sanic', 'app.py'],
+                    'quart': ['quart', 'app.py']
                 }
             },
             java: {
@@ -300,9 +333,14 @@ class LanguageDetector {
                 '使用 package-lock.json 锁定依赖版本'
             ],
             python: [
-                '建议使用虚拟环境管理依赖',
-                '考虑使用 Poetry 进行包管理',
-                '添加类型提示提升代码可读性'
+                '建议使用虚拟环境(venv/conda)管理依赖',
+                '推荐使用 Poetry 或 Pipenv 进行现代化包管理',
+                '添加类型提示(Type Hints)提升代码可读性和IDE支持',
+                '使用 Black 进行代码格式化，flake8/pylint 进行代码检查',
+                '配置 pytest 进行单元测试，coverage.py 监控测试覆盖率',
+                '考虑使用 mypy 进行静态类型检查',
+                '使用 pre-commit 钩子确保代码质量',
+                '遵循 PEP 8 代码规范，使用 docstring 文档化函数'
             ],
             java: [
                 '建议使用 Maven 或 Gradle 管理构建',

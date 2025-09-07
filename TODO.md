@@ -135,10 +135,10 @@ graph LR
   - [x] `GET /mode/init/structure-summary` - 获取结构分析结果
   - [x] 扫描目标：README.md, package.json, 目录结构, 配置文件
 
-- [ ] **第2步: 智能语言识别** 
-  - [ ] `POST /mode/init/detect-language` - 启动语言检测引擎
-  - [ ] `GET /mode/init/language-report` - 获取语言检测报告
-  - [ ] 输出：主语言、框架、置信度、技术栈建议
+- [x] **第2步: 智能语言识别** 
+  - [x] `POST /mode/init/detect-language` - 启动语言检测引擎
+  - [x] `GET /mode/init/language-report` - 获取语言检测报告
+  - [x] 输出：主语言、框架、置信度、技术栈建议
 
 - [ ] **第3步: 文件内容通读**
   - [ ] `POST /mode/init/scan-files` - 智能文件内容分析

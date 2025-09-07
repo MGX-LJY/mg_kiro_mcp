@@ -647,12 +647,44 @@ export class ProjectScanner {
     }
     
     // 从package.json检测到的框架
-    const packageAnalysis = scanData.configs?.byLanguage?.javascript?.[0]?.analysis;
+    console.log('[ProjectScanner] 调试scanData结构:', Object.keys(scanData));
+    console.log('[ProjectScanner] 调试configFiles:', JSON.stringify(scanData.configFiles?.byLanguage?.javascript?.[0]?.analysis, null, 2));
+    
+    const packageAnalysis = scanData.configFiles?.byLanguage?.javascript?.[0]?.analysis;
     if (packageAnalysis?.frameworks) {
+      console.log('[ProjectScanner] 提取框架:', packageAnalysis.frameworks);
       hints.push(...packageAnalysis.frameworks);
     }
+    
+    // 从依赖分析中提取更多技术栈信息
+    if (packageAnalysis?.dependencies) {
+      const deps = packageAnalysis.dependencies;
+      
+      // Web框架检测
+      if (deps.includes('express')) hints.push('Express');
+      if (deps.includes('koa')) hints.push('Koa');
+      if (deps.includes('fastify')) hints.push('Fastify');
+      
+      // 前端框架检测
+      if (deps.includes('react')) hints.push('React');
+      if (deps.includes('vue')) hints.push('Vue.js');
+      if (deps.includes('@angular/core')) hints.push('Angular');
+      if (deps.includes('next')) hints.push('Next.js');
+      
+      // 数据库检测
+      if (deps.includes('mongoose') || deps.includes('mongodb')) hints.push('MongoDB');
+      if (deps.includes('mysql2') || deps.includes('mysql')) hints.push('MySQL');
+      if (deps.includes('pg')) hints.push('PostgreSQL');
+      
+      // 工具链检测
+      if (deps.includes('webpack')) hints.push('Webpack');
+      if (deps.includes('vite')) hints.push('Vite');
+      if (deps.includes('typescript')) hints.push('TypeScript');
+    }
 
-    return [...new Set(hints)]; // 去重
+    const uniqueHints = [...new Set(hints)];
+    console.log('[ProjectScanner] 最终技术栈提示:', uniqueHints);
+    return uniqueHints;
   }
 
   /**
