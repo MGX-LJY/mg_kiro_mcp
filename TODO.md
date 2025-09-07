@@ -165,10 +165,10 @@ graph LR
   - [x] `GET /mode/init/module-docs/:moduleName` - 获取模块文档
   - [x] 包含：接口定义、使用示例、依赖说明
 
-- [ ] **第8步: 集成契约文档生成**
-  - [ ] `POST /mode/init/generate-contracts` - 生成integration-contracts.md
-  - [ ] `GET /mode/init/contracts` - 获取集成契约文档
-  - [ ] 映射：模块间调用关系、数据流向、API契约
+- [x] **第8步: 集成契约文档生成**
+  - [x] `POST /mode/init/generate-contracts` - 生成integration-contracts.md
+  - [x] `GET /mode/init/contracts` - 获取集成契约文档
+  - [x] 映射：模块间调用关系、数据流向、API契约
 
 #### ✨ **Create模式 - 功能创建智能工作流**
 
