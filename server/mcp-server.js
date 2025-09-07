@@ -14,6 +14,7 @@ import { PromptManager } from './prompt-manager.js';
 import { ProjectScanner } from './analyzers/project-scanner.js';
 import { WorkflowState } from './workflow/workflow-state.js';
 import { EnhancedLanguageDetector } from './analyzers/enhanced-language-detector.js';
+import { FileContentAnalyzer } from './analyzers/file-content-analyzer.js';
 
 /**
  * MCP Server Class
@@ -57,6 +58,14 @@ export class MCPServer {
       enableDeepAnalysis: true,
       maxFilesToAnalyze: 15,
       confidenceThreshold: 60
+    });
+    
+    // Initialize File Content Analyzer for Step 3
+    this.fileContentAnalyzer = new FileContentAnalyzer({
+      maxFileSize: 1024 * 1024, // 1MB
+      maxFilesToAnalyze: 50,
+      enableDeepAnalysis: true,
+      pythonPriority: true // Python作为核心语言
     });
     
     this._setupMiddleware();
@@ -510,6 +519,204 @@ export class MCPServer {
 
       } catch (error) {
         console.error('[MCP-API] 获取语言检测报告失败:', error);
+        res.status(500).json({
+          success: false,
+          error: error.message
+        });
+      }
+    });
+
+    // ========== Init模式工作流API - 第3步：文件内容通读 ==========
+    
+    // 第3步-A: 智能文件内容分析
+    this.app.post('/mode/init/scan-files', async (req, res) => {
+      try {
+        const { workflowId } = req.body;
+        
+        if (!workflowId) {
+          return res.status(400).json({
+            success: false,
+            error: '工作流ID不能为空'
+          });
+        }
+
+        const workflow = this.workflowState.getWorkflow(workflowId);
+        if (!workflow) {
+          return res.status(404).json({
+            success: false,
+            error: `工作流不存在: ${workflowId}`
+          });
+        }
+
+        // 检查前置步骤是否完成
+        if (workflow.currentStep < 2) {
+          return res.status(400).json({
+            success: false,
+            error: '请先完成第1步(项目结构分析)和第2步(语言检测)'
+          });
+        }
+
+        const step1Results = workflow.results.step_1;
+        const step2Results = workflow.results.step_2;
+
+        if (!step1Results || !step2Results) {
+          return res.status(400).json({
+            success: false,
+            error: '缺少前置步骤的分析结果'
+          });
+        }
+
+        console.log(`[MCP-API] 开始文件内容分析: ${workflow.projectPath}`);
+        
+        // 更新步骤状态为运行中
+        this.workflowState.updateStep(workflowId, 2, 'running');
+        
+        // 准备项目数据
+        const projectData = {
+          projectPath: workflow.projectPath,
+          structure: step1Results,
+          languageData: {
+            primaryLanguage: step2Results.detection.primaryLanguage,
+            confidence: step2Results.workflowIntegration.confidenceScore,
+            frameworks: step2Results.detection.techStack.frameworks,
+            techStack: step2Results.detection.techStack
+          }
+        };
+        
+        // 执行文件内容分析
+        const analysisResult = await this.fileContentAnalyzer.analyzeFiles(projectData);
+        
+        // 更新步骤状态为已完成
+        this.workflowState.updateStep(workflowId, 2, 'completed', analysisResult);
+        
+        res.json({
+          success: true,
+          step: 3,
+          stepName: 'scan_files',
+          data: analysisResult,
+          workflowId,
+          workflowProgress: this.workflowState.getProgress(workflowId),
+          nextStep: this.workflowState.getNextStep(this.workflowState.getWorkflow(workflowId))
+        });
+
+        console.log(`[MCP-API] 文件内容分析完成: ${workflow.projectPath} (${analysisResult.analysis.analysisTime}ms)`);
+        
+      } catch (error) {
+        console.error('[MCP-API] 文件内容分析失败:', error);
+        
+        // 更新步骤状态为失败
+        if (req.body.workflowId) {
+          this.workflowState.updateStep(req.body.workflowId, 2, 'failed', null, error.message);
+        }
+        
+        res.status(500).json({
+          success: false,
+          error: error.message,
+          step: 3,
+          stepName: 'scan_files'
+        });
+      }
+    });
+
+    // 第3步-B: 获取文件内容概览
+    this.app.get('/mode/init/files-overview', async (req, res) => {
+      try {
+        const { workflowId } = req.query;
+        
+        if (!workflowId) {
+          return res.status(400).json({
+            success: false,
+            error: '工作流ID不能为空'
+          });
+        }
+
+        const workflow = this.workflowState.getWorkflow(workflowId);
+        if (!workflow) {
+          return res.status(404).json({
+            success: false,
+            error: `工作流不存在: ${workflowId}`
+          });
+        }
+
+        const analysisResult = workflow.results.step_3;
+        if (!analysisResult) {
+          return res.status(404).json({
+            success: false,
+            error: '文件内容分析结果不存在，请先执行 POST /mode/init/scan-files'
+          });
+        }
+
+        // 生成详细概览
+        const overview = {
+          // 核心分析结果
+          analysis: {
+            totalFilesAnalyzed: analysisResult.analysis.totalFilesAnalyzed,
+            analysisTime: analysisResult.analysis.analysisTime,
+            mainLanguage: analysisResult.analysis.mainLanguage,
+            confidence: analysisResult.analysis.confidence
+          },
+          
+          // 文件分类概览
+          fileDistribution: {
+            byCategory: analysisResult.overview.distribution,
+            byComplexity: analysisResult.overview.complexity,
+            totalLines: analysisResult.overview.codeMetrics.totalLines,
+            totalFunctions: analysisResult.overview.codeMetrics.totalFunctions,
+            totalClasses: analysisResult.overview.codeMetrics.totalClasses
+          },
+          
+          // 重要文件排序
+          importantFiles: this._getTopImportantFiles(analysisResult.files, analysisResult.importance, 10),
+          
+          // 依赖关系摘要
+          dependencies: {
+            totalNodes: analysisResult.dependencies.nodes.length,
+            totalConnections: analysisResult.dependencies.edges.length,
+            topDependencies: this._getTopDependencies(analysisResult.dependencies, 5)
+          },
+          
+          // 代码质量指标
+          quality: {
+            documentationCoverage: Math.round(analysisResult.overview.qualityIndicators.documentationCoverage * 100),
+            testCoverage: Math.round(analysisResult.overview.qualityIndicators.testCoverage * 100),
+            codeQualityScore: Math.round(analysisResult.overview.qualityIndicators.codeQualityScore),
+            avgComplexity: Math.round(analysisResult.overview.codeMetrics.avgComplexity * 10) / 10
+          },
+          
+          // 改进建议
+          recommendations: analysisResult.recommendations.map(rec => ({
+            type: rec.type,
+            priority: rec.priority,
+            message: rec.message,
+            affectedFiles: rec.files ? rec.files.length : 0
+          })),
+          
+          // 文件类型分布
+          fileTypes: this._analyzeFileTypes(analysisResult.files),
+          
+          // 技术栈洞察
+          techInsights: this._generateTechInsights(analysisResult.files, analysisResult.analysis.mainLanguage),
+          
+          // 元数据
+          metadata: {
+            timestamp: analysisResult.timestamp,
+            workflowId,
+            step3Completed: true,
+            readyForStep4: this._checkReadinessForStep4(analysisResult)
+          }
+        };
+
+        res.json({
+          success: true,
+          step: 3,
+          stepName: 'files_overview',
+          workflowId,
+          overview,
+          workflowProgress: this.workflowState.getProgress(workflowId)
+        });
+
+      } catch (error) {
+        console.error('[MCP-API] 获取文件概览失败:', error);
         res.status(500).json({
           success: false,
           error: error.message
@@ -1009,6 +1216,176 @@ Timestamp: ${new Date().toISOString()}`;
     } catch (error) {
       console.error('提取框架信息失败:', error);
       return [];
+    }
+  }
+
+  /**
+   * Step 3 辅助方法 - 获取最重要的文件
+   */
+  _getTopImportantFiles(files, importance, limit = 10) {
+    try {
+      return files
+        .map(file => ({
+          path: file.relativePath,
+          score: importance[file.relativePath] || 0,
+          category: file.category,
+          type: file.analysis?.type || 'unknown',
+          complexity: file.analysis?.complexity?.rating || 'unknown',
+          lines: file.content?.lines || 0
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit);
+    } catch (error) {
+      console.error('获取重要文件失败:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 获取顶级依赖关系
+   */
+  _getTopDependencies(dependencies, limit = 5) {
+    try {
+      const dependencyCount = new Map();
+      
+      dependencies.edges.forEach(edge => {
+        const dep = edge.to;
+        dependencyCount.set(dep, (dependencyCount.get(dep) || 0) + 1);
+      });
+      
+      return Array.from(dependencyCount.entries())
+        .map(([dep, count]) => ({ dependency: dep, references: count }))
+        .sort((a, b) => b.references - a.references)
+        .slice(0, limit);
+    } catch (error) {
+      console.error('获取顶级依赖失败:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 分析文件类型分布
+   */
+  _analyzeFileTypes(files) {
+    try {
+      const typeCount = new Map();
+      const extensionCount = new Map();
+      
+      files.forEach(file => {
+        const ext = file.relativePath.split('.').pop().toLowerCase();
+        const type = file.analysis?.type || 'other';
+        
+        typeCount.set(type, (typeCount.get(type) || 0) + 1);
+        extensionCount.set(ext, (extensionCount.get(ext) || 0) + 1);
+      });
+      
+      return {
+        byType: Object.fromEntries(typeCount),
+        byExtension: Object.fromEntries(extensionCount)
+      };
+    } catch (error) {
+      console.error('分析文件类型失败:', error);
+      return { byType: {}, byExtension: {} };
+    }
+  }
+
+  /**
+   * 生成技术栈洞察
+   */
+  _generateTechInsights(files, mainLanguage) {
+    try {
+      const insights = {
+        mainLanguage,
+        languageSpecific: {},
+        frameworks: new Set(),
+        patterns: []
+      };
+      
+      files.forEach(file => {
+        // 收集框架信息
+        if (file.analysis?.dependencies) {
+          file.analysis.dependencies.forEach(dep => {
+            if (this._isFramework(dep)) {
+              insights.frameworks.add(dep);
+            }
+          });
+        }
+        
+        // 语言特定洞察
+        if (mainLanguage === 'python' && file.analysis?.pythonSpecific) {
+          const py = file.analysis.pythonSpecific;
+          insights.languageSpecific.usesTypeHints = py.usesTypeHints;
+          insights.languageSpecific.usesAsyncAwait = py.usesAsyncAwait;
+          insights.languageSpecific.hasMainGuard = py.hasMainGuard;
+        }
+        
+        if (mainLanguage === 'javascript' && file.analysis?.javascriptSpecific) {
+          const js = file.analysis.javascriptSpecific;
+          insights.languageSpecific.usesES6 = js.usesES6;
+          insights.languageSpecific.usesModules = js.usesModules;
+          insights.languageSpecific.hasJSX = js.hasJSX;
+        }
+      });
+      
+      insights.frameworks = Array.from(insights.frameworks);
+      
+      // 生成模式识别
+      if (insights.frameworks.length > 3) {
+        insights.patterns.push('多框架架构');
+      }
+      
+      if (mainLanguage === 'python' && insights.languageSpecific.usesAsyncAwait) {
+        insights.patterns.push('异步Python开发');
+      }
+      
+      return insights;
+    } catch (error) {
+      console.error('生成技术栈洞察失败:', error);
+      return { mainLanguage, frameworks: [], patterns: [] };
+    }
+  }
+
+  /**
+   * 检查是否为框架
+   */
+  _isFramework(dependency) {
+    const knownFrameworks = [
+      'express', 'react', 'vue', 'angular', 'django', 'flask', 'fastapi',
+      'spring', 'gin', 'axum', 'actix', 'tokio', 'pandas', 'numpy',
+      'requests', 'aiohttp', 'socketio'
+    ];
+    
+    return knownFrameworks.some(framework => 
+      dependency.toLowerCase().includes(framework)
+    );
+  }
+
+  /**
+   * 检查Step 4准备就绪状态
+   */
+  _checkReadinessForStep4(analysisResult) {
+    try {
+      const requirements = {
+        hasAnalyzedFiles: analysisResult.analysis?.totalFilesAnalyzed > 0,
+        hasMainLanguage: !!analysisResult.analysis?.mainLanguage,
+        hasQualityMetrics: !!analysisResult.overview?.qualityIndicators,
+        hasRecommendations: analysisResult.recommendations?.length > 0
+      };
+      
+      const readyCount = Object.values(requirements).filter(Boolean).length;
+      const totalRequirements = Object.keys(requirements).length;
+      
+      return {
+        ready: readyCount === totalRequirements,
+        score: Math.round((readyCount / totalRequirements) * 100),
+        requirements,
+        missingRequirements: Object.entries(requirements)
+          .filter(([_, ready]) => !ready)
+          .map(([req, _]) => req)
+      };
+    } catch (error) {
+      console.error('检查Step 4准备状态失败:', error);
+      return { ready: false, score: 0, requirements: {}, missingRequirements: [] };
     }
   }
 }
