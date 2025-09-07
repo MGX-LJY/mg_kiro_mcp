@@ -176,6 +176,163 @@ export function createModulesRoutes(services) {
         }
     });
 
+    /**
+     * 第7步-A: 生成单独模块文档
+     * POST /generate-module-docs
+     */
+    router.post('/generate-module-docs', async (req, res) => {
+        try {
+            const { workflowId } = req.body;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            console.log(`[ModuleDocs] 开始生成模块文档: ${workflowId}`);
+
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow) {
+                return error(res, '工作流不存在', 404);
+            }
+
+            // 检查前置步骤：需要第5步的模块分析结果
+            const moduleAnalysisResult = workflow.results.step_5;
+            if (!moduleAnalysisResult) {
+                return error(res, '请先完成第5步模块分析', 400);
+            }
+
+            const startTime = Date.now();
+
+            // 更新步骤状态为运行中
+            workflowService.updateStep(workflowId, 6, 'running'); // 第7步，索引为6
+
+            // 获取语言信息用于文档生成
+            const languageResult = workflow.results.step_2;
+            const primaryLanguage = languageResult?.detection?.primaryLanguage || 'javascript';
+
+            // 生成每个模块的独立文档
+            const moduleDocuments = await _generateModuleDocuments(
+                moduleAnalysisResult.analysis.modules,
+                primaryLanguage,
+                workflow.projectPath
+            );
+
+            // 生成文档汇总
+            const documentationSummary = _generateDocumentationSummary(moduleDocuments);
+
+            const executionTime = Date.now() - startTime;
+
+            const responseData = {
+                moduleDocuments,
+                summary: documentationSummary,
+                execution: {
+                    executionTime,
+                    modulesDocumented: moduleDocuments.length,
+                    totalSections: moduleDocuments.reduce((sum, doc) => sum + doc.sections.length, 0),
+                    timestamp: new Date().toISOString()
+                },
+                workflow: {
+                    workflowId,
+                    step: 7,
+                    stepName: 'generate_module_docs',
+                    previousStepsCompleted: ['step_1', 'step_2', 'step_3', 'step_4', 'step_5']
+                }
+            };
+
+            // 更新步骤状态为已完成（第7步，索引6，存储为step_7）
+            workflowService.updateStep(workflowId, 6, 'completed', responseData);
+
+            console.log(`[ModuleDocs] 模块文档生成完成: ${executionTime}ms，生成了 ${moduleDocuments.length} 个模块文档`);
+
+            workflowSuccess(res, 7, 'generate_module_docs', workflowId, responseData, workflowService.getProgress(workflowId));
+            
+        } catch (err) {
+            console.error('[ModuleDocs] 模块文档生成失败:', err);
+            
+            if (req.body.workflowId) {
+                workflowService.updateStep(req.body.workflowId, 6, 'failed', null, err.message);
+            }
+            
+            error(res, err.message, 500, {
+                step: 7,
+                stepName: 'generate_module_docs'
+            });
+        }
+    });
+
+    /**
+     * 第7步-B: 获取单个模块文档
+     * GET /module-docs/:moduleName
+     */
+    router.get('/module-docs/:moduleName', async (req, res) => {
+        try {
+            const { workflowId } = req.query;
+            const { moduleName } = req.params;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            if (!moduleName) {
+                return error(res, '模块名称不能为空', 400);
+            }
+
+            console.log(`[ModuleDocs] 获取模块文档: ${moduleName}`);
+
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow) {
+                return error(res, '工作流不存在', 404);
+            }
+
+            // 检查第7步是否完成
+            const docsResult = workflow.results.step_7;
+            if (!docsResult) {
+                return error(res, '模块文档未生成，请先执行 POST /generate-module-docs', 400);
+            }
+
+            // 查找指定模块的文档
+            const moduleDoc = docsResult.moduleDocuments.find(
+                doc => doc.moduleName === moduleName || 
+                       doc.moduleId === moduleName ||
+                       doc.relativePath === moduleName
+            );
+
+            if (!moduleDoc) {
+                return error(res, `模块文档不存在: ${moduleName}`, 404);
+            }
+
+            // 构建详细的文档响应
+            const documentDetail = {
+                basic: {
+                    moduleName: moduleDoc.moduleName,
+                    moduleId: moduleDoc.moduleId,
+                    relativePath: moduleDoc.relativePath,
+                    category: moduleDoc.category,
+                    language: moduleDoc.language
+                },
+                documentation: {
+                    overview: moduleDoc.overview,
+                    sections: moduleDoc.sections,
+                    generatedAt: moduleDoc.generatedAt
+                },
+                metadata: {
+                    complexity: moduleDoc.metadata.complexity,
+                    dependencies: moduleDoc.metadata.dependencies,
+                    metrics: moduleDoc.metadata.metrics
+                },
+                usage: moduleDoc.usage || {},
+                examples: moduleDoc.examples || [],
+                recommendations: moduleDoc.recommendations || []
+            };
+
+            success(res, documentDetail);
+
+        } catch (err) {
+            console.error('[ModuleDocs] 获取模块文档失败:', err);
+            error(res, err.message, 500);
+        }
+    });
+
     return router;
 }
 
@@ -517,6 +674,469 @@ function _findIsolatedModules(modules, dependencyGraph) {
     });
     
     return modules.filter(module => !connectedNodes.has(module.relativePath));
+}
+
+/**
+ * 生成模块文档
+ * @param {Array} modules - 模块列表
+ * @param {string} language - 编程语言
+ * @param {string} projectPath - 项目路径
+ * @returns {Array} 模块文档列表
+ */
+async function _generateModuleDocuments(modules, language, projectPath) {
+    const moduleDocuments = [];
+
+    for (const module of modules) {
+        const moduleDoc = await _generateSingleModuleDoc(module, language, projectPath);
+        moduleDocuments.push(moduleDoc);
+    }
+
+    return moduleDocuments;
+}
+
+/**
+ * 生成单个模块文档
+ * @param {Object} module - 模块对象
+ * @param {string} language - 编程语言
+ * @param {string} projectPath - 项目路径
+ * @returns {Object} 模块文档
+ */
+async function _generateSingleModuleDoc(module, language, projectPath) {
+    const generatedAt = new Date().toISOString();
+    
+    // 生成模块概述
+    const overview = _generateModuleOverview(module, language);
+    
+    // 生成文档各个部分
+    const sections = [
+        _generateOverviewSection(module, language),
+        _generateInterfaceSection(module, language),
+        _generateUsageSection(module, language),
+        _generateDependenciesSection(module, language),
+        _generateExamplesSection(module, language),
+        _generateConfigSection(module, language),
+        _generateBestPracticesSection(module, language)
+    ].filter(section => section !== null);
+
+    // 生成使用示例
+    const examples = _generateCodeExamples(module, language);
+    
+    // 生成使用指南
+    const usage = _generateUsageGuide(module, language);
+
+    return {
+        moduleName: module.name,
+        moduleId: module.id,
+        relativePath: module.relativePath,
+        category: module.category,
+        language: language,
+        generatedAt,
+        
+        overview,
+        sections,
+        usage,
+        examples,
+        
+        metadata: {
+            complexity: module.analysis?.complexity || { rating: 'unknown', score: 0 },
+            dependencies: {
+                imports: module.dependencies?.imports?.length || 0,
+                exports: module.dependencies?.exports?.length || 0,
+                internal: module.dependencies?.internal?.length || 0,
+                external: module.dependencies?.external?.length || 0
+            },
+            metrics: module.metrics || {}
+        },
+        
+        recommendations: module.recommendations || []
+    };
+}
+
+/**
+ * 生成模块概述
+ * @param {Object} module - 模块对象
+ * @param {string} language - 编程语言
+ * @returns {Object} 模块概述
+ */
+function _generateModuleOverview(module, language) {
+    return {
+        title: `${module.name} 模块文档`,
+        description: _generateModuleDescription(module, language),
+        category: module.category,
+        type: module.type,
+        complexity: module.analysis?.complexity?.rating || 'unknown',
+        primaryFunctions: module.interfaces?.filter(i => i.type === 'functions')?.[0]?.items?.slice(0, 3) || [],
+        keyMetrics: {
+            lines: module.metrics?.lines || 0,
+            functions: module.metrics?.functions || 0,
+            classes: module.metrics?.classes || 0,
+            complexity: module.metrics?.complexity || 0
+        }
+    };
+}
+
+/**
+ * 生成概述部分
+ * @param {Object} module - 模块对象
+ * @param {string} language - 编程语言
+ * @returns {Object} 概述部分
+ */
+function _generateOverviewSection(module, language) {
+    return {
+        title: '模块概述',
+        type: 'overview',
+        content: {
+            description: _generateModuleDescription(module, language),
+            purpose: _generateModulePurpose(module, language),
+            keyFeatures: _generateKeyFeatures(module, language),
+            category: module.category,
+            complexity: module.analysis?.complexity?.rating || 'unknown'
+        }
+    };
+}
+
+/**
+ * 生成接口部分
+ * @param {Object} module - 模块对象
+ * @param {string} language - 编程语言
+ * @returns {Object} 接口部分
+ */
+function _generateInterfaceSection(module, language) {
+    const interfaces = module.interfaces || [];
+    
+    if (interfaces.length === 0) {
+        return null;
+    }
+
+    return {
+        title: '接口定义',
+        type: 'interfaces',
+        content: {
+            exports: _generateExportsList(module, language),
+            functions: _generateFunctionsList(module, language),
+            classes: _generateClassesList(module, language),
+            constants: _generateConstantsList(module, language)
+        }
+    };
+}
+
+/**
+ * 生成使用部分
+ * @param {Object} module - 模块对象
+ * @param {string} language - 编程语言
+ * @returns {Object} 使用部分
+ */
+function _generateUsageSection(module, language) {
+    return {
+        title: '使用方法',
+        type: 'usage',
+        content: {
+            installation: _generateInstallationGuide(module, language),
+            importing: _generateImportGuide(module, language),
+            basicUsage: _generateBasicUsage(module, language),
+            advancedUsage: _generateAdvancedUsage(module, language)
+        }
+    };
+}
+
+/**
+ * 生成依赖部分
+ * @param {Object} module - 模块对象
+ * @param {string} language - 编程语言
+ * @returns {Object} 依赖部分
+ */
+function _generateDependenciesSection(module, language) {
+    const deps = module.dependencies || {};
+    
+    return {
+        title: '依赖关系',
+        type: 'dependencies',
+        content: {
+            imports: deps.imports || [],
+            internal: deps.internal || [],
+            external: deps.external || [],
+            peerDependencies: _generatePeerDependencies(module, language),
+            recommendations: _generateDependencyRecommendations(module, language)
+        }
+    };
+}
+
+/**
+ * 生成示例部分
+ * @param {Object} module - 模块对象
+ * @param {string} language - 编程语言
+ * @returns {Object} 示例部分
+ */
+function _generateExamplesSection(module, language) {
+    return {
+        title: '使用示例',
+        type: 'examples',
+        content: {
+            basic: _generateBasicExample(module, language),
+            advanced: _generateAdvancedExample(module, language),
+            integration: _generateIntegrationExample(module, language),
+            testing: _generateTestingExample(module, language)
+        }
+    };
+}
+
+/**
+ * 生成配置部分
+ * @param {Object} module - 模块对象
+ * @param {string} language - 编程语言
+ * @returns {Object} 配置部分
+ */
+function _generateConfigSection(module, language) {
+    return {
+        title: '配置选项',
+        type: 'configuration',
+        content: {
+            defaultConfig: _generateDefaultConfig(module, language),
+            environmentVars: _generateEnvironmentVars(module, language),
+            customization: _generateCustomizationGuide(module, language)
+        }
+    };
+}
+
+/**
+ * 生成最佳实践部分
+ * @param {Object} module - 模块对象
+ * @param {string} language - 编程语言
+ * @returns {Object} 最佳实践部分
+ */
+function _generateBestPracticesSection(module, language) {
+    return {
+        title: '最佳实践',
+        type: 'best-practices',
+        content: {
+            performance: _generatePerformanceTips(module, language),
+            security: _generateSecurityTips(module, language),
+            maintenance: _generateMaintenanceTips(module, language),
+            common_pitfalls: _generateCommonPitfalls(module, language)
+        }
+    };
+}
+
+/**
+ * 生成文档汇总
+ * @param {Array} moduleDocuments - 模块文档列表
+ * @returns {Object} 文档汇总
+ */
+function _generateDocumentationSummary(moduleDocuments) {
+    const categoryStats = {};
+    const complexityStats = { low: 0, medium: 0, high: 0, unknown: 0 };
+    let totalSections = 0;
+
+    moduleDocuments.forEach(doc => {
+        // 统计类别
+        const category = doc.category || 'unknown';
+        categoryStats[category] = (categoryStats[category] || 0) + 1;
+        
+        // 统计复杂度
+        const complexity = doc.metadata?.complexity?.rating || 'unknown';
+        complexityStats[complexity] = (complexityStats[complexity] || 0) + 1;
+        
+        // 统计章节
+        totalSections += doc.sections.length;
+    });
+
+    return {
+        total: moduleDocuments.length,
+        categories: categoryStats,
+        complexity: complexityStats,
+        sections: {
+            total: totalSections,
+            average: Math.round(totalSections / moduleDocuments.length * 100) / 100
+        },
+        coverage: {
+            withExamples: moduleDocuments.filter(d => d.examples.length > 0).length,
+            withInterfaces: moduleDocuments.filter(d => 
+                d.sections.some(s => s.type === 'interfaces')).length,
+            withDependencies: moduleDocuments.filter(d => 
+                d.metadata.dependencies.imports > 0 || d.metadata.dependencies.external > 0).length
+        }
+    };
+}
+
+// 辅助函数实现
+
+function _generateModuleDescription(module, language) {
+    const baseName = module.name;
+    const category = module.category || 'unknown';
+    const type = module.type || 'module';
+    
+    return `${baseName} 是一个${category}类型的${language}${type}，` +
+           `包含${module.metrics?.functions || 0}个函数和${module.metrics?.classes || 0}个类。`;
+}
+
+function _generateModulePurpose(module, language) {
+    const categoryPurposes = {
+        'core': '提供核心功能和基础服务',
+        'business': '实现业务逻辑和功能',
+        'utility': '提供通用工具和辅助功能',
+        'service': '提供服务层功能',
+        'component': '提供可重用的组件',
+        'controller': '处理请求和响应逻辑',
+        'model': '定义数据模型和结构',
+        'view': '处理界面展示逻辑',
+        'middleware': '提供中间件功能',
+        'config': '管理配置和设置',
+        'test': '提供测试功能',
+        'unknown': '提供特定功能'
+    };
+    
+    return categoryPurposes[module.category] || categoryPurposes.unknown;
+}
+
+function _generateKeyFeatures(module, language) {
+    const features = [];
+    
+    if (module.metrics?.functions > 0) {
+        features.push(`包含 ${module.metrics.functions} 个函数`);
+    }
+    
+    if (module.metrics?.classes > 0) {
+        features.push(`定义 ${module.metrics.classes} 个类`);
+    }
+    
+    if (module.dependencies?.exports?.length > 0) {
+        features.push(`导出 ${module.dependencies.exports.length} 个接口`);
+    }
+    
+    if (module.analysis?.complexity?.rating) {
+        features.push(`复杂度: ${module.analysis.complexity.rating}`);
+    }
+    
+    return features.length > 0 ? features : ['基础模块功能'];
+}
+
+function _generateExportsList(module, language) {
+    return module.dependencies?.exports || [];
+}
+
+function _generateFunctionsList(module, language) {
+    return module.interfaces?.find(i => i.type === 'functions')?.items || [];
+}
+
+function _generateClassesList(module, language) {
+    return module.interfaces?.find(i => i.type === 'classes')?.items || [];
+}
+
+function _generateConstantsList(module, language) {
+    return []; // 可以扩展实现常量提取
+}
+
+function _generateInstallationGuide(module, language) {
+    const guides = {
+        'javascript': `npm install ${module.name.toLowerCase()}`,
+        'python': `pip install ${module.name.toLowerCase()}`,
+        'java': `implementation '${module.name.toLowerCase()}'`,
+        'go': `go get ${module.name.toLowerCase()}`
+    };
+    
+    return guides[language] || `// 安装指南待补充`;
+}
+
+function _generateImportGuide(module, language) {
+    const guides = {
+        'javascript': `import { ${module.name} } from './${module.relativePath}';`,
+        'python': `from ${module.relativePath.replace('/', '.')} import ${module.name}`,
+        'java': `import ${module.name};`,
+        'go': `import "${module.relativePath}"`
+    };
+    
+    return guides[language] || `// 导入方式`;
+}
+
+function _generateBasicUsage(module, language) {
+    return `// ${module.name} 基础使用示例\n// 请根据具体接口调用`;
+}
+
+function _generateAdvancedUsage(module, language) {
+    return `// ${module.name} 高级使用场景\n// 请结合实际业务需求`;
+}
+
+function _generateCodeExamples(module, language) {
+    return [
+        {
+            title: '基本使用',
+            code: _generateBasicExample(module, language)
+        },
+        {
+            title: '高级示例',
+            code: _generateAdvancedExample(module, language)
+        }
+    ];
+}
+
+function _generateUsageGuide(module, language) {
+    return {
+        quickStart: _generateImportGuide(module, language),
+        commonPatterns: _generateBasicUsage(module, language),
+        troubleshooting: '常见问题解决方案'
+    };
+}
+
+function _generateBasicExample(module, language) {
+    return `// ${module.name} 基本使用示例\n${_generateImportGuide(module, language)}\n\n// 使用示例代码`;
+}
+
+function _generateAdvancedExample(module, language) {
+    return `// ${module.name} 高级使用示例\n// 复杂场景的使用方法`;
+}
+
+function _generateIntegrationExample(module, language) {
+    return `// ${module.name} 集成示例\n// 与其他模块的集成方式`;
+}
+
+function _generateTestingExample(module, language) {
+    return `// ${module.name} 测试示例\n// 单元测试和集成测试`;
+}
+
+function _generateDefaultConfig(module, language) {
+    return {}; // 可以扩展实现配置提取
+}
+
+function _generateEnvironmentVars(module, language) {
+    return []; // 可以扩展实现环境变量提取
+}
+
+function _generateCustomizationGuide(module, language) {
+    return '自定义配置说明';
+}
+
+function _generatePerformanceTips(module, language) {
+    return ['优化建议1', '优化建议2'];
+}
+
+function _generateSecurityTips(module, language) {
+    return ['安全建议1', '安全建议2'];
+}
+
+function _generateMaintenanceTips(module, language) {
+    return ['维护建议1', '维护建议2'];
+}
+
+function _generateCommonPitfalls(module, language) {
+    return ['常见陷阱1', '常见陷阱2'];
+}
+
+function _generatePeerDependencies(module, language) {
+    return []; // 可以扩展实现同级依赖分析
+}
+
+function _generateDependencyRecommendations(module, language) {
+    const recommendations = [];
+    
+    if (module.dependencies?.imports?.length > 10) {
+        recommendations.push('建议减少依赖数量，提高模块独立性');
+    }
+    
+    if (module.dependencies?.external?.length > 5) {
+        recommendations.push('建议评估外部依赖的必要性');
+    }
+    
+    return recommendations;
 }
 
 export default createModulesRoutes;

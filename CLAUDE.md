@@ -41,7 +41,7 @@ curl http://localhost:3000/status
 ## 项目架构 (全新模块化设计)
 
 ### 🏗️ 核心组件 (重构完成)
-- `server/mcp-server.js` - MCP协议服务器 (集成新路由系统)
+- `index.js` - **统一入口点** - MCP协议服务器+Express+WebSocket (完全集成)
 - `server/prompt-manager.js` - 提示词管理
 - `server/config-manager.js` - 配置管理
 - `server/routes/` - **模块化路由系统** (全新架构)
@@ -169,9 +169,11 @@ export MCP_API_KEY=your-key      # API密钥(可选)
   - 删除未使用目录: middleware/, utils/, workflow/
   - 迁移到services: response-service.js, workflow-state-service.js
 - **功能测试**: 所有API端点测试通过，系统完整性100%
+- **🔥 最终整合**: 完全删除mcp-server.js，所有功能集成到index.js统一入口
 - **文档更新**: README.md和CLAUDE.md同步更新架构变更
 
 ### 🏗️ 新架构特点
+- **统一入口**: index.js集成Express+WebSocket+MCP协议完整功能
 - **分层设计**: routes → services → infrastructure  
 - **依赖注入**: 统一服务管理
 - **标准响应**: success/error/workflowSuccess格式
