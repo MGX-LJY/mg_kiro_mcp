@@ -17,6 +17,7 @@ import { EnhancedLanguageDetector } from './analyzers/enhanced-language-detector
 import { FileContentAnalyzer } from './analyzers/file-content-analyzer.js';
 import { createDocumentRoutes } from './document-generator.js';
 import { createModuleAnalyzerRoutes } from './module-analyzer.js';
+import { createLanguagePromptRoutes } from './language-prompt-routes.js';
 
 /**
  * MCP Server Class
@@ -749,6 +750,12 @@ export class MCPServer {
       workflowState: this.workflowState
     });
     this.app.use('/mode/init', moduleAnalyzerRouter);
+
+    // 集成语言提示词路由
+    const languagePromptRouter = createLanguagePromptRoutes({
+      workflowState: this.workflowState
+    });
+    this.app.use('/mode/init', languagePromptRouter);
 
     this.app.post('/mcp/handshake', (req, res) => {
       try {
