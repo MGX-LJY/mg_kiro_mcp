@@ -7,6 +7,7 @@ import express from 'express';
 import { createModuleRoutes } from './modules.js';
 import { createAPIRoutes } from './api.js';
 import { createFeatureRoutes } from './features.js';
+import { createDataRoutes } from './data.js';
 import { success, error } from '../../services/response-service.js';
 
 /**
@@ -31,6 +32,10 @@ export function createCreateModeRoutes(services) {
     const featureRouter = createFeatureRoutes(services);
     router.use('/', featureRouter);
 
+    // 数据提供服务 (重构架构：AI主导分析)
+    const dataRouter = createDataRoutes(services);
+    router.use('/', dataRouter);
+
     // ========== Create模式状态和信息端点 ==========
 
     /**
@@ -45,6 +50,21 @@ export function createCreateModeRoutes(services) {
                 timestamp: new Date().toISOString(),
                 
                 capabilities: {
+                    dataProvision: {
+                        description: '数据提供和模板服务 (AI主导架构)',
+                        endpoints: [
+                            'POST /get-requirements-data',
+                            'POST /get-user-stories-data',
+                            'POST /save-analysis-result'
+                        ]
+                    },
+                    intelligentAnalysis: {
+                        description: '传统智能分析 (兼容模式)',
+                        endpoints: [
+                            'POST /analyze-requirements',
+                            'POST /update-user-stories'
+                        ]
+                    },
                     modules: {
                         description: '创建新模块和组件',
                         endpoints: [

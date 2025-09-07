@@ -6,8 +6,8 @@
 import { WorkflowState } from './workflow-state-service.js';
 
 class WorkflowService {
-    constructor() {
-        this.workflowState = new WorkflowState();
+    constructor(workflowState = null) {
+        this.workflowState = workflowState || new WorkflowState();
     }
 
     /**

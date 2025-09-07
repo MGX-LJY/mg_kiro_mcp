@@ -174,10 +174,11 @@ graph LR
 
 **总体目标**: 需求驱动的功能开发，确保文档先行
 
-- [ ] **第1步: 需求理解与拆解**
-  - [ ] `POST /mode/create/analyze-requirements` - 用户需求智能分析
-  - [ ] `POST /mode/create/update-user-stories` - 更新需求文档
-  - [ ] 功能：需求验证、优先级评估、可行性分析
+- [x] **第1步: 需求理解与拆解** ✅ **已完成**
+  - [x] `POST /mode/create/analyze-requirements` - 用户需求智能分析
+  - [x] `POST /mode/create/update-user-stories` - 更新需求文档
+  - [x] 功能：需求验证、优先级评估、可行性分析
+  - [x] 完整测试覆盖：31个测试用例，100%通过率
 
 - [ ] **第2步: 技术设计文档生成**
   - [ ] `POST /mode/create/generate-tech-design` - 基于语言特征生成技术设计

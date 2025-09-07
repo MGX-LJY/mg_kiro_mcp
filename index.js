@@ -131,7 +131,7 @@ async function createApp(config = {}, wsManager = null) {
   });
 
   const workflowState = new WorkflowState();
-  const workflowService = new WorkflowService();
+  const workflowService = new WorkflowService(workflowState);
   const enhancedLanguageDetector = new EnhancedLanguageDetector();
   const fileContentAnalyzer = new FileContentAnalyzer();
 
