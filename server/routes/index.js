@@ -74,6 +74,9 @@ export function createAppRoutes(services, server) {
     // 第3步：文件内容通读
     const filesRouter = createFilesRoutes(routerServices);
     router.use('/mode/init', filesRouter);
+    
+    // 通用文件扫描端点
+    router.use('/files', filesRouter);
 
     // 第4步：生成基础架构文档
     const documentsRouter = createDocumentsRoutes(routerServices);

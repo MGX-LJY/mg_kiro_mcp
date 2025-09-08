@@ -16,6 +16,58 @@ export function createFilesRoutes(services) {
     const { workflowService, server } = services;
 
     /**
+     * 通用文件扫描端点
+     * POST /scan
+     */
+    router.post('/scan', async (req, res) => {
+        try {
+            const { path, options = {} } = req.body;
+            
+            if (!path) {
+                return error(res, '缺少必需参数: path', 400);
+            }
+
+            // 验证路径是否存在
+            const fs = await import('fs');
+            if (!fs.existsSync(path)) {
+                return error(res, `路径不存在: ${path}`, 400);
+            }
+
+            // 使用projectScanner进行文件扫描
+            const { projectScanner } = services;
+            const scanResult = await projectScanner.scanProject(path, {
+                recursive: options.recursive !== false,
+                includeHidden: options.includeHidden || false,
+                maxDepth: options.maxDepth || 3,
+                ...options
+            });
+
+            const responseData = {
+                path,
+                summary: {
+                    totalFiles: scanResult.files?.length || 0,
+                    totalDirectories: scanResult.directories?.length || 0,
+                    fileTypes: scanResult.fileTypes || {},
+                    languages: scanResult.languages || []
+                },
+                files: scanResult.files || [],
+                directories: scanResult.directories || [],
+                metadata: {
+                    scannedAt: new Date().toISOString(),
+                    scanDepth: options.maxDepth || 3,
+                    options: options
+                }
+            };
+
+            return success(res, responseData, '文件扫描完成');
+
+        } catch (err) {
+            console.error('[Files] 文件扫描失败:', err);
+            return error(res, `文件扫描失败: ${err.message}`, 500);
+        }
+    });
+
+    /**
      * 第3步-A: 智能文件内容分析
      * POST /scan-files
      */
