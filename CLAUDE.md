@@ -6,8 +6,8 @@ Claude Code 工作指南 - mg_kiro MCP Server
 
 mg_kiro MCP Server 是一个 Model Context Protocol 智能提示词管理服务器，专为 Claude Code 设计。
 
-**状态**: 生产就绪 (100%完成度) - 全新模块化架构重构完成
-**核心功能**: MCP协议服务器、四种工作模式、智能语言识别、文档模板系统
+**状态**: 生产就绪 (100%完成度) - 全新模块化架构重构完成 + 语言智能系统集成
+**核心功能**: MCP协议服务器、四种工作模式、智能语言识别、文档模板系统、语言智能API系统
 
 **🏗️ 架构更新**: 
 - 全新模块化路由系统 - 分层服务架构
@@ -50,9 +50,15 @@ curl http://localhost:3000/status
   - `create/` - Create模式路由 (modules, api, features)  
   - `fix/` - Fix模式路由 (issues, diagnosis, fixes)
   - `analyze/` - Analyze模式路由 (quality, security, reports)
+  - **`language/`** - **语言智能系统路由** (detection, templates, prompts)
 - `server/services/` - 服务层 (依赖注入)
+  - **`language-intelligence-service.js`** - **语言智能核心服务**
+  - **`template-engine-service.js`** - **模板引擎服务**  
 - `server/utils/response.js` - 标准化响应格式
-- `server/language/detector.js` - 语言识别引擎
+- `server/language/` - 语言处理模块
+  - `detector.js` - 语言识别引擎
+  - **`template-generator.js`** - **智能模板生成器**
+  - **`prompt-intelligence.js`** - **智能提示词系统**
 - `server/analyzers/` - 项目扫描和文件分析
 
 ### 🔌 关键API (重构后)
@@ -80,6 +86,20 @@ curl http://localhost:3000/status
 - `POST /mode/analyze/analyze-quality` - 质量分析
 - `POST /mode/analyze/analyze-security` - 安全分析
 - `POST /mode/analyze/generate-report` - 生成报告
+
+**🧠 语言智能系统API (新增):**
+- **语言检测引擎API:**
+  - `POST /language/detect` - 项目语言检测  
+  - `GET /language/supported` - 支持的语言列表
+  - `GET /language/frameworks/:lang` - 语言支持的框架
+- **模板生成引擎API:**
+  - `POST /template/generate` - 基于语言生成模板
+  - `GET /template/variants/:lang` - 语言特定模板变体  
+  - `POST /template/batch-generate` - 批量模板生成
+- **提示词智能系统API:**
+  - `GET /prompts/language-specific/:lang` - 语言特定提示词
+  - `POST /prompts/context-generate` - 基于上下文生成提示词
+  - `GET /prompts/best-practices/:lang` - 语言最佳实践提示
 
 ## 多语言支持
 
@@ -179,3 +199,4 @@ export MCP_API_KEY=your-key      # API密钥(可选)
 - **标准响应**: success/error/workflowSuccess格式
 - **错误处理**: 完善的错误处理中间件
 - **易扩展**: 新模式可快速接入
+- **🧠 语言智能系统**: 完整的语言检测、模板生成、智能提示词API集成

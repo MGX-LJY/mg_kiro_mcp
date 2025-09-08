@@ -29,6 +29,9 @@ import { createFixModeRoutes } from './fix/index.js';
 // Analyze模式路由
 import { createAnalyzeModeRoutes } from './analyze/index.js';
 
+// 语言智能系统路由
+import languageIntelligenceRouter from './language/index.js';
+
 /**
  * 创建应用程序主路由
  * @param {Object} services - 服务依赖
@@ -109,6 +112,11 @@ export function createAppRoutes(services, server) {
     // Analyze模式：代码分析和质量评估
     const analyzeModeRouter = createAnalyzeModeRoutes(routerServices);
     router.use('/mode/analyze', analyzeModeRouter);
+
+    // ========== 语言智能系统路由 ==========
+    
+    // 语言检测、模板生成、智能提示词系统
+    router.use('/', languageIntelligenceRouter);
 
     // ========== 工作流状态管理 ==========
     

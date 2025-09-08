@@ -1,11 +1,16 @@
 /**
- * 多语言模板变体生成器
- * 根据检测到的语言生成定制化的文档模板
+ * 智能模板生成器
+ * 基于语言检测结果生成项目特定的文档模板
  */
 
-const fs = require('fs');
-const path = require('path');
-const LanguageDetector = require('./detector');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import LanguageDetector from './detector.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 class LanguageTemplateGenerator {
     constructor() {
@@ -422,4 +427,4 @@ ${suggestions.map(s => `- ${s}`).join('\n')}
     }
 }
 
-module.exports = LanguageTemplateGenerator;
+export default LanguageTemplateGenerator;
