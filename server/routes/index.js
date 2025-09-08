@@ -20,17 +20,6 @@ import { createModulesDocsRoutes } from './init/modules-docs.js';         // 第
 import { createLanguagePromptsRoutes } from './init/prompts.js';
 import { createContractsRoutes } from './init/contracts.js';
 
-// Create模式路由
-import { createCreateModeRoutes } from './create/index.js';
-
-// Fix模式路由
-import { createFixModeRoutes } from './fix/index.js';
-
-// Analyze模式路由
-import { createAnalyzeModeRoutes } from './analyze/index.js';
-
-// 语言智能系统路由
-import languageIntelligenceRouter from './language/index.js';
 
 /**
  * 创建应用程序主路由
@@ -99,28 +88,6 @@ export function createAppRoutes(services, server) {
     router.use('/mode/init', contractsRouter);
 
 
-    // ========== Create模式工作流路由 ==========
-    
-    // Create模式：新功能和模块创建
-    const createModeRouter = createCreateModeRoutes(routerServices);
-    router.use('/mode/create', createModeRouter);
-
-    // ========== Fix模式工作流路由 ==========
-    
-    // Fix模式：问题修复和调试
-    const fixModeRouter = createFixModeRoutes(routerServices);
-    router.use('/mode/fix', fixModeRouter);
-
-    // ========== Analyze模式工作流路由 ==========
-    
-    // Analyze模式：代码分析和质量评估
-    const analyzeModeRouter = createAnalyzeModeRoutes(routerServices);
-    router.use('/mode/analyze', analyzeModeRouter);
-
-    // ========== 语言智能系统路由 ==========
-    
-    // 语言检测、模板生成、智能提示词系统
-    router.use('/', languageIntelligenceRouter);
 
     // ========== 工作流状态管理 ==========
     
@@ -173,22 +140,5 @@ export function createAppRoutes(services, server) {
     return router;
 }
 
-/**
- * 创建Init模式特定路由 (需要重构的旧路由)
- * @param {Object} services - 服务依赖
- * @param {Object} server - 服务器实例
- * @returns {express.Router} Init路由实例
- */
-export function createInitRoutes(services, server) {
-    const router = express.Router();
-    
-    // TODO: 将现有的mcp-server.js中的Init模式路由迁移到这里
-    // - 第1步：项目结构分析 (/mode/init/scan-structure, /mode/init/structure-summary)
-    // - 第2步：智能语言识别 (/mode/init/detect-language, /mode/init/language-report)  
-    // - 第3步：文件内容通读 (/mode/init/scan-files, /mode/init/files-overview)
-    
-    console.log('Init routes placeholder - to be implemented');
-    return router;
-}
 
 export default createAppRoutes;

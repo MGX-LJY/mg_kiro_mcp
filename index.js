@@ -20,7 +20,6 @@ import { fileURLToPath } from 'url';
 // 服务组件导入
 import ConfigService from './server/services/config-service.js';
 import { PromptManager } from './server/prompt-manager.js';
-import PromptService from './server/services/prompt-service.js';
 import { ProjectScanner } from './server/analyzers/project-scanner.js';
 import { WorkflowState } from './server/services/workflow-state-service.js';
 import WorkflowService from './server/services/workflow-service.js';
@@ -115,13 +114,6 @@ async function createApp(config = {}, wsManager = null) {
   });
   console.log('Prompt Manager initialized');
   
-  // 创建PromptService实例（用于路由）
-  const promptService = new PromptService({
-    version: '2.0.0',
-    cacheEnabled: true,
-    watchFiles: true
-  });
-  console.log('Prompt Service initialized');
 
   // 初始化项目扫描器和工作流状态
   const projectScanner = new ProjectScanner({
@@ -144,7 +136,6 @@ async function createApp(config = {}, wsManager = null) {
   // 服务依赖注入 - 包含WebSocket管理器信息
   const services = {
     promptManager,
-    promptService,
     workflowService,
     projectScanner,
     languageDetector: enhancedLanguageDetector,
