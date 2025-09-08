@@ -40,6 +40,35 @@ export class WorkflowState {
   }
 
   /**
+   * 创建带指定ID的工作流
+   * @param {string} workflowId - 指定的工作流ID
+   * @param {string} projectPath - 项目路径
+   * @param {string} mode - 工作模式
+   * @returns {string} 工作流ID
+   */
+  createWorkflowWithId(workflowId, projectPath, mode = 'init') {
+    const workflow = {
+      id: workflowId,
+      projectPath,
+      mode,
+      createdAt: new Date().toISOString(),
+      currentStep: 0,
+      totalSteps: this.getStepsForMode(mode),
+      status: 'created',
+      steps: this.initializeSteps(mode),
+      results: {},
+      context: {},
+      errors: []
+    };
+
+    this.workflows.set(workflowId, workflow);
+    this.currentWorkflow = workflowId;
+    
+    console.log(`[WorkflowState] 创建指定ID工作流: ${workflowId}`);
+    return workflowId;
+  }
+
+  /**
    * 获取工作流状态
    * @param {string} workflowId - 工作流ID
    * @returns {Object} 工作流状态

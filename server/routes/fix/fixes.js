@@ -448,11 +448,9 @@ export function createFixesRoutes(services) {
         }
     });
 
-    return router;
-}
-
-/**
- * 模拟获取问题数据
+    
+    /**
+     * 模拟获取问题数据
  * @param {string} issueId - 问题ID
  * @returns {Object|null} 问题数据
  */
@@ -995,6 +993,784 @@ async function _runFullTestSuite() {
         failed: 5,
         executionTime: 120000
     };
+}
+
+    // ========== AI驱动Fix模式第4-6步工作流端点 ==========
+
+    /**
+     * 第4步: 修复方案设计 - AI基于语言特性设计
+     * POST /design-solution
+     */
+    router.post('/design-solution', async (req, res) => {
+        try {
+            const { 
+                workflowId,
+                issueId,
+                impactAssessment,
+                language = 'javascript',
+                solutionPreferences = {}
+            } = req.body;
+            
+            if (!workflowId && !issueId) {
+                return error(res, '工作流ID或问题ID不能为空', 400);
+            }
+
+            console.log(`[DesignSolution] AI修复方案设计: ${workflowId || issueId}`);
+            
+            const startTime = Date.now();
+            
+            // 准备AI分析数据包 - 修复方案设计
+            const aiAnalysisPackage = {
+                // 方案设计数据
+                solutionData: {
+                    workflowId,
+                    issueId,
+                    impactAssessment,
+                    language,
+                    solutionPreferences,
+                    designDate: new Date().toISOString()
+                },
+                
+                // 前置步骤数据
+                contextData: {
+                    scopeAnalysis: workflowId ? 'step_1_results' : null,
+                    documentRetrieval: workflowId ? 'step_2_results' : null,
+                    impactAssessment: workflowId ? 'step_3_results' : null
+                },
+                
+                // AI处理指令
+                aiInstructions: {
+                    analysisTemplate: 'solution-design-analysis.md',
+                    documentTemplate: 'solution-design-report.md',
+                    analysisType: 'language_specific_solution_design',
+                    complexity: 'comprehensive'
+                },
+                
+                // 元数据
+                metadata: {
+                    workflowId,
+                    mode: 'fix',
+                    step: 4,
+                    timestamp: new Date().toISOString()
+                }
+            };
+            
+            // AI分析结果 (实际使用时由AI完成)
+            const mockSolutionResult = {
+                solutionDesign: {
+                    primarySolution: {
+                        approach: 'error_handling_enhancement',
+                        confidence: 0.92,
+                        description: '增强认证服务的错误处理机制',
+                        codeChanges: [
+                            {
+                                file: 'src/auth/service.js',
+                                changeType: 'modification',
+                                linesAffected: [42, 45, 67],
+                                description: '添加更完善的错误处理和日志记录',
+                                complexity: 'low'
+                            },
+                            {
+                                file: 'src/auth/middleware.js',
+                                changeType: 'addition',
+                                linesAffected: [23],
+                                description: '增加错误回调处理函数',
+                                complexity: 'low'
+                            }
+                        ],
+                        languageSpecific: {
+                            jsFeatures: ['try-catch-finally', 'promise-rejection-handling', 'error-first-callbacks'],
+                            bestPractices: ['explicit error types', 'structured logging', 'graceful degradation'],
+                            testingStrategy: ['unit tests for error paths', 'integration error scenarios']
+                        }
+                    },
+                    alternativeSolutions: [
+                        {
+                            approach: 'circuit_breaker_pattern',
+                            confidence: 0.85,
+                            description: '实现熔断器模式预防级联故障',
+                            pros: ['系统稳定性提升', '自动恢复能力'],
+                            cons: ['增加复杂度', '需要监控配置']
+                        },
+                        {
+                            approach: 'retry_with_backoff',
+                            confidence: 0.78,
+                            description: '实现指数退避重试机制',
+                            pros: ['简单易实现', '处理瞬时错误'],
+                            cons: ['可能延长响应时间', '需要合理配置重试次数']
+                        }
+                    ],
+                    implementationPlan: {
+                        phases: [
+                            {
+                                phase: 1,
+                                name: '核心错误处理',
+                                duration: '2-3小时',
+                                steps: [
+                                    '修改src/auth/service.js的错误处理逻辑',
+                                    '添加结构化错误日志',
+                                    '单元测试覆盖错误路径'
+                                ]
+                            },
+                            {
+                                phase: 2,
+                                name: '中间件增强',
+                                duration: '1-2小时',
+                                steps: [
+                                    '更新认证中间件错误处理',
+                                    '集成测试验证',
+                                    '性能基准测试'
+                                ]
+                            }
+                        ],
+                        totalEstimate: '4-6小时',
+                        riskMitigation: [
+                            '在测试环境先验证',
+                            '保留原代码备份',
+                            '分阶段部署验证'
+                        ]
+                    },
+                    qualityAssurance: {
+                        testingRequirements: [
+                            '错误场景单元测试',
+                            '认证流程集成测试',
+                            '负载测试验证',
+                            '安全测试确保无新漏洞'
+                        ],
+                        codeReviewChecklist: [
+                            '错误处理完整性',
+                            '日志信息敏感性',
+                            '性能影响评估',
+                            '向后兼容性'
+                        ],
+                        rollbackStrategy: {
+                            triggerConditions: ['错误率超过基线10%', '响应时间增加超过100ms'],
+                            rollbackSteps: ['停止新部署', '恢复备份代码', '验证系统稳定性'],
+                            estimatedTime: '10-15分钟'
+                        }
+                    }
+                },
+                analysisMetrics: {
+                    solutionQuality: 92,
+                    implementationFeasibility: 88,
+                    riskLevel: 'low',
+                    confidenceScore: 90
+                },
+                analysisId: `ai-solution-${Date.now()}`,
+                analysisDuration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    mode: 'ai-driven',
+                    aiAnalysisTemplate: 'solution-design-analysis.md',
+                    aiDocumentTemplate: 'solution-design-report.md'
+                }
+            };
+            
+            // 使用模拟结果（实际使用时由AI生成）
+            const solutionResult = mockSolutionResult;
+            
+            // 更新工作流状态
+            if (workflowId) {
+                let workflow = workflowService.getWorkflow(workflowId);
+                if (!workflow) {
+                    workflowService.createWorkflowWithId(workflowId, '/unknown', 'fix');
+                    workflow = workflowService.getWorkflow(workflowId);
+                }
+                if (workflow) {
+                    workflowService.updateStep(workflowId, 3, 'completed', solutionResult);
+                }
+            }
+            
+            const responseData = {
+                // AI分析数据包
+                aiAnalysisPackage,
+                
+                // 修复方案设计结果
+                solutionDesign: solutionResult.solutionDesign,
+                analysisMetrics: solutionResult.analysisMetrics,
+                
+                // AI元数据
+                metadata: {
+                    mode: 'ai-driven',
+                    workflowId,
+                    step: 4,
+                    stepName: 'design_solution',
+                    analysisId: solutionResult.analysisId,
+                    analysisDuration: solutionResult.analysisDuration,
+                    timestamp: solutionResult.timestamp
+                }
+            };
+
+            success(res, responseData);
+
+            console.log(`[DesignSolution] AI修复方案设计完成: ${solutionResult.analysisDuration}ms`);
+            
+        } catch (err) {
+            console.error('[DesignSolution] AI方案设计失败:', err);
+            error(res, err.message, 500, {
+                step: 4,
+                stepName: 'design_solution'
+            });
+        }
+    });
+
+    /**
+     * 第4步-B: 获取特定问题的修复方案
+     * GET /solution/:issueId
+     */
+    router.get('/solution/:issueId', async (req, res) => {
+        try {
+            const { issueId } = req.params;
+            const { workflowId, solutionType = 'primary' } = req.query;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            // 从工作流中获取方案设计结果
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow || !workflow.results.step_4) {
+                return error(res, '未找到修复方案，请先执行 POST /design-solution', 404);
+            }
+            
+            const solutionResult = workflow.results.step_4;
+            let solution;
+            
+            if (solutionType === 'primary') {
+                solution = {
+                    approach: solutionResult.solutionDesign.primarySolution.approach,
+                    confidence: solutionResult.solutionDesign.primarySolution.confidence,
+                    description: solutionResult.solutionDesign.primarySolution.description,
+                    codeChanges: solutionResult.solutionDesign.primarySolution.codeChanges,
+                    implementationPlan: solutionResult.solutionDesign.implementationPlan,
+                    qualityAssurance: solutionResult.solutionDesign.qualityAssurance
+                };
+            } else if (solutionType === 'alternatives') {
+                solution = {
+                    alternatives: solutionResult.solutionDesign.alternativeSolutions,
+                    comparison: solutionResult.solutionDesign.alternativeSolutions.map(alt => ({
+                        approach: alt.approach,
+                        confidence: alt.confidence,
+                        pros: alt.pros,
+                        cons: alt.cons
+                    }))
+                };
+            } else {
+                solution = solutionResult.solutionDesign;
+            }
+
+            success(res, {
+                issueId,
+                solutionType,
+                solution,
+                metadata: {
+                    workflowId,
+                    analysisId: solutionResult.analysisId,
+                    timestamp: solutionResult.timestamp
+                }
+            });
+            
+        } catch (err) {
+            console.error('[GetSolution] 获取修复方案失败:', err);
+            error(res, err.message, 500);
+        }
+    });
+
+    /**
+     * 第5步: 代码更新执行 - AI精准执行修复
+     * POST /apply-changes
+     */
+    router.post('/apply-changes', async (req, res) => {
+        try {
+            const { 
+                workflowId,
+                issueId,
+                solutionId,
+                executeImmediately = false,
+                dryRun = false,
+                language = 'javascript'
+            } = req.body;
+            
+            if (!workflowId && !issueId) {
+                return error(res, '工作流ID或问题ID不能为空', 400);
+            }
+
+            console.log(`[ApplyChanges] AI代码更新执行: ${workflowId || issueId} (DryRun: ${dryRun})`);
+            
+            const startTime = Date.now();
+            
+            // 准备AI分析数据包 - 代码更新执行
+            const aiAnalysisPackage = {
+                // 执行数据
+                executionData: {
+                    workflowId,
+                    issueId,
+                    solutionId,
+                    executeImmediately,
+                    dryRun,
+                    language,
+                    executionDate: new Date().toISOString()
+                },
+                
+                // 前置步骤数据
+                contextData: {
+                    solutionDesign: workflowId ? 'step_4_results' : null,
+                    impactAssessment: workflowId ? 'step_3_results' : null
+                },
+                
+                // AI处理指令
+                aiInstructions: {
+                    analysisTemplate: 'code-execution-analysis.md',
+                    documentTemplate: 'code-execution-report.md',
+                    analysisType: 'precise_code_application',
+                    executionMode: dryRun ? 'simulation' : 'actual'
+                },
+                
+                // 元数据
+                metadata: {
+                    workflowId,
+                    mode: 'fix',
+                    step: 5,
+                    timestamp: new Date().toISOString()
+                }
+            };
+            
+            // AI分析结果 (实际使用时由AI完成)
+            const mockExecutionResult = {
+                codeExecution: {
+                    executionStatus: dryRun ? 'simulated' : 'completed',
+                    appliedChanges: [
+                        {
+                            file: 'src/auth/service.js',
+                            changeType: 'modification',
+                            linesModified: [42, 43, 44, 45, 67],
+                            backupCreated: true,
+                            backupPath: 'backups/auth-service-2024-09-08.js',
+                            checksumBefore: 'abc123def456',
+                            checksumAfter: 'def456ghi789'
+                        },
+                        {
+                            file: 'src/auth/middleware.js',
+                            changeType: 'addition',
+                            linesAdded: [23, 24, 25],
+                            backupCreated: true,
+                            backupPath: 'backups/auth-middleware-2024-09-08.js',
+                            checksumAfter: 'ghi789jkl012'
+                        }
+                    ],
+                    testResults: {
+                        preExecutionTests: {
+                            totalTests: 28,
+                            passed: 25,
+                            failed: 3,
+                            duration: 2300
+                        },
+                        postExecutionTests: dryRun ? null : {
+                            totalTests: 28,
+                            passed: 28,
+                            failed: 0,
+                            duration: 2450
+                        },
+                        coverageReport: {
+                            before: 78.5,
+                            after: dryRun ? null : 82.1,
+                            improvement: dryRun ? null : '+3.6%'
+                        }
+                    },
+                    performanceImpact: dryRun ? null : {
+                        responseTimeChange: '+2ms',
+                        memoryUsageChange: '+0.1MB',
+                        cpuUsageChange: 'negligible'
+                    },
+                    validationResults: {
+                        syntaxCheck: 'passed',
+                        linting: 'passed',
+                        typeChecking: 'passed',
+                        securityScan: 'no_issues'
+                    }
+                },
+                executionMetrics: {
+                    executionTime: Date.now() - startTime,
+                    filesModified: 2,
+                    linesChanged: 8,
+                    successRate: dryRun ? 100 : 100,
+                    rollbackAvailable: true
+                },
+                analysisId: `ai-execution-${Date.now()}`,
+                analysisDuration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    mode: 'ai-driven',
+                    aiAnalysisTemplate: 'code-execution-analysis.md',
+                    aiDocumentTemplate: 'code-execution-report.md'
+                }
+            };
+            
+            // 使用模拟结果（实际使用时由AI生成）
+            const executionResult = mockExecutionResult;
+            
+            // 更新工作流状态
+            if (workflowId) {
+                let workflow = workflowService.getWorkflow(workflowId);
+                if (!workflow) {
+                    workflowService.createWorkflowWithId(workflowId, '/unknown', 'fix');
+                    workflow = workflowService.getWorkflow(workflowId);
+                }
+                if (workflow) {
+                    workflowService.updateStep(workflowId, 4, 'completed', executionResult);
+                }
+            }
+            
+            const responseData = {
+                // AI分析数据包
+                aiAnalysisPackage,
+                
+                // 代码执行结果
+                codeExecution: executionResult.codeExecution,
+                executionMetrics: executionResult.executionMetrics,
+                
+                // AI元数据
+                metadata: {
+                    mode: 'ai-driven',
+                    workflowId,
+                    step: 5,
+                    stepName: 'apply_changes',
+                    analysisId: executionResult.analysisId,
+                    analysisDuration: executionResult.analysisDuration,
+                    timestamp: executionResult.timestamp
+                }
+            };
+
+            success(res, responseData);
+
+            console.log(`[ApplyChanges] AI代码更新执行完成: ${executionResult.analysisDuration}ms`);
+            
+        } catch (err) {
+            console.error('[ApplyChanges] AI代码执行失败:', err);
+            error(res, err.message, 500, {
+                step: 5,
+                stepName: 'apply_changes'
+            });
+        }
+    });
+
+    /**
+     * 第5步-B: 获取修复执行状态
+     * GET /changes-status
+     */
+    router.get('/changes-status', async (req, res) => {
+        try {
+            const { workflowId, executionId } = req.query;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            // 从工作流中获取执行结果
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow || !workflow.results.step_5) {
+                return error(res, '未找到执行结果，请先执行 POST /apply-changes', 404);
+            }
+            
+            const executionResult = workflow.results.step_5;
+            
+            const status = {
+                executionStatus: executionResult.codeExecution.executionStatus,
+                summary: {
+                    filesModified: executionResult.executionMetrics.filesModified,
+                    linesChanged: executionResult.executionMetrics.linesChanged,
+                    executionTime: executionResult.executionMetrics.executionTime,
+                    successRate: executionResult.executionMetrics.successRate
+                },
+                changes: executionResult.codeExecution.appliedChanges.map(change => ({
+                    file: change.file,
+                    changeType: change.changeType,
+                    status: 'completed',
+                    backupAvailable: change.backupCreated
+                })),
+                testResults: executionResult.codeExecution.testResults.postExecutionTests,
+                validation: executionResult.codeExecution.validationResults,
+                rollbackInfo: {
+                    available: executionResult.executionMetrics.rollbackAvailable,
+                    backupPaths: executionResult.codeExecution.appliedChanges
+                        .filter(change => change.backupCreated)
+                        .map(change => change.backupPath)
+                }
+            };
+
+            success(res, status);
+            
+        } catch (err) {
+            console.error('[ChangesStatus] 获取执行状态失败:', err);
+            error(res, err.message, 500);
+        }
+    });
+
+    /**
+     * 第6步: 文档同步更新 - AI智能更新相关文档
+     * POST /update-docs
+     */
+    router.post('/update-docs', async (req, res) => {
+        try {
+            const { 
+                workflowId,
+                issueId,
+                codeChanges = [],
+                updateScope = 'affected_only',
+                language = 'javascript'
+            } = req.body;
+            
+            if (!workflowId && !issueId) {
+                return error(res, '工作流ID或问题ID不能为空', 400);
+            }
+
+            console.log(`[UpdateDocs] AI文档同步更新: ${workflowId || issueId}`);
+            
+            const startTime = Date.now();
+            
+            // 准备AI分析数据包 - 文档同步更新
+            const aiAnalysisPackage = {
+                // 更新数据
+                documentationData: {
+                    workflowId,
+                    issueId,
+                    codeChanges,
+                    updateScope,
+                    language,
+                    updateDate: new Date().toISOString()
+                },
+                
+                // 前置步骤数据
+                contextData: {
+                    codeExecution: workflowId ? 'step_5_results' : null,
+                    solutionDesign: workflowId ? 'step_4_results' : null,
+                    documentRetrieval: workflowId ? 'step_2_results' : null
+                },
+                
+                // AI处理指令
+                aiInstructions: {
+                    analysisTemplate: 'documentation-update-analysis.md',
+                    documentTemplate: 'documentation-update-report.md',
+                    analysisType: 'synchronized_documentation_update',
+                    updateScope: updateScope
+                },
+                
+                // 元数据
+                metadata: {
+                    workflowId,
+                    mode: 'fix',
+                    step: 6,
+                    timestamp: new Date().toISOString()
+                }
+            };
+            
+            // AI分析结果 (实际使用时由AI完成)
+            const mockDocsUpdateResult = {
+                documentationUpdate: {
+                    updatedDocuments: [
+                        {
+                            documentType: 'api',
+                            title: '认证API文档',
+                            path: 'docs/api/authentication.md',
+                            updateType: 'section_modification',
+                            sectionsUpdated: ['错误处理', '状态码说明'],
+                            changes: [
+                                {
+                                    section: '错误处理',
+                                    changeType: 'enhancement',
+                                    description: '更新错误处理流程说明，增加新的错误类型和处理方式'
+                                },
+                                {
+                                    section: '状态码说明',
+                                    changeType: 'addition',
+                                    description: '新增认证错误的详细状态码说明'
+                                }
+                            ],
+                            backupCreated: true,
+                            backupPath: 'docs/backups/authentication-2024-09-08.md'
+                        },
+                        {
+                            documentType: 'troubleshooting',
+                            title: '认证问题排查指南',
+                            path: 'docs/troubleshooting/auth-issues.md',
+                            updateType: 'content_addition',
+                            sectionsUpdated: ['解决方案'],
+                            changes: [
+                                {
+                                    section: '解决方案',
+                                    changeType: 'addition',
+                                    description: '新增错误处理改进方案的说明'
+                                }
+                            ],
+                            backupCreated: true,
+                            backupPath: 'docs/backups/auth-issues-2024-09-08.md'
+                        }
+                    ],
+                    codeDocumentation: [
+                        {
+                            file: 'src/auth/service.js',
+                            updateType: 'inline_comments',
+                            changes: [
+                                {
+                                    lineNumber: 42,
+                                    changeType: 'addition',
+                                    content: '// 增强的错误处理：捕获并记录认证失败详情'
+                                },
+                                {
+                                    lineNumber: 67,
+                                    changeType: 'modification',
+                                    content: '// 更新：使用结构化日志格式记录错误信息'
+                                }
+                            ]
+                        },
+                        {
+                            file: 'src/auth/middleware.js',
+                            updateType: 'jsdoc_comments',
+                            changes: [
+                                {
+                                    lineNumber: 23,
+                                    changeType: 'addition',
+                                    content: '/**\n * 认证错误回调处理函数\n * @param {Error} error - 认证错误对象\n * @param {Object} context - 请求上下文\n */'
+                                }
+                            ]
+                        }
+                    ],
+                    updateSummary: {
+                        totalDocumentsUpdated: 2,
+                        totalCodeFilesDocumented: 2,
+                        backupsCreated: 2,
+                        updateComplexity: 'low',
+                        consistencyMaintained: true
+                    }
+                },
+                validationResults: {
+                    linkValidation: 'passed',
+                    markdownSyntax: 'passed',
+                    codeExampleValidation: 'passed',
+                    crossReferenceCheck: 'passed'
+                },
+                analysisMetrics: {
+                    updateAccuracy: 94,
+                    consistencyScore: 96,
+                    completenessScore: 92
+                },
+                analysisId: `ai-docs-update-${Date.now()}`,
+                analysisDuration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    mode: 'ai-driven',
+                    aiAnalysisTemplate: 'documentation-update-analysis.md',
+                    aiDocumentTemplate: 'documentation-update-report.md'
+                }
+            };
+            
+            // 使用模拟结果（实际使用时由AI生成）
+            const docsUpdateResult = mockDocsUpdateResult;
+            
+            // 更新工作流状态
+            if (workflowId) {
+                let workflow = workflowService.getWorkflow(workflowId);
+                if (!workflow) {
+                    workflowService.createWorkflowWithId(workflowId, '/unknown', 'fix');
+                    workflow = workflowService.getWorkflow(workflowId);
+                }
+                if (workflow) {
+                    workflowService.updateStep(workflowId, 5, 'completed', docsUpdateResult);
+                }
+            }
+            
+            const responseData = {
+                // AI分析数据包
+                aiAnalysisPackage,
+                
+                // 文档更新结果
+                documentationUpdate: docsUpdateResult.documentationUpdate,
+                validationResults: docsUpdateResult.validationResults,
+                analysisMetrics: docsUpdateResult.analysisMetrics,
+                
+                // AI元数据
+                metadata: {
+                    mode: 'ai-driven',
+                    workflowId,
+                    step: 6,
+                    stepName: 'update_docs',
+                    analysisId: docsUpdateResult.analysisId,
+                    analysisDuration: docsUpdateResult.analysisDuration,
+                    timestamp: docsUpdateResult.timestamp
+                }
+            };
+
+            success(res, responseData);
+
+            console.log(`[UpdateDocs] AI文档同步更新完成: ${docsUpdateResult.analysisDuration}ms`);
+            
+        } catch (err) {
+            console.error('[UpdateDocs] AI文档更新失败:', err);
+            error(res, err.message, 500, {
+                step: 6,
+                stepName: 'update_docs'
+            });
+        }
+    });
+
+    /**
+     * 第6步-B: 获取更新的文档清单
+     * GET /updated-docs
+     */
+    router.get('/updated-docs', async (req, res) => {
+        try {
+            const { workflowId, documentType } = req.query;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            // 从工作流中获取文档更新结果
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow || !workflow.results.step_6) {
+                return error(res, '未找到文档更新结果，请先执行 POST /update-docs', 404);
+            }
+            
+            const docsUpdateResult = workflow.results.step_6;
+            
+            let updatedDocs = {
+                documents: docsUpdateResult.documentationUpdate.updatedDocuments,
+                codeDocumentation: docsUpdateResult.documentationUpdate.codeDocumentation,
+                summary: docsUpdateResult.documentationUpdate.updateSummary
+            };
+            
+            // 根据文档类型过滤
+            if (documentType) {
+                updatedDocs.documents = updatedDocs.documents.filter(doc => 
+                    doc.documentType === documentType
+                );
+            }
+            
+            // 添加访问链接和预览信息
+            updatedDocs.documents = updatedDocs.documents.map(doc => ({
+                ...doc,
+                accessUrl: `file://${doc.path}`,
+                backupUrl: doc.backupCreated ? `file://${doc.backupPath}` : null,
+                lastModified: new Date().toISOString(),
+                changesSummary: `${doc.changes.length}个更新: ${doc.changes.map(c => c.changeType).join(', ')}`
+            }));
+            
+            updatedDocs.metadata = {
+                workflowId,
+                updateTimestamp: docsUpdateResult.timestamp,
+                validationStatus: docsUpdateResult.validationResults,
+                qualityMetrics: docsUpdateResult.analysisMetrics
+            };
+
+            success(res, updatedDocs);
+            
+        } catch (err) {
+            console.error('[UpdatedDocs] 获取更新文档清单失败:', err);
+            error(res, err.message, 500);
+        }
+    });
+
+    return router;
 }
 
 export default createFixesRoutes;

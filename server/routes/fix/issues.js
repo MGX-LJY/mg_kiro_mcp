@@ -350,11 +350,9 @@ export function createIssuesRoutes(services) {
         }
     });
 
-    return router;
-}
-
-/**
- * 计算问题优先级
+    
+    /**
+     * 计算问题优先级
  * @param {string} severity - 严重程度
  * @param {string} category - 问题类别
  * @param {boolean} reproducible - 是否可重现
@@ -784,6 +782,682 @@ function _getDiagnosticSteps(category) {
     };
     
     return steps[category] || steps.bug;
+}
+
+    // ========== AI驱动Fix模式6步工作流端点 ==========
+
+    /**
+     * 第1步: 问题范围识别 - AI智能分析
+     * POST /identify-scope
+     */
+    router.post('/identify-scope', async (req, res) => {
+        try {
+            const { 
+                issueId,
+                issueDescription,
+                stackTrace,
+                language = 'javascript',
+                projectPath,
+                workflowId
+            } = req.body;
+            
+            if (!issueId && !issueDescription) {
+                return error(res, '问题ID或问题描述不能为空', 400);
+            }
+
+            console.log(`[IdentifyScope] AI问题范围识别: ${issueId || 'New Issue'}`);
+            
+            const startTime = Date.now();
+            
+            // 准备AI分析数据包 - 问题范围识别
+            const aiAnalysisPackage = {
+                // 问题数据
+                problemData: {
+                    issueId,
+                    issueDescription,
+                    stackTrace,
+                    language,
+                    projectPath,
+                    reportedAt: new Date().toISOString()
+                },
+                
+                // AI处理指令
+                aiInstructions: {
+                    analysisTemplate: 'scope-identification-analysis.md',
+                    documentTemplate: 'scope-identification-report.md',
+                    analysisType: 'problem_scope_analysis',
+                    complexity: 'detailed'
+                },
+                
+                // 元数据
+                metadata: {
+                    workflowId,
+                    mode: 'fix',
+                    step: 1,
+                    timestamp: new Date().toISOString()
+                }
+            };
+            
+            // AI分析结果 (实际使用时由AI完成)
+            const mockScopeResult = {
+                scopeIdentification: {
+                    problemType: 'runtime_error',
+                    primaryScope: {
+                        affectedModule: 'AuthenticationService',
+                        coreFiles: ['src/auth/service.js', 'src/auth/middleware.js'],
+                        impactRadius: 'medium',
+                        confidence: 0.88
+                    },
+                    secondaryScopes: [
+                        {
+                            module: 'UserSessionManager',
+                            files: ['src/session/manager.js'],
+                            impact: 'indirect',
+                            reason: '依赖AuthenticationService的会话验证'
+                        },
+                        {
+                            module: 'APIGateway',
+                            files: ['src/api/gateway.js'],
+                            impact: 'upstream',
+                            reason: '调用认证服务进行请求验证'
+                        }
+                    ],
+                    riskAssessment: {
+                        breakageRisk: 'medium',
+                        dataIntegrity: 'safe',
+                        userImpact: 'high',
+                        systemStability: 'stable'
+                    },
+                    boundaryAnalysis: {
+                        containmentLevel: 'module_level',
+                        isolationPossible: true,
+                        cascadeEffects: ['会话失效', '用户重新登录'],
+                        safetyMargins: ['不影响数据存储', '不影响其他服务']
+                    }
+                },
+                analysisMetrics: {
+                    confidenceScore: 88,
+                    coverageCompleteness: 95,
+                    analysisDepth: 'comprehensive',
+                    riskLevel: 'medium'
+                },
+                analysisId: `ai-scope-${Date.now()}`,
+                analysisDuration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    mode: 'ai-driven',
+                    aiAnalysisTemplate: 'scope-identification-analysis.md',
+                    aiDocumentTemplate: 'scope-identification-report.md'
+                }
+            };
+            
+            // 使用模拟结果（实际使用时由AI生成）
+            const scopeResult = mockScopeResult;
+            
+            // 更新工作流状态
+            if (workflowId) {
+                let workflow = workflowService.getWorkflow(workflowId);
+                if (!workflow) {
+                    // 如果工作流不存在，创建一个新的
+                    workflowService.createWorkflowWithId(workflowId, projectPath || '/unknown', 'fix');
+                    workflow = workflowService.getWorkflow(workflowId);
+                }
+                if (workflow) {
+                    workflowService.updateStep(workflowId, 0, 'completed', scopeResult);
+                }
+            }
+            
+            const responseData = {
+                // AI分析数据包 (提供给AI使用)
+                aiAnalysisPackage,
+                
+                // 问题范围识别结果
+                scopeIdentification: scopeResult.scopeIdentification,
+                analysisMetrics: scopeResult.analysisMetrics,
+                
+                // AI元数据
+                metadata: {
+                    mode: 'ai-driven',
+                    workflowId,
+                    step: 1,
+                    stepName: 'identify_scope',
+                    analysisId: scopeResult.analysisId,
+                    analysisDuration: scopeResult.analysisDuration,
+                    timestamp: scopeResult.timestamp
+                }
+            };
+
+            success(res, responseData);
+
+            console.log(`[IdentifyScope] AI问题范围识别完成: ${scopeResult.analysisDuration}ms`);
+            
+        } catch (err) {
+            console.error('[IdentifyScope] AI范围识别失败:', err);
+            error(res, err.message, 500, {
+                step: 1,
+                stepName: 'identify_scope'
+            });
+        }
+    });
+
+    /**
+     * 第1步-B: 获取受影响模块列表
+     * GET /affected-modules
+     */
+    router.get('/affected-modules', async (req, res) => {
+        try {
+            const { workflowId, issueId } = req.query;
+            
+            if (!workflowId && !issueId) {
+                return error(res, '工作流ID或问题ID不能为空', 400);
+            }
+
+            // 从工作流中获取范围识别结果
+            let scopeResult = null;
+            if (workflowId) {
+                const workflow = workflowService.getWorkflow(workflowId);
+                if (workflow && workflow.results.step_1) {
+                    scopeResult = workflow.results.step_1;
+                }
+            }
+            
+            if (!scopeResult) {
+                return error(res, '未找到范围识别结果，请先执行 POST /identify-scope', 404);
+            }
+            
+            const affectedModules = {
+                primary: {
+                    module: scopeResult.scopeIdentification.primaryScope.affectedModule,
+                    files: scopeResult.scopeIdentification.primaryScope.coreFiles,
+                    impact: 'direct',
+                    priority: 'high'
+                },
+                secondary: scopeResult.scopeIdentification.secondaryScopes.map(scope => ({
+                    module: scope.module,
+                    files: scope.files,
+                    impact: scope.impact,
+                    priority: scope.impact === 'upstream' ? 'medium' : 'low',
+                    reason: scope.reason
+                })),
+                summary: {
+                    totalModules: 1 + scopeResult.scopeIdentification.secondaryScopes.length,
+                    totalFiles: scopeResult.scopeIdentification.primaryScope.coreFiles.length + 
+                               scopeResult.scopeIdentification.secondaryScopes.reduce((sum, s) => sum + s.files.length, 0),
+                    riskLevel: scopeResult.scopeIdentification.riskAssessment.breakageRisk,
+                    containmentLevel: scopeResult.scopeIdentification.boundaryAnalysis.containmentLevel
+                }
+            };
+
+            success(res, affectedModules);
+            
+        } catch (err) {
+            console.error('[AffectedModules] 获取受影响模块失败:', err);
+            error(res, err.message, 500);
+        }
+    });
+
+    /**
+     * 第2步: 相关文档检索 - AI智能检索
+     * POST /find-docs
+     */
+    router.post('/find-docs', async (req, res) => {
+        try {
+            const { 
+                workflowId,
+                issueId,
+                affectedModules = [],
+                searchScope = 'focused',
+                language = 'javascript'
+            } = req.body;
+            
+            if (!workflowId && !issueId) {
+                return error(res, '工作流ID或问题ID不能为空', 400);
+            }
+
+            console.log(`[FindDocs] AI相关文档检索: ${workflowId || issueId}`);
+            
+            const startTime = Date.now();
+            
+            // 准备AI分析数据包 - 文档检索
+            const aiAnalysisPackage = {
+                // 检索数据
+                searchData: {
+                    workflowId,
+                    issueId,
+                    affectedModules,
+                    searchScope,
+                    language,
+                    searchDate: new Date().toISOString()
+                },
+                
+                // AI处理指令
+                aiInstructions: {
+                    analysisTemplate: 'document-retrieval-analysis.md',
+                    documentTemplate: 'document-retrieval-report.md',
+                    analysisType: 'contextual_document_search',
+                    searchDepth: searchScope
+                },
+                
+                // 元数据
+                metadata: {
+                    workflowId,
+                    mode: 'fix',
+                    step: 2,
+                    timestamp: new Date().toISOString()
+                }
+            };
+            
+            // AI分析结果 (实际使用时由AI完成)
+            const mockDocsResult = {
+                documentRetrieval: {
+                    relevantDocuments: [
+                        {
+                            type: 'architecture',
+                            title: '认证服务架构设计',
+                            path: 'docs/architecture/auth-service.md',
+                            relevance: 0.92,
+                            sections: ['服务接口', '错误处理', '会话管理'],
+                            reason: '直接描述认证服务的设计和错误处理机制'
+                        },
+                        {
+                            type: 'api',
+                            title: '认证API文档',
+                            path: 'docs/api/authentication.md',
+                            relevance: 0.88,
+                            sections: ['登录接口', '错误码说明'],
+                            reason: '包含认证相关的API规范和错误码定义'
+                        },
+                        {
+                            type: 'troubleshooting',
+                            title: '认证问题排查指南',
+                            path: 'docs/troubleshooting/auth-issues.md',
+                            relevance: 0.85,
+                            sections: ['常见问题', '调试方法'],
+                            reason: '提供认证问题的排查步骤和解决方案'
+                        }
+                    ],
+                    codeDocumentation: [
+                        {
+                            file: 'src/auth/service.js',
+                            documentedFunctions: ['authenticate', 'validateToken', 'handleAuthError'],
+                            coverage: 0.78,
+                            lastUpdated: '2024-08-15'
+                        },
+                        {
+                            file: 'src/auth/middleware.js',
+                            documentedFunctions: ['authMiddleware', 'requireAuth'],
+                            coverage: 0.65,
+                            lastUpdated: '2024-07-20'
+                        }
+                    ],
+                    searchMetrics: {
+                        documentsScanned: 147,
+                        relevantFound: 3,
+                        confidenceThreshold: 0.8,
+                        searchCompleteness: 0.94
+                    }
+                },
+                analysisMetrics: {
+                    searchAccuracy: 94,
+                    documentRelevance: 88,
+                    coverageCompleteness: 92
+                },
+                analysisId: `ai-docs-${Date.now()}`,
+                analysisDuration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    mode: 'ai-driven',
+                    aiAnalysisTemplate: 'document-retrieval-analysis.md',
+                    aiDocumentTemplate: 'document-retrieval-report.md'
+                }
+            };
+            
+            // 使用模拟结果（实际使用时由AI生成）
+            const docsResult = mockDocsResult;
+            
+            // 更新工作流状态
+            if (workflowId) {
+                let workflow = workflowService.getWorkflow(workflowId);
+                if (!workflow) {
+                    workflowService.createWorkflowWithId(workflowId, '/unknown', 'fix');
+                    workflow = workflowService.getWorkflow(workflowId);
+                }
+                if (workflow) {
+                    workflowService.updateStep(workflowId, 1, 'completed', docsResult);
+                }
+            }
+            
+            const responseData = {
+                // AI分析数据包
+                aiAnalysisPackage,
+                
+                // 文档检索结果
+                documentRetrieval: docsResult.documentRetrieval,
+                analysisMetrics: docsResult.analysisMetrics,
+                
+                // AI元数据
+                metadata: {
+                    mode: 'ai-driven',
+                    workflowId,
+                    step: 2,
+                    stepName: 'find_docs',
+                    analysisId: docsResult.analysisId,
+                    analysisDuration: docsResult.analysisDuration,
+                    timestamp: docsResult.timestamp
+                }
+            };
+
+            success(res, responseData);
+
+            console.log(`[FindDocs] AI文档检索完成: ${docsResult.analysisDuration}ms`);
+            
+        } catch (err) {
+            console.error('[FindDocs] AI文档检索失败:', err);
+            error(res, err.message, 500, {
+                step: 2,
+                stepName: 'find_docs'
+            });
+        }
+    });
+
+    /**
+     * 第2步-B: 获取相关文档列表
+     * GET /relevant-docs
+     */
+    router.get('/relevant-docs', async (req, res) => {
+        try {
+            const { workflowId, relevanceThreshold = 0.8 } = req.query;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            // 从工作流中获取文档检索结果
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow || !workflow.results.step_2) {
+                return error(res, '未找到文档检索结果，请先执行 POST /find-docs', 404);
+            }
+            
+            const docsResult = workflow.results.step_2;
+            const threshold = parseFloat(relevanceThreshold);
+            
+            const relevantDocs = {
+                highRelevance: docsResult.documentRetrieval.relevantDocuments.filter(doc => doc.relevance >= 0.9),
+                mediumRelevance: docsResult.documentRetrieval.relevantDocuments.filter(doc => doc.relevance >= threshold && doc.relevance < 0.9),
+                codeDocumentation: docsResult.documentRetrieval.codeDocumentation,
+                searchSummary: {
+                    totalFound: docsResult.documentRetrieval.relevantDocuments.length,
+                    highRelevanceCount: docsResult.documentRetrieval.relevantDocuments.filter(doc => doc.relevance >= 0.9).length,
+                    searchAccuracy: docsResult.analysisMetrics.searchAccuracy,
+                    recommendedReading: docsResult.documentRetrieval.relevantDocuments
+                        .filter(doc => doc.relevance >= threshold)
+                        .sort((a, b) => b.relevance - a.relevance)
+                        .slice(0, 3)
+                        .map(doc => ({
+                            title: doc.title,
+                            path: doc.path,
+                            priority: doc.relevance >= 0.9 ? 'high' : 'medium'
+                        }))
+                }
+            };
+
+            success(res, relevantDocs);
+            
+        } catch (err) {
+            console.error('[RelevantDocs] 获取相关文档失败:', err);
+            error(res, err.message, 500);
+        }
+    });
+
+    /**
+     * 第3步: 影响度评估 - AI深度分析
+     * POST /assess-impact
+     */
+    router.post('/assess-impact', async (req, res) => {
+        try {
+            const { 
+                workflowId,
+                issueId,
+                proposedSolution = '',
+                analysisDepth = 'comprehensive',
+                language = 'javascript'
+            } = req.body;
+            
+            if (!workflowId && !issueId) {
+                return error(res, '工作流ID或问题ID不能为空', 400);
+            }
+
+            console.log(`[AssessImpact] AI影响度评估: ${workflowId || issueId}`);
+            
+            const startTime = Date.now();
+            
+            // 准备AI分析数据包 - 影响度评估
+            const aiAnalysisPackage = {
+                // 评估数据
+                impactData: {
+                    workflowId,
+                    issueId,
+                    proposedSolution,
+                    analysisDepth,
+                    language,
+                    evaluationDate: new Date().toISOString()
+                },
+                
+                // 前置步骤数据
+                contextData: {
+                    scopeAnalysis: workflowId ? 'step_1_results' : null,
+                    documentRetrieval: workflowId ? 'step_2_results' : null
+                },
+                
+                // AI处理指令
+                aiInstructions: {
+                    analysisTemplate: 'impact-assessment-analysis.md',
+                    documentTemplate: 'impact-assessment-report.md',
+                    analysisType: 'comprehensive_impact_analysis',
+                    analysisDepth: analysisDepth
+                },
+                
+                // 元数据
+                metadata: {
+                    workflowId,
+                    mode: 'fix',
+                    step: 3,
+                    timestamp: new Date().toISOString()
+                }
+            };
+            
+            // AI分析结果 (实际使用时由AI完成)
+            const mockImpactResult = {
+                impactAssessment: {
+                    overallRiskLevel: 'medium',
+                    upstreamImpacts: [
+                        {
+                            component: 'APIGateway',
+                            impactType: 'functional',
+                            severity: 'medium',
+                            description: '认证失败会导致API网关拒绝请求',
+                            mitigation: '实现降级策略或临时认证绕过'
+                        },
+                        {
+                            component: 'LoadBalancer',
+                            impactType: 'operational',
+                            severity: 'low',
+                            description: '健康检查可能受影响',
+                            mitigation: '调整健康检查参数'
+                        }
+                    ],
+                    downstreamImpacts: [
+                        {
+                            component: 'UserSessionManager',
+                            impactType: 'data',
+                            severity: 'high',
+                            description: '现有会话可能失效',
+                            mitigation: '保持现有会话，仅影响新登录'
+                        },
+                        {
+                            component: 'AuditLogger',
+                            impactType: 'operational',
+                            severity: 'low',
+                            description: '认证日志格式可能改变',
+                            mitigation: '保持向后兼容的日志格式'
+                        }
+                    ],
+                    dataFlowImpacts: {
+                        dataIntegrity: 'safe',
+                        dataConsistency: 'maintained',
+                        potentialDataLoss: 'none',
+                        backupRequired: ['user_sessions', 'auth_tokens'],
+                        rollbackComplexity: 'low'
+                    },
+                    performanceImpacts: {
+                        expectedLatencyChange: '+5ms',
+                        throughputImpact: 'negligible',
+                        resourceUtilization: 'unchanged',
+                        scalabilityEffect: 'none'
+                    },
+                    securityImpacts: {
+                        vulnerabilityRisk: 'none',
+                        permissionChanges: 'none',
+                        exposureRisk: 'low',
+                        complianceAffected: false
+                    }
+                },
+                riskMatrix: {
+                    probability: 'medium',
+                    impact: 'medium',
+                    riskScore: 6, // 3x3 matrix: medium * medium
+                    acceptanceLevel: 'acceptable',
+                    mitigationRequired: true
+                },
+                analysisMetrics: {
+                    confidenceLevel: 87,
+                    coverageCompleteness: 91,
+                    analysisDepth: 'comprehensive',
+                    riskAccuracy: 89
+                },
+                analysisId: `ai-impact-${Date.now()}`,
+                analysisDuration: Date.now() - startTime,
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    mode: 'ai-driven',
+                    aiAnalysisTemplate: 'impact-assessment-analysis.md',
+                    aiDocumentTemplate: 'impact-assessment-report.md'
+                }
+            };
+            
+            // 使用模拟结果（实际使用时由AI生成）
+            const impactResult = mockImpactResult;
+            
+            // 更新工作流状态
+            if (workflowId) {
+                let workflow = workflowService.getWorkflow(workflowId);
+                if (!workflow) {
+                    workflowService.createWorkflowWithId(workflowId, '/unknown', 'fix');
+                    workflow = workflowService.getWorkflow(workflowId);
+                }
+                if (workflow) {
+                    workflowService.updateStep(workflowId, 2, 'completed', impactResult);
+                }
+            }
+            
+            const responseData = {
+                // AI分析数据包
+                aiAnalysisPackage,
+                
+                // 影响度评估结果
+                impactAssessment: impactResult.impactAssessment,
+                riskMatrix: impactResult.riskMatrix,
+                analysisMetrics: impactResult.analysisMetrics,
+                
+                // AI元数据
+                metadata: {
+                    mode: 'ai-driven',
+                    workflowId,
+                    step: 3,
+                    stepName: 'assess_impact',
+                    analysisId: impactResult.analysisId,
+                    analysisDuration: impactResult.analysisDuration,
+                    timestamp: impactResult.timestamp
+                }
+            };
+
+            success(res, responseData);
+
+            console.log(`[AssessImpact] AI影响度评估完成: ${impactResult.analysisDuration}ms`);
+            
+        } catch (err) {
+            console.error('[AssessImpact] AI影响度评估失败:', err);
+            error(res, err.message, 500, {
+                step: 3,
+                stepName: 'assess_impact'
+            });
+        }
+    });
+
+    /**
+     * 第3步-B: 获取影响评估报告
+     * GET /impact-report
+     */
+    router.get('/impact-report', async (req, res) => {
+        try {
+            const { workflowId, format = 'summary' } = req.query;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            // 从工作流中获取影响评估结果
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow || !workflow.results.step_3) {
+                return error(res, '未找到影响评估结果，请先执行 POST /assess-impact', 404);
+            }
+            
+            const impactResult = workflow.results.step_3;
+            
+            let report;
+            if (format === 'detailed') {
+                report = {
+                    executiveSummary: {
+                        overallRisk: impactResult.impactAssessment.overallRiskLevel,
+                        riskScore: impactResult.riskMatrix.riskScore,
+                        recommendation: impactResult.riskMatrix.acceptanceLevel,
+                        keyFindings: [
+                            `${impactResult.impactAssessment.upstreamImpacts.length} 个上游组件受影响`,
+                            `${impactResult.impactAssessment.downstreamImpacts.length} 个下游组件受影响`,
+                            `数据完整性: ${impactResult.impactAssessment.dataFlowImpacts.dataIntegrity}`,
+                            `回滚复杂度: ${impactResult.impactAssessment.dataFlowImpacts.rollbackComplexity}`
+                        ]
+                    },
+                    detailedAnalysis: impactResult.impactAssessment,
+                    riskMatrix: impactResult.riskMatrix,
+                    mitigationPlan: {
+                        required: impactResult.riskMatrix.mitigationRequired,
+                        backupStrategy: impactResult.impactAssessment.dataFlowImpacts.backupRequired,
+                        rollbackPlan: `复杂度: ${impactResult.impactAssessment.dataFlowImpacts.rollbackComplexity}`
+                    },
+                    qualityMetrics: impactResult.analysisMetrics
+                };
+            } else {
+                report = {
+                    riskLevel: impactResult.impactAssessment.overallRiskLevel,
+                    riskScore: impactResult.riskMatrix.riskScore,
+                    affectedComponents: impactResult.impactAssessment.upstreamImpacts.length + impactResult.impactAssessment.downstreamImpacts.length,
+                    dataIntegrity: impactResult.impactAssessment.dataFlowImpacts.dataIntegrity,
+                    rollbackComplexity: impactResult.impactAssessment.dataFlowImpacts.rollbackComplexity,
+                    recommendation: impactResult.riskMatrix.acceptanceLevel,
+                    confidence: impactResult.analysisMetrics.confidenceLevel
+                };
+            }
+
+            success(res, report);
+            
+        } catch (err) {
+            console.error('[ImpactReport] 获取影响评估报告失败:', err);
+            error(res, err.message, 500);
+        }
+    });
+
+    return router;
 }
 
 export default createIssuesRoutes;

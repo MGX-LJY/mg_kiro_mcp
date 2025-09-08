@@ -21,6 +21,17 @@ class WorkflowService {
     }
 
     /**
+     * 创建带指定ID的工作流
+     * @param {string} workflowId - 指定的工作流ID
+     * @param {string} projectPath - 项目路径
+     * @param {string} mode - 工作模式
+     * @returns {string} 工作流ID
+     */
+    createWorkflowWithId(workflowId, projectPath, mode = 'init') {
+        return this.workflowState.createWorkflowWithId(workflowId, projectPath, mode);
+    }
+
+    /**
      * 获取工作流信息
      * @param {string} workflowId - 工作流ID
      * @returns {Object|null} 工作流对象
