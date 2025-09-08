@@ -81,9 +81,7 @@ export function createAppRoutes(services, server) {
     router.use('/mode/init', modulesRouter);
 
     // 第6步：集成语言提示词路由
-    const languagePromptRouter = createLanguagePromptsRoutes({
-        workflowState: services.workflowService
-    });
+    const languagePromptRouter = createLanguagePromptsRoutes(routerServices);
     router.use('/mode/init', languagePromptRouter);
 
     // 第8步：集成契约文档生成
