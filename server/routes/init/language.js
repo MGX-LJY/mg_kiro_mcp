@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { success, error, workflowSuccess } from '../../services/response-service.js';
+import { AIResponseHandlerService } from '../../services/ai-response-handler.js';
 
 /**
  * 创建语言识别路由
@@ -163,7 +164,7 @@ export function createLanguageRoutes(services) {
                 }
             };
 
-            workflowSuccess(res, 2, 'detect_language', workflowId, responseData, workflowService.getProgress(workflowId));
+            workflowSuccess(res, responseData, 'detect_language', '智能语言检测完成', 200);
 
             console.log(`[Language] 智能语言检测完成 (AI驱动): ${projectPathToUse} (${detectionResult.analysisDuration}ms)`);
             console.log(`[Language] - 模式: AI智能分析 + 报告生成`);
@@ -210,11 +211,106 @@ export function createLanguageRoutes(services) {
             // 生成详细报告
             const report = _generateLanguageReport(detectionResult);
 
-            workflowSuccess(res, 2, 'language_report', workflowId, report, workflowService.getProgress(workflowId));
+            workflowSuccess(res, report, 'language_report', '语言检测报告生成完成', 200);
 
         } catch (err) {
             console.error('[Language] 获取语言检测报告失败:', err);
             return error(res, err.message, 500);
+        }
+    });
+
+    /**
+     * 第2步-C: 保存AI生成的语言分析报告到mg_kiro
+     * POST /save-language-report
+     */
+    router.post('/save-language-report', async (req, res) => {
+        try {
+            const { workflowId, aiGeneratedContent } = req.body;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            if (!aiGeneratedContent) {
+                return error(res, 'AI生成内容不能为空', 400);
+            }
+
+            console.log(`[Language] 保存AI生成的语言分析报告: ${workflowId}`);
+
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow) {
+                return error(res, '工作流不存在', 404);
+            }
+
+            // 初始化AI响应处理服务
+            const aiHandler = new AIResponseHandlerService(workflow.projectPath);
+            
+            const savedFiles = [];
+            const errors = [];
+
+            try {
+                // 保存language-analysis.md
+                if (aiGeneratedContent.languageReport) {
+                    const langPath = await aiHandler.saveDocument(
+                        'architecture',
+                        'language-analysis.md',
+                        aiGeneratedContent.languageReport
+                    );
+                    savedFiles.push(langPath);
+                    console.log(`[Language] 已保存: language-analysis.md`);
+                }
+
+                // 保存tech-stack-analysis.md (如果有技术栈分析)
+                if (aiGeneratedContent.techStackAnalysis) {
+                    const techPath = await aiHandler.saveDocument(
+                        'architecture',
+                        'tech-stack-analysis.md',
+                        aiGeneratedContent.techStackAnalysis
+                    );
+                    savedFiles.push(techPath);
+                    console.log(`[Language] 已保存: tech-stack-analysis.md`);
+                }
+
+            } catch (saveError) {
+                errors.push(`文档保存失败: ${saveError.message}`);
+            }
+
+            if (savedFiles.length === 0) {
+                return error(res, '没有成功保存任何文档', 500, { errors });
+            }
+
+            // 更新工作流步骤状态
+            const stepResult = {
+                savedFiles,
+                errors: errors.length > 0 ? errors : null,
+                savedAt: new Date().toISOString(),
+                step: 2,
+                stepName: 'save_language_report'
+            };
+
+            workflowService.updateStep(workflowId, 2, 'saved', stepResult);
+
+            console.log(`[Language] 语言分析报告保存完成，共保存 ${savedFiles.length} 个文件`);
+
+            success(res, {
+                message: '语言分析报告已保存到mg_kiro文件夹',
+                savedFiles,
+                errors: errors.length > 0 ? errors : null,
+                workflow: {
+                    workflowId,
+                    step: 2,
+                    stepName: 'save_language_report',
+                    status: 'saved'
+                },
+                mgKiroStatus: await aiHandler.checkMgKiroStatus()
+            }, `成功保存 ${savedFiles.length} 个语言分析文档`);
+            
+        } catch (err) {
+            console.error('[Language] 保存语言分析报告失败:', err);
+            return error(res, `保存文档失败: ${err.message}`, 500, {
+                step: 2,
+                stepName: 'save_language_report'
+            });
         }
     });
 

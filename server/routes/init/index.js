@@ -9,7 +9,8 @@ import dataRouter from './data.js';
 import documentsRouter from './documents.js';
 import filesRouter from './files.js';
 import languageRouter from './language.js';
-import modulesRouter from './modules.js';
+import modulesAnalysisRouter from './modules-analysis.js';
+import modulesDocsRouter from './modules-docs.js';
 import promptsRouter from './prompts.js';
 import structureRouter from './structure.js';
 
@@ -28,7 +29,8 @@ export function createInitRoutes(services, serverObject) {
     router.use('/documents', documentsRouter);
     router.use('/files', filesRouter);
     router.use('/language', languageRouter);
-    router.use('/modules', modulesRouter);
+    router.use('/modules-analysis', modulesAnalysisRouter); // 第5步：深度模块分析
+    router.use('/modules-docs', modulesDocsRouter);       // 第7步：模块文档生成
     router.use('/prompts', promptsRouter);
     router.use('/structure', structureRouter);
 
@@ -40,7 +42,7 @@ export function createInitRoutes(services, serverObject) {
             status: 'active',
             availableSteps: [
                 'contracts', 'data', 'documents', 'files',
-                'language', 'modules', 'prompts', 'structure'
+                'language', 'modules-analysis', 'modules-docs', 'prompts', 'structure'
             ]
         }, 'Init模式状态');
     });
@@ -56,7 +58,8 @@ export function createInitRoutes(services, serverObject) {
                 documents: '文档生成和模板',
                 files: '文件结构分析',
                 language: '语言检测和配置',
-                modules: '模块依赖分析',
+                'modules-analysis': '深度模块分析 (第5步)',
+                'modules-docs': '模块文档生成 (第7步)',
                 prompts: '提示词生成',
                 structure: '项目结构规划'
             }

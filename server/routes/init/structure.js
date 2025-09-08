@@ -52,7 +52,7 @@ export function createStructureRoutes(services) {
                 }
             };
 
-            workflowSuccess(res, 1, 'scan_structure', workflowId, responseData, workflowService.getProgress(workflowId));
+            workflowSuccess(res, responseData, 'scan_structure', '项目结构扫描完成', 200);
 
             console.log(`[Structure] 项目结构扫描完成: ${projectPath} (${scanResult.scanDuration}ms)`);
             

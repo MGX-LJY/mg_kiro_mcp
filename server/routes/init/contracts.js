@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { success, error, workflowSuccess } from '../../services/response-service.js';
+import { AIResponseHandlerService } from '../../services/ai-response-handler.js';
 
 /**
  * 创建集成契约路由
@@ -47,7 +48,7 @@ export function createContractsRoutes(services) {
             const startTime = Date.now();
 
             // 更新步骤状态为运行中
-            workflowService.updateStep(workflowId, 7, 'running'); // 第8步，索引为7
+            workflowService.updateStep(workflowId, 8, 'running'); // 第8步，索引为8
 
             // 准备AI分析数据包 - 集成契约智能分析
             const aiAnalysisPackage = {
@@ -183,7 +184,7 @@ export function createContractsRoutes(services) {
             };
 
             // 更新步骤状态为已完成
-            workflowService.updateStep(workflowId, 7, 'completed', responseData);
+            workflowService.updateStep(workflowId, 8, 'completed', responseData);
 
             console.log(`[Contracts] 集成契约文档生成完成 (AI驱动): ${routeExecutionTime}ms`);
             console.log(`[Contracts] - 模式: AI智能分析 + 文档生成`);
@@ -196,7 +197,7 @@ export function createContractsRoutes(services) {
             console.error('[Contracts] 生成集成契约文档失败:', err);
             
             if (req.body.workflowId) {
-                workflowService.updateStep(req.body.workflowId, 7, 'failed', null, err.message);
+                workflowService.updateStep(req.body.workflowId, 8, 'failed', null, err.message);
             }
             
             return error(res, err.message, 500, {
@@ -371,6 +372,123 @@ export function createContractsRoutes(services) {
         } catch (err) {
             console.error('[Contracts] 获取集成关系图失败:', err);
             return error(res, err.message, 500);
+        }
+    });
+
+    /**
+     * 第8步-D: 保存AI生成的集成契约文档到mg_kiro
+     * POST /save-contracts
+     */
+    router.post('/save-contracts', async (req, res) => {
+        try {
+            const { workflowId, aiGeneratedContent } = req.body;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            if (!aiGeneratedContent) {
+                return error(res, 'AI生成内容不能为空', 400);
+            }
+
+            console.log(`[Contracts] 保存AI生成的集成契约文档: ${workflowId}`);
+
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow) {
+                return error(res, '工作流不存在', 404);
+            }
+
+            // 初始化AI响应处理服务
+            const aiHandler = new AIResponseHandlerService(workflow.projectPath);
+            
+            const savedFiles = [];
+            const errors = [];
+
+            try {
+                // 保存integration-contracts.md
+                if (aiGeneratedContent.integrationContracts) {
+                    const contractsPath = await aiHandler.saveDocument(
+                        'integrations',
+                        'integration-contracts.md',
+                        aiGeneratedContent.integrationContracts
+                    );
+                    savedFiles.push(contractsPath);
+                    console.log(`[Contracts] 已保存: integration-contracts.md`);
+                }
+
+                // 保存data-flow.md
+                if (aiGeneratedContent.dataFlow) {
+                    const dataFlowPath = await aiHandler.saveDocument(
+                        'integrations',
+                        'data-flow.md',
+                        aiGeneratedContent.dataFlow
+                    );
+                    savedFiles.push(dataFlowPath);
+                    console.log(`[Contracts] 已保存: data-flow.md`);
+                }
+
+                // 保存api-specifications.md
+                if (aiGeneratedContent.apiSpecifications) {
+                    const apiPath = await aiHandler.saveDocument(
+                        'integrations',
+                        'api-specifications.md',
+                        aiGeneratedContent.apiSpecifications
+                    );
+                    savedFiles.push(apiPath);
+                    console.log(`[Contracts] 已保存: api-specifications.md`);
+                }
+
+                // 保存integration-testing.md (如果有集成测试策略)
+                if (aiGeneratedContent.integrationTesting) {
+                    const testingPath = await aiHandler.saveDocument(
+                        'integrations',
+                        'integration-testing.md',
+                        aiGeneratedContent.integrationTesting
+                    );
+                    savedFiles.push(testingPath);
+                    console.log(`[Contracts] 已保存: integration-testing.md`);
+                }
+
+            } catch (saveError) {
+                errors.push(`文档保存失败: ${saveError.message}`);
+            }
+
+            if (savedFiles.length === 0) {
+                return error(res, '没有成功保存任何文档', 500, { errors });
+            }
+
+            // 更新工作流步骤状态 (第8步，索引为8)
+            const stepResult = {
+                savedFiles,
+                errors: errors.length > 0 ? errors : null,
+                savedAt: new Date().toISOString(),
+                step: 8,
+                stepName: 'save_contracts'
+            };
+
+            workflowService.updateStep(workflowId, 8, 'saved', stepResult);
+
+            console.log(`[Contracts] 集成契约文档保存完成，共保存 ${savedFiles.length} 个文件`);
+
+            success(res, {
+                message: '集成契约文档已保存到mg_kiro文件夹',
+                savedFiles,
+                errors: errors.length > 0 ? errors : null,
+                workflow: {
+                    workflowId,
+                    step: 8,
+                    stepName: 'save_contracts',
+                    status: 'saved'
+                },
+                mgKiroStatus: await aiHandler.checkMgKiroStatus()
+            }, `成功保存 ${savedFiles.length} 个集成契约文档`);
+            
+        } catch (err) {
+            console.error('[Contracts] 保存集成契约文档失败:', err);
+            return error(res, `保存文档失败: ${err.message}`, 500, {
+                step: 8,
+                stepName: 'save_contracts'
+            });
         }
     });
 

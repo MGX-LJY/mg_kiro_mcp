@@ -15,7 +15,8 @@ import { createStructureRoutes } from './init/structure.js';
 import { createLanguageRoutes } from './init/language.js';
 import { createFilesRoutes } from './init/files.js';
 import { createDocumentsRoutes } from './init/documents.js';
-import { createModulesRoutes } from './init/modules.js';
+import { createModulesAnalysisRoutes } from './init/modules-analysis.js'; // 第5步：深度模块分析
+import { createModulesDocsRoutes } from './init/modules-docs.js';         // 第7步：模块文档生成
 import { createLanguagePromptsRoutes } from './init/prompts.js';
 import { createContractsRoutes } from './init/contracts.js';
 import { createInitDataRoutes } from './init/data.js';
@@ -83,8 +84,12 @@ export function createAppRoutes(services, server) {
     router.use('/mode/init', documentsRouter);
 
     // 第5步：深度模块分析
-    const modulesRouter = createModulesRoutes(routerServices);
-    router.use('/mode/init', modulesRouter);
+    const modulesAnalysisRouter = createModulesAnalysisRoutes(routerServices);
+    router.use('/mode/init', modulesAnalysisRouter);
+    
+    // 第7步：模块文档生成
+    const modulesDocsRouter = createModulesDocsRoutes(routerServices);
+    router.use('/mode/init', modulesDocsRouter);
 
     // 第6步：集成语言提示词路由
     const languagePromptRouter = createLanguagePromptsRoutes(routerServices);

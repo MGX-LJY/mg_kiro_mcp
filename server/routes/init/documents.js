@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { success, error, workflowSuccess } from '../../services/response-service.js';
+import { AIResponseHandlerService } from '../../services/ai-response-handler.js';
 
 /**
  * 创建文档生成路由
@@ -284,30 +285,166 @@ export function createDocumentsRoutes(services) {
         }
     });
 
+    /**
+     * 第4步-C: 保存AI生成的架构文档到mg_kiro
+     * POST /save-architecture
+     */
+    router.post('/save-architecture', async (req, res) => {
+        try {
+            const { workflowId, aiGeneratedContent } = req.body;
+            
+            if (!workflowId) {
+                return error(res, '工作流ID不能为空', 400);
+            }
+
+            if (!aiGeneratedContent) {
+                return error(res, 'AI生成内容不能为空', 400);
+            }
+
+            console.log(`[Documents] 保存AI生成的架构文档: ${workflowId}`);
+
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow) {
+                return error(res, '工作流不存在', 404);
+            }
+
+            // 初始化AI响应处理服务
+            const aiHandler = new AIResponseHandlerService(workflow.projectPath);
+            
+            const savedFiles = [];
+            const errors = [];
+
+            try {
+                // 保存system-architecture.md
+                if (aiGeneratedContent.architecture) {
+                    const archPath = await aiHandler.saveDocument(
+                        'architecture',
+                        'system-architecture.md',
+                        aiGeneratedContent.architecture
+                    );
+                    savedFiles.push(archPath);
+                    console.log(`[Documents] 已保存: system-architecture.md`);
+                }
+
+                // 保存tech-stack.md
+                if (aiGeneratedContent.techStack) {
+                    const techPath = await aiHandler.saveDocument(
+                        'architecture',
+                        'tech-stack.md',
+                        aiGeneratedContent.techStack
+                    );
+                    savedFiles.push(techPath);
+                    console.log(`[Documents] 已保存: tech-stack.md`);
+                }
+
+                // 保存modules-catalog.md (如果在此步骤生成)
+                if (aiGeneratedContent.catalog) {
+                    const catalogPath = await aiHandler.saveDocument(
+                        'modules-catalog',
+                        'modules-catalog.md',
+                        aiGeneratedContent.catalog
+                    );
+                    savedFiles.push(catalogPath);
+                    console.log(`[Documents] 已保存: modules-catalog.md`);
+                }
+
+            } catch (saveError) {
+                errors.push(`文档保存失败: ${saveError.message}`);
+            }
+
+            if (savedFiles.length === 0) {
+                return error(res, '没有成功保存任何文档', 500, { errors });
+            }
+
+            // 更新工作流步骤状态
+            const stepResult = {
+                savedFiles,
+                errors: errors.length > 0 ? errors : null,
+                savedAt: new Date().toISOString(),
+                step: 4,
+                stepName: 'save_architecture_docs'
+            };
+
+            workflowService.updateStep(workflowId, 4, 'saved', stepResult);
+
+            console.log(`[Documents] 架构文档保存完成，共保存 ${savedFiles.length} 个文件`);
+
+            success(res, {
+                message: '架构文档已保存到mg_kiro文件夹',
+                savedFiles,
+                errors: errors.length > 0 ? errors : null,
+                workflow: {
+                    workflowId,
+                    step: 4,
+                    stepName: 'save_architecture_docs',
+                    status: 'saved'
+                },
+                mgKiroStatus: await aiHandler.checkMgKiroStatus()
+            }, `成功保存 ${savedFiles.length} 个架构文档`);
+            
+        } catch (err) {
+            console.error('[Documents] 保存架构文档失败:', err);
+            return error(res, `保存文档失败: ${err.message}`, 500, {
+                step: 4,
+                stepName: 'save_architecture_docs'
+            });
+        }
+    });
+
+    /**
+     * 第4步-D: 批量处理AI数据包并保存文档
+     * POST /process-ai-package
+     */
+    router.post('/process-ai-package', async (req, res) => {
+        try {
+            const { workflowId, stepIndex, aiGeneratedContent } = req.body;
+            
+            if (!workflowId || stepIndex === undefined || !aiGeneratedContent) {
+                return error(res, '缺少必要参数: workflowId, stepIndex, aiGeneratedContent', 400);
+            }
+
+            console.log(`[Documents] 处理AI数据包: ${workflowId}, 步骤: ${stepIndex}`);
+
+            const workflow = workflowService.getWorkflow(workflowId);
+            if (!workflow) {
+                return error(res, '工作流不存在', 404);
+            }
+
+            // 初始化AI响应处理服务
+            const aiHandler = new AIResponseHandlerService(workflow.projectPath);
+            
+            // 构建AI数据包
+            const aiPackage = {
+                workflowId,
+                stepIndex,
+                aiGeneratedContent,
+                processingInstructions: {
+                    expectedOutput: 'markdown',
+                    saveToMgKiro: true,
+                    category: stepIndex === 4 ? 'architecture' : 'modules-catalog'
+                }
+            };
+
+            // 处理AI数据包
+            const result = await aiHandler.processAIPackage(aiPackage);
+
+            console.log(`[Documents] AI数据包处理完成，保存了 ${result.savedFiles.length} 个文件`);
+
+            workflowSuccess(res, stepIndex, 'process_ai_package', workflowId, {
+                ...result,
+                mgKiroStatus: await aiHandler.checkMgKiroStatus()
+            }, workflowService.getProgress(workflowId));
+            
+        } catch (err) {
+            console.error('[Documents] 处理AI数据包失败:', err);
+            return error(res, `处理AI数据包失败: ${err.message}`, 500, {
+                step: req.body.stepIndex || 4,
+                stepName: 'process_ai_package'
+            });
+        }
+    });
+
     return router;
 }
-
-// ====================================================================
-// AI驱动架构重构说明
-// ====================================================================
-// 
-// 🎯 重构目标: 将复杂分析逻辑转移到AI，MCP仅提供数据和模板
-// 
-// 📊 原有问题:
-// - _generateSystemOverview: 在MCP中硬编码系统概述生成逻辑
-// - _generateCoreComponents: 在MCP中做组件分析
-// - _generateDataFlow: 在MCP中做数据流分析
-// - _generateModulesByCategory/_generateModulesByImportance: 复杂分类逻辑
-//
-// ✅ 新架构优势:
-// - MCP只提供原始数据和AI分析模板
-// - AI执行所有复杂分析逻辑，更智能更灵活
-// - Token消耗优化约45%，质量提升显著
-// - 易于扩展新分析能力，只需添加模板
-// 
-// 🔄 数据流:
-// 客户端 → MCP数据API → 原始数据+模板 → Claude AI分析 → 生成结果
-//
-// 注意：删除了所有复杂的业务逻辑函数，改为纯数据提供模式
 
 export default createDocumentsRoutes;
