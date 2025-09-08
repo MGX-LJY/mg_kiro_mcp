@@ -59,27 +59,74 @@ class TemplateReader {
     }
 
     /**
-     * 构建模板文件路径
+     * 构建模板文件路径 - 支持子目录结构
      */
     _buildTemplatePath(category, name) {
         // 标准化文件扩展名
         const fileName = name.endsWith('.md') ? name : `${name}.md`;
         
-        // 根据类别确定路径
+        // 根据类别确定路径 (重构后的新结构)
         const categoryPaths = {
-            'templates': 'templates',
             'modes': 'modes',
-            'analysis-templates': 'analysis-templates',
-            'document-templates': 'document-templates',
-            'snippets': 'snippets'
+            'analysis': 'analysis',
+            'generation': 'generation',  
+            'snippets': 'snippets',
+            'languages': 'languages',
+            // 向后兼容映射
+            'analysis-templates': 'analysis',
+            'document-templates': 'generation',
+            'templates': 'generation'  // 旧templates映射到generation
         };
 
         const categoryDir = categoryPaths[category] || category;
-        return path.join(this.promptsDir, categoryDir, fileName);
+        const basePath = path.join(this.promptsDir, categoryDir);
+        
+        // 首先尝试直接在类别目录中查找
+        const directPath = path.join(basePath, fileName);
+        if (fs.existsSync(directPath)) {
+            return directPath;
+        }
+        
+        // 如果直接路径不存在，递归查找子目录
+        return this._findTemplateInSubdirs(basePath, fileName);
     }
 
     /**
-     * 列出类别下的所有模板
+     * 在子目录中递归查找模板文件
+     */
+    _findTemplateInSubdirs(baseDir, fileName) {
+        try {
+            if (!fs.existsSync(baseDir)) {
+                return path.join(baseDir, fileName); // 返回原始路径用于错误处理
+            }
+
+            const items = fs.readdirSync(baseDir, { withFileTypes: true });
+            
+            for (const item of items) {
+                if (item.isDirectory()) {
+                    const subDirPath = path.join(baseDir, item.name);
+                    const filePath = path.join(subDirPath, fileName);
+                    
+                    if (fs.existsSync(filePath)) {
+                        return filePath;
+                    }
+                    
+                    // 递归查找更深层目录
+                    const deepPath = this._findTemplateInSubdirs(subDirPath, fileName);
+                    if (fs.existsSync(deepPath)) {
+                        return deepPath;
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn(`[TemplateReader] 子目录搜索失败 ${baseDir}:`, error.message);
+        }
+        
+        return path.join(baseDir, fileName); // 返回原始路径用于错误处理
+    }
+
+    /**
+     * 列出类别下的所有模板 - 递归支持子目录
      */
     async listTemplates(category) {
         try {
@@ -89,16 +136,7 @@ class TemplateReader {
                 return [];
             }
 
-            const files = fs.readdirSync(categoryDir)
-                .filter(file => file.endsWith('.md'))
-                .map(file => ({
-                    name: file.replace('.md', ''),
-                    category,
-                    path: path.join(categoryDir, file),
-                    size: fs.statSync(path.join(categoryDir, file)).size
-                }));
-
-            return files;
+            return this._listTemplatesRecursive(categoryDir, category);
         } catch (error) {
             console.error(`[TemplateReader] 列出模板失败 ${category}:`, error.message);
             return [];
@@ -106,15 +144,58 @@ class TemplateReader {
     }
 
     /**
+     * 递归列出目录中的所有模板文件
+     */
+    _listTemplatesRecursive(dir, category, subPath = '') {
+        const templates = [];
+        
+        try {
+            const items = fs.readdirSync(dir, { withFileTypes: true });
+            
+            for (const item of items) {
+                const fullPath = path.join(dir, item.name);
+                
+                if (item.isDirectory()) {
+                    // 递归处理子目录
+                    const subCategory = subPath ? `${subPath}/${item.name}` : item.name;
+                    const subTemplates = this._listTemplatesRecursive(fullPath, category, subCategory);
+                    templates.push(...subTemplates);
+                } else if (item.name.endsWith('.md')) {
+                    // 处理模板文件
+                    const templateName = item.name.replace('.md', '');
+                    const displayName = subPath ? `${subPath}/${templateName}` : templateName;
+                    
+                    templates.push({
+                        name: templateName,
+                        displayName,
+                        category,
+                        subcategory: subPath || null,
+                        path: fullPath,
+                        size: fs.statSync(fullPath).size
+                    });
+                }
+            }
+        } catch (error) {
+            console.warn(`[TemplateReader] 递归列出失败 ${dir}:`, error.message);
+        }
+        
+        return templates;
+    }
+
+    /**
      * 获取类别目录
      */
     _getCategoryDir(category) {
         const categoryPaths = {
-            'templates': 'templates',
-            'modes': 'modes', 
-            'analysis-templates': 'analysis-templates',
-            'document-templates': 'document-templates',
-            'snippets': 'snippets'
+            'modes': 'modes',
+            'analysis': 'analysis',
+            'generation': 'generation',
+            'snippets': 'snippets', 
+            'languages': 'languages',
+            // 向后兼容映射
+            'analysis-templates': 'analysis',
+            'document-templates': 'generation',
+            'templates': 'generation'  // 旧templates映射到generation
         };
 
         const categoryDir = categoryPaths[category] || category;

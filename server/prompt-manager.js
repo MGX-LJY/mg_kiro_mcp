@@ -122,8 +122,8 @@ export class PromptManager {
         };
       }
 
-      // List all categories
-      const categories = ['templates', 'modes', 'analysis-templates', 'document-templates', 'snippets'];
+      // List all categories (重构后的新结构)
+      const categories = ['modes', 'analysis', 'generation', 'snippets', 'languages'];
       const allPrompts = [];
       
       for (const cat of categories) {
