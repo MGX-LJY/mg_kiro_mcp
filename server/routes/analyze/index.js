@@ -5,6 +5,7 @@
 
 import express from 'express';
 import { createQualityRoutes } from './quality.js';
+import { createPerformanceRoutes } from './performance.js';
 import { createDependenciesRoutes } from './dependencies.js';
 import { createSecurityRoutes } from './security.js';
 import { createReportsRoutes } from './reports.js';
@@ -23,6 +24,10 @@ export function createAnalyzeModeRoutes(services) {
     // 代码质量分析
     const qualityRouter = createQualityRoutes(services);
     router.use('/', qualityRouter);
+
+    // 性能分析
+    const performanceRouter = createPerformanceRoutes(services);
+    router.use('/', performanceRouter);
 
     // 依赖关系分析
     const dependenciesRouter = createDependenciesRoutes(services);

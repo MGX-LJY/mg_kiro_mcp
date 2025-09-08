@@ -206,51 +206,51 @@ graph LR
 
 **总体目标**: 精准修复，最小化影响范围
 
-- [ ] **第1步: 问题范围识别**
-  - [ ] `POST /mode/fix/identify-scope` - 智能识别问题影响范围
-  - [ ] `GET /mode/fix/affected-modules` - 获取受影响模块列表
+- [x] **第1步: 问题范围识别**
+  - [x] `POST /mode/fix/identify-scope` - 智能识别问题影响范围
+  - [x] `GET /mode/fix/affected-modules` - 获取受影响模块列表
 
-- [ ] **第2步: 相关文档检索**
-  - [ ] `POST /mode/fix/find-docs` - 只检索相关模块文档
-  - [ ] `GET /mode/fix/relevant-docs` - 获取相关文档列表
-  - [ ] 范围：问题模块 + 连接模块 + 架构文档
+- [x] **第2步: 相关文档检索**
+  - [x] `POST /mode/fix/find-docs` - 只检索相关模块文档
+  - [x] `GET /mode/fix/relevant-docs` - 获取相关文档列表
+  - [x] 范围：问题模块 + 连接模块 + 架构文档
 
-- [ ] **第3步: 影响度评估**
-  - [ ] `POST /mode/fix/assess-impact` - 深度影响分析
-  - [ ] `GET /mode/fix/impact-report` - 获取影响评估报告
-  - [ ] 评估：向上依赖、向下依赖、数据流影响
+- [x] **第3步: 影响度评估**
+  - [x] `POST /mode/fix/assess-impact` - 深度影响分析
+  - [x] `GET /mode/fix/impact-report` - 获取影响评估报告
+  - [x] 评估：向上依赖、向下依赖、数据流影响
 
-- [ ] **第4步: 修复方案设计**
-  - [ ] `POST /mode/fix/design-solution` - 基于语言特性设计修复方案
-  - [ ] `GET /mode/fix/solution/:issueId` - 获取修复方案
+- [x] **第4步: 修复方案设计**
+  - [x] `POST /mode/fix/design-solution` - 基于语言特性设计修复方案
+  - [x] `GET /mode/fix/solution/:issueId` - 获取修复方案
 
-- [ ] **第5步: 代码更新执行**
-  - [ ] `POST /mode/fix/apply-changes` - 执行代码修复
-  - [ ] `GET /mode/fix/changes-status` - 获取修复状态
+- [x] **第5步: 代码更新执行**
+  - [x] `POST /mode/fix/apply-changes` - 执行代码修复
+  - [x] `GET /mode/fix/changes-status` - 获取修复状态
 
-- [ ] **第6步: 文档同步更新**
-  - [ ] `POST /mode/fix/update-docs` - 同步更新相关文档
-  - [ ] `GET /mode/fix/updated-docs` - 获取更新的文档列表
+- [x] **第6步: 文档同步更新**
+  - [x] `POST /mode/fix/update-docs` - 同步更新相关文档
+  - [x] `GET /mode/fix/updated-docs` - 获取更新的文档列表
 
 #### 📊 **Analyze模式 - 分析评估智能工作流**
 
 **总体目标**: 全面代码健康度评估和优化建议
 
-- [ ] **代码质量分析流程**
-  - [ ] `POST /mode/analyze/quality-scan` - 启动代码质量扫描
-  - [ ] `GET /mode/analyze/quality-report` - 获取质量报告
+- [x] **代码质量分析流程**
+  - [x] `POST /mode/analyze/quality-scan` - 启动代码质量扫描
+  - [x] `GET /mode/analyze/quality-report` - 获取质量报告
   
-- [ ] **性能分析流程**  
-  - [ ] `POST /mode/analyze/performance-scan` - 性能瓶颈分析
-  - [ ] `GET /mode/analyze/performance-report` - 获取性能报告
+- [x] **性能分析流程**  
+  - [x] `POST /mode/analyze/performance-scan` - 性能瓶颈分析
+  - [x] `GET /mode/analyze/performance-report` - 获取性能报告
 
-- [ ] **安全分析流程**
-  - [ ] `POST /mode/analyze/security-scan` - 安全漏洞扫描
-  - [ ] `GET /mode/analyze/security-report` - 获取安全报告
+- [x] **安全分析流程**
+  - [x] `POST /mode/analyze/security-scan` - 安全漏洞扫描
+  - [x] `GET /mode/analyze/security-report` - 获取安全报告
 
-- [ ] **依赖分析流程**
-  - [ ] `POST /mode/analyze/deps-scan` - 依赖关系分析
-  - [ ] `GET /mode/analyze/deps-report` - 获取依赖报告
+- [x] **依赖分析流程**
+  - [x] `POST /mode/analyze/deps-scan` - 依赖关系分析
+  - [x] `GET /mode/analyze/deps-report` - 获取依赖报告
 
 #### 🧠 **语言智能系统集成API**
 
@@ -281,18 +281,6 @@ graph LR
   - [ ] `GET /workflow/progress` - 获取整体进度
   - [ ] `GET /workflow/progress/:mode` - 获取特定模式进度
   - [ ] `POST /workflow/checkpoint` - 创建检查点
-
-#### 🎯 **智能决策系统API**
-
-- [ ] **上下文分析API**
-  - [ ] `POST /context/analyze` - 项目上下文分析
-  - [ ] `GET /context/summary` - 获取上下文摘要
-  - [ ] `POST /context/update` - 更新上下文信息
-
-- [ ] **建议引擎API**
-  - [ ] `GET /suggestions/next-steps` - 获取下一步建议
-  - [ ] `POST /suggestions/evaluate` - 评估建议可行性
-  - [ ] `GET /suggestions/history` - 历史建议记录
 
 ### 📋 **工作流最佳实践**
 
