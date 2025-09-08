@@ -59,7 +59,7 @@ export function createMCPRoutes(services) {
             console.log(`MCP handshake successful: ${connectionId}`);
         } catch (err) {
             console.error('MCP handshake failed:', err);
-            error(res, 'Handshake failed', 500);
+            return error(res, 'Handshake failed', 500);
         }
     });
 

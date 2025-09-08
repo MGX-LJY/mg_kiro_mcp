@@ -129,7 +129,7 @@ export function createFixesRoutes(services) {
 
         } catch (err) {
             console.error('[ApplyFix] 应用修复失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'apply_fix',
                 issueId: req.body.issueId
             });
@@ -227,7 +227,7 @@ export function createFixesRoutes(services) {
 
         } catch (err) {
             console.error('[VerifyFix] 验证修复失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'verify_fix',
                 issueId: req.body.issueId
             });
@@ -331,7 +331,7 @@ export function createFixesRoutes(services) {
 
         } catch (err) {
             console.error('[RollbackFix] 回滚修复失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'rollback_fix',
                 issueId: req.body.issueId
             });
@@ -376,7 +376,7 @@ export function createFixesRoutes(services) {
 
         } catch (err) {
             console.error('[FixHistory] 获取修复历史失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -444,7 +444,7 @@ export function createFixesRoutes(services) {
 
         } catch (err) {
             console.error('[GeneratePatch] 生成补丁失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -1207,7 +1207,7 @@ async function _runFullTestSuite() {
             
         } catch (err) {
             console.error('[DesignSolution] AI方案设计失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 4,
                 stepName: 'design_solution'
             });
@@ -1272,7 +1272,7 @@ async function _runFullTestSuite() {
             
         } catch (err) {
             console.error('[GetSolution] 获取修复方案失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -1447,7 +1447,7 @@ async function _runFullTestSuite() {
             
         } catch (err) {
             console.error('[ApplyChanges] AI代码执行失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 5,
                 stepName: 'apply_changes'
             });
@@ -1502,7 +1502,7 @@ async function _runFullTestSuite() {
             
         } catch (err) {
             console.error('[ChangesStatus] 获取执行状态失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -1706,7 +1706,7 @@ async function _runFullTestSuite() {
             
         } catch (err) {
             console.error('[UpdateDocs] AI文档更新失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 6,
                 stepName: 'update_docs'
             });
@@ -1766,7 +1766,7 @@ async function _runFullTestSuite() {
             
         } catch (err) {
             console.error('[UpdatedDocs] 获取更新文档清单失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

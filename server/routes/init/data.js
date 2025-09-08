@@ -37,8 +37,12 @@ export function createInitDataRoutes(services) {
             // 执行基础项目扫描 - 仅获取原始数据
             const rawScanData = await _performBasicScan(projectPath, server);
             
-            // 获取分析模板
-            const analysisTemplates = await _loadInitAnalysisTemplates(promptService);
+            // 获取分析模板 (通过统一模板服务)
+            const analysisTemplates = await _loadInitAnalysisTemplates(services.unifiedTemplateService, {
+                projectPath,
+                mode: 'init',
+                language: 'auto'
+            });
             
             // 获取参考数据
             const referenceData = await _loadInitReferenceData();
@@ -132,8 +136,13 @@ export function createInitDataRoutes(services) {
                 return error(res, '项目扫描数据不存在，请先执行项目扫描', 404);
             }
 
-            // 获取语言检测模板
-            const languageTemplates = await _loadLanguageDetectionTemplates(promptService);
+            // 获取语言检测模板 (通过统一模板服务)
+            const languageTemplates = await _loadLanguageDetectionTemplates(services.unifiedTemplateService, {
+                projectPath: workflow.projectPath,
+                mode: 'analyze',
+                step: 'detect_language',
+                language: 'auto'
+            });
             
             // 获取语言特定参考数据
             const languageReferences = _getLanguageReferences();
@@ -217,7 +226,7 @@ export function createInitDataRoutes(services) {
             const detectedLanguage = language || workflow.results.step_2?.detection?.primaryLanguage || 'javascript';
 
             // 获取模块分析模板
-            const moduleTemplates = await _loadModuleAnalysisTemplates(promptService, detectedLanguage);
+            const moduleTemplates = await _loadModuleAnalysisTemplates(services.unifiedTemplateService, detectedLanguage);
             
             // 获取语言特定的模块参考数据
             const moduleReferences = _getModuleReferences(detectedLanguage);
@@ -369,38 +378,83 @@ async function _performBasicScan(projectPath, server) {
 }
 
 /**
- * 加载Init分析模板
- * @param {Object} promptService - 提示词服务
+ * 加载Init分析模板 (重构为统一模板服务调用)
+ * @param {Object} unifiedTemplateService - 统一模板服务
+ * @param {Object} contextData - 上下文数据
  * @returns {Object} 分析模板
  */
-async function _loadInitAnalysisTemplates(promptService) {
+async function _loadInitAnalysisTemplates(unifiedTemplateService, contextData) {
     try {
-        return {
-            projectStructureAnalysis: await promptService.loadPrompt('init-templates', 'project-structure-analysis', {}),
-            languageDetection: await promptService.loadPrompt('init-templates', 'language-detection', {}),
-            frameworkIdentification: await promptService.loadPrompt('init-templates', 'framework-identification', {}),
-            moduleMapping: await promptService.loadPrompt('init-templates', 'module-mapping', {}),
-            dependencyAnalysis: await promptService.loadPrompt('init-templates', 'dependency-analysis', {}),
-            documentationGeneration: await promptService.loadPrompt('init-templates', 'documentation-generation', {})
-        };
+        const templates = {};
+        const templateConfigs = [
+            { key: 'projectStructureAnalysis', name: 'project-structure-analysis', category: 'analysis-templates' },
+            { key: 'languageDetection', name: 'language-detection', category: 'analysis-templates' },
+            { key: 'frameworkIdentification', name: 'framework-identification', category: 'analysis-templates' },
+            { key: 'moduleMapping', name: 'module-mapping', category: 'analysis-templates' },
+            { key: 'dependencyAnalysis', name: 'dependency-analysis', category: 'analysis-templates' },
+            { key: 'documentationGeneration', name: 'documentation-generation', category: 'document-templates' }
+        ];
+
+        for (const config of templateConfigs) {
+            try {
+                const result = await unifiedTemplateService.getTemplateByContext({
+                    ...contextData,
+                    mode: 'init',
+                    templateType: config.name
+                }, {
+                    category: config.category,
+                    name: config.name
+                });
+                templates[config.key] = result;
+            } catch (error) {
+                console.warn(`加载模板失败 ${config.name}:`, error.message);
+                templates[config.key] = _getDefaultTemplate(config.name);
+            }
+        }
+
+        return templates;
     } catch (error) {
+        console.error('加载Init分析模板失败:', error);
         return _getDefaultInitTemplates();
     }
 }
 
 /**
- * 加载语言检测模板
- * @param {Object} promptService - 提示词服务
+ * 加载语言检测模板 (重构为统一模板服务调用)
+ * @param {Object} unifiedTemplateService - 统一模板服务
+ * @param {Object} contextData - 上下文数据 
  * @returns {Object} 语言检测模板
  */
-async function _loadLanguageDetectionTemplates(promptService) {
+async function _loadLanguageDetectionTemplates(unifiedTemplateService, contextData) {
     try {
-        return {
-            primaryLanguage: await promptService.loadPrompt('init-templates', 'primary-language-detection', {}),
-            frameworkDetection: await promptService.loadPrompt('init-templates', 'framework-detection', {}),
-            versionDetection: await promptService.loadPrompt('init-templates', 'version-detection', {})
-        };
+        const templates = {};
+        const templateConfigs = [
+            { key: 'primaryLanguage', name: 'primary-language-detection', category: 'analysis-templates' },
+            { key: 'frameworkDetection', name: 'framework-detection', category: 'analysis-templates' },
+            { key: 'versionDetection', name: 'version-detection', category: 'analysis-templates' }
+        ];
+
+        for (const config of templateConfigs) {
+            try {
+                const result = await unifiedTemplateService.getTemplateByContext({
+                    ...contextData,
+                    mode: 'analyze',
+                    step: 'detect_language',
+                    templateType: config.name
+                }, {
+                    category: config.category,
+                    name: config.name
+                });
+                templates[config.key] = result;
+            } catch (error) {
+                console.warn(`加载语言检测模板失败 ${config.name}:`, error.message);
+                templates[config.key] = _getDefaultTemplate(config.name);
+            }
+        }
+
+        return templates;
     } catch (error) {
+        console.error('加载语言检测模板失败:', error);
         return _getDefaultLanguageTemplates();
     }
 }
@@ -411,14 +465,36 @@ async function _loadLanguageDetectionTemplates(promptService) {
  * @param {string} language - 编程语言
  * @returns {Object} 模块分析模板
  */
-async function _loadModuleAnalysisTemplates(promptService, language) {
+async function _loadModuleAnalysisTemplates(unifiedTemplateService, language) {
     try {
-        return {
-            moduleIdentification: await promptService.loadPrompt('init-templates', 'module-identification', { language }),
-            complexityAnalysis: await promptService.loadPrompt('init-templates', 'complexity-analysis', { language }),
-            interfaceExtraction: await promptService.loadPrompt('init-templates', 'interface-extraction', { language }),
-            dependencyMapping: await promptService.loadPrompt('init-templates', 'dependency-mapping', { language })
-        };
+        const templates = {};
+        const templateConfigs = [
+            { key: 'moduleIdentification', name: 'module-identification', category: 'analysis-templates' },
+            { key: 'complexityAnalysis', name: 'complexity-analysis', category: 'analysis-templates' },
+            { key: 'interfaceExtraction', name: 'interface-extraction', category: 'analysis-templates' },
+            { key: 'dependencyMapping', name: 'dependency-mapping', category: 'analysis-templates' }
+        ];
+
+        for (const config of templateConfigs) {
+            try {
+                const result = await unifiedTemplateService.getTemplateByContext({
+                    mode: 'analyze',
+                    step: 'analyze_modules',
+                    templateType: config.name,
+                    language
+                }, {
+                    category: config.category,
+                    name: config.name,
+                    variables: { language }
+                });
+                templates[config.key] = result;
+            } catch (error) {
+                console.warn(`加载模块分析模板失败 ${config.name}:`, error.message);
+                templates[config.key] = _getDefaultTemplate(config.name);
+            }
+        }
+
+        return templates;
     } catch (error) {
         return _getDefaultModuleTemplates(language);
     }
@@ -538,10 +614,37 @@ function _getDefaultLanguageTemplates() {
     };
 }
 
+/**
+ * 获取默认模板 (兼容统一模板服务格式)
+ * @param {string} templateName - 模板名称
+ * @returns {Object} 默认模板
+ */
+function _getDefaultTemplate(templateName) {
+    return {
+        template: {
+            content: `# ${templateName}\n\n默认${templateName}模板内容。`,
+            type: 'fallback',
+            source: 'default'
+        },
+        intelligence: {
+            confidence: 0.1,
+            reasoning: '使用默认模板回退',
+            alternatives: [],
+            suggestions: []
+        },
+        metadata: {
+            fallback: true,
+            templateName
+        }
+    };
+}
+
 function _getDefaultModuleTemplates(language) {
     return {
-        moduleIdentification: { content: `# ${language} 模块识别\n识别${language}项目中的模块和组件...` },
-        complexityAnalysis: { content: `# ${language} 复杂度分析\n分析${language}代码的复杂度指标...` }
+        moduleIdentification: _getDefaultTemplate(`${language} 模块识别`),
+        complexityAnalysis: _getDefaultTemplate(`${language} 复杂度分析`),
+        interfaceExtraction: _getDefaultTemplate(`${language} 接口提取`),
+        dependencyMapping: _getDefaultTemplate(`${language} 依赖映射`)
     };
 }
 

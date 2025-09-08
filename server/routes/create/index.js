@@ -114,7 +114,7 @@ export function createCreateModeRoutes(services) {
 
         } catch (err) {
             console.error('[CreateMode] 状态检查失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -204,7 +204,7 @@ export function createCreateModeRoutes(services) {
 
         } catch (err) {
             console.error('[CreateMode] 获取帮助信息失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -264,7 +264,7 @@ export function createCreateModeRoutes(services) {
 
         } catch (err) {
             console.error('[CreateMode] 获取模板列表失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

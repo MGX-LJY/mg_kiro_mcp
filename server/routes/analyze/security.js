@@ -84,7 +84,7 @@ export function createSecurityRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeSecurity] 安全分析失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'analyze_security'
             });
         }
@@ -146,7 +146,7 @@ export function createSecurityRoutes(services) {
 
         } catch (err) {
             console.error('[ScanVulnerabilities] 漏洞扫描失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -207,7 +207,7 @@ export function createSecurityRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeSecurityConfig] 安全配置分析失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -276,7 +276,7 @@ export function createSecurityRoutes(services) {
 
         } catch (err) {
             console.error('[GenerateSecurityReport] 生成安全报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -428,7 +428,7 @@ export function createSecurityRoutes(services) {
             
         } catch (err) {
             console.error('[SecurityScan] AI安全分析扫描失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -488,7 +488,7 @@ export function createSecurityRoutes(services) {
             
         } catch (err) {
             console.error('[SecurityReport] 获取安全分析报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

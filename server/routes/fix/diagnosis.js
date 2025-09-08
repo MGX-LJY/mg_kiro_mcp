@@ -94,7 +94,7 @@ export function createDiagnosisRoutes(services) {
 
         } catch (err) {
             console.error('[DiagnoseIssue] 问题诊断失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'diagnose_issue',
                 issueId: req.body.issueId
             });
@@ -190,7 +190,7 @@ export function createDiagnosisRoutes(services) {
 
         } catch (err) {
             console.error('[DiagnoseBatch] 批量诊断失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'diagnose_batch'
             });
         }
@@ -242,7 +242,7 @@ export function createDiagnosisRoutes(services) {
 
         } catch (err) {
             console.error('[DiagnosisReport] 获取诊断报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -324,7 +324,7 @@ export function createDiagnosisRoutes(services) {
 
         } catch (err) {
             console.error('[ReDiagnose] 重新诊断失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -358,19 +358,28 @@ function _getIssueById(issueId) {
  * @param {Object} promptService - 提示词服务
  * @returns {Object} 诊断结果
  */
-async function _performDiagnosis(issue, context, language, promptService) {
+async function _performDiagnosis(issue, context, language, unifiedTemplateService) {
     try {
-        // 使用提示词服务进行深度诊断
-        const template = await promptService.loadPrompt('templates', 'issue-diagnosis', {
-            title: issue.title,
-            description: issue.description,
-            stack_trace: issue.stackTrace || '',
-            language,
-            context: JSON.stringify(context)
+        // 使用统一模板服务进行深度诊断
+        const template = await unifiedTemplateService.getTemplateByContext({
+            mode: 'fix',
+            step: 'diagnose_issue',
+            templateType: 'issue-diagnosis',
+            language
+        }, {
+            category: 'analysis-templates',
+            name: 'issue-diagnosis',
+            variables: {
+                title: issue.title,
+                description: issue.description,
+                stack_trace: issue.stackTrace || '',
+                language,
+                context: JSON.stringify(context)
+            }
         });
 
         return {
-            summary: template.content || _generateDiagnosisSummary(issue),
+            summary: template.template.content || _generateDiagnosisSummary(issue),
             rootCause: await _identifyRootCause(issue, context),
             affectedComponents: _identifyAffectedComponents(issue),
             impactAssessment: _assessImpact(issue, context),
@@ -445,12 +454,21 @@ async function _performCodeAnalysis(issue, context) {
  * @param {Object} promptService - 提示词服务
  * @returns {Object} 修复建议
  */
-async function _generateFixSuggestions(issue, diagnosis, promptService) {
+async function _generateFixSuggestions(issue, diagnosis, unifiedTemplateService) {
     try {
-        const template = await promptService.loadPrompt('templates', 'fix-suggestions', {
-            issue_title: issue.title,
-            root_cause: diagnosis.rootCause?.description || 'Unknown',
+        const template = await unifiedTemplateService.getTemplateByContext({
+            mode: 'fix',
+            step: 'apply_fix',
+            templateType: 'fix-suggestions',
             language: issue.language
+        }, {
+            category: 'document-templates',
+            name: 'fix-suggestions',
+            variables: {
+                issue_title: issue.title,
+                root_cause: diagnosis.rootCause?.description || 'Unknown',
+                language: issue.language
+            }
         });
 
         return {

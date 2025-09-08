@@ -1,27 +1,20 @@
 /**
- * Prompt Manager - mg_kiro MCP Server Prompt Management System
- * Handles prompt loading, caching, template variable replacement, and version control
+ * Prompt Manager - mg_kiro MCP Server Prompt Management System (Decoupled)
+ * 解耦版本：移除HTTP API自调用，直接使用服务依赖
  */
 
-import { readFileSync, existsSync, statSync, watch } from 'fs';
-import { join, dirname, extname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import TemplateReader from './services/template-reader.js';
 
 /**
- * Prompt Manager Class
- * Manages all prompt-related operations for the MCP server
+ * Prompt Manager Class  
+ * 无循环依赖的提示词管理器
  */
 export class PromptManager {
   constructor(config = {}) {
     this.config = {
-      promptsPath: config.promptsPath || join(__dirname, '..', 'prompts'),
       cacheEnabled: config.cacheEnabled !== false,
       cacheTTL: config.cacheTTL || 3600000, // 1 hour in milliseconds
-      watchFiles: config.watchFiles !== false,
-      version: config.version || '1.0.0',
+      version: config.version || '2.0.0',
       ...config
     };
 
@@ -29,30 +22,25 @@ export class PromptManager {
     this.cache = new Map();
     this.cacheTimestamps = new Map();
     
-    // File watchers
-    this.watchers = new Map();
-    
     // Template variables registry
     this.globalVariables = new Map();
+    
+    // 依赖注入 - 使用TemplateReader替代HTTP API调用
+    this.templateReader = new TemplateReader();
     
     this._initializeManager();
   }
 
   /**
-   * Initialize the prompt manager
+   * Initialize the prompt manager (Service-based Mode)
    */
   _initializeManager() {
-    console.log('Initializing Prompt Manager...');
+    console.log('[PromptManager] Initializing with direct service dependencies...');
     
     // Set up global variables
     this._setupGlobalVariables();
     
-    // Start file watching if enabled
-    if (this.config.watchFiles) {
-      this._setupFileWatching();
-    }
-    
-    console.log('Prompt Manager initialized');
+    console.log('[PromptManager] Initialized without HTTP dependencies');
   }
 
   /**
@@ -66,331 +54,208 @@ export class PromptManager {
   }
 
   /**
-   * Set up file watching for automatic cache invalidation
-   */
-  _setupFileWatching() {
-    const watchPath = this.config.promptsPath;
-    
-    if (!existsSync(watchPath)) {
-      console.warn(`Prompts directory not found: ${watchPath}`);
-      return;
-    }
-
-    try {
-      const watcher = watch(watchPath, { recursive: true }, (eventType, filename) => {
-        if (filename && extname(filename) === '.md') {
-          console.log(`Prompt file changed: ${filename}`);
-          this._invalidateCache(filename);
-        }
-      });
-
-      this.watchers.set('prompts', watcher);
-      console.log('File watching enabled for prompts directory');
-    } catch (error) {
-      console.error('Failed to set up file watching:', error);
-    }
-  }
-
-  /**
-   * Load a prompt by category and name
-   * @param {string} category - Prompt category (modes, templates, snippets)
-   * @param {string} name - Prompt name (without .md extension)
-   * @param {Object} variables - Template variables to replace
+   * Load a prompt using direct service calls (no HTTP)
+   * @param {string} category - Prompt category
+   * @param {string} name - Prompt name  
+   * @param {Object} variables - Template variables
    * @returns {Promise<Object>} Prompt content and metadata
    */
   async loadPrompt(category, name, variables = {}) {
     const cacheKey = `${category}/${name}`;
     
     // Check cache first
-    if (this.config.cacheEnabled && this._isCacheValid(cacheKey)) {
-      console.log(`Loading prompt from cache: ${cacheKey}`);
+    if (this.config.cacheEnabled && this._isValidCache(cacheKey)) {
       return this._getCachedPrompt(cacheKey, variables);
     }
 
-    // Load from file
-    console.log(`Loading prompt from file: ${cacheKey}`);
-    const promptData = await this._loadPromptFromFile(category, name);
-    
-    // Cache the raw prompt
-    if (this.config.cacheEnabled) {
-      this._cachePrompt(cacheKey, promptData);
-    }
-
-    // Process template variables
-    return this._processPrompt(promptData, variables);
-  }
-
-  /**
-   * Load prompt from file system
-   * @param {string} category - Prompt category
-   * @param {string} name - Prompt name
-   * @returns {Promise<Object>} Raw prompt data
-   */
-  async _loadPromptFromFile(category, name) {
-    const filePath = join(this.config.promptsPath, category, `${name}.md`);
-    
-    if (!existsSync(filePath)) {
-      throw new Error(`Prompt file not found: ${filePath}`);
-    }
-
     try {
-      const content = readFileSync(filePath, 'utf-8');
-      const stats = statSync(filePath);
+      // Direct service call instead of HTTP API
+      const templateData = await this.templateReader.readTemplate(category, name);
       
-      const promptData = {
+      if (!templateData) {
+        throw new Error(`Template not found: ${category}/${name}`);
+      }
+
+      // Process template with variables
+      const processedContent = this._processPrompt(templateData.content, variables);
+      
+      const promptResult = {
         category,
         name,
-        content,
-        filePath,
-        size: stats.size,
-        lastModified: stats.mtime,
-        version: this._extractVersion(content),
-        metadata: this._parseMetadata(content)
+        content: processedContent,
+        rawContent: templateData.content,
+        variables: variables,
+        size: processedContent.length,
+        lastModified: templateData.lastModified,
+        cached: false,
+        source: 'direct'
       };
 
-      return promptData;
+      // Cache the result
+      if (this.config.cacheEnabled) {
+        this._cachePrompt(cacheKey, templateData.content, templateData.lastModified);
+      }
+
+      return promptResult;
+
     } catch (error) {
-      throw new Error(`Failed to load prompt file ${filePath}: ${error.message}`);
+      console.error(`[PromptManager] Load prompt failed ${category}/${name}:`, error.message);
+      throw error;
     }
   }
 
   /**
-   * Process prompt with template variables
-   * @param {Object} promptData - Raw prompt data
-   * @param {Object} variables - Variables to replace
-   * @returns {Object} Processed prompt
+   * List prompts in a category
    */
-  _processPrompt(promptData, variables = {}) {
-    const allVariables = {
-      ...this._getGlobalVariables(),
-      ...variables
-    };
+  async listPrompts(category = null) {
+    try {
+      if (category) {
+        const templates = await this.templateReader.listTemplates(category);
+        return {
+          prompts: templates.map(t => ({
+            name: t.name,
+            category: t.category,
+            size: t.size
+          })),
+          category,
+          total: templates.length
+        };
+      }
 
-    let processedContent = promptData.content;
+      // List all categories
+      const categories = ['templates', 'modes', 'analysis-templates', 'document-templates', 'snippets'];
+      const allPrompts = [];
+      
+      for (const cat of categories) {
+        const templates = await this.templateReader.listTemplates(cat);
+        allPrompts.push(...templates.map(t => ({
+          name: t.name,
+          category: t.category,
+          size: t.size
+        })));
+      }
+
+      return {
+        prompts: allPrompts,
+        total: allPrompts.length,
+        categories: categories.length
+      };
+
+    } catch (error) {
+      console.error('[PromptManager] List prompts failed:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Process template content with variables
+   * @private
+   */
+  _processPrompt(content, variables = {}) {
+    if (!content || typeof content !== 'string') {
+      return content;
+    }
+
+    let processed = content;
     
-    // Replace template variables
-    for (const [key, value] of Object.entries(allVariables)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    // Merge global variables with provided variables
+    const allVariables = new Map(this.globalVariables);
+    Object.entries(variables).forEach(([key, value]) => {
+      allVariables.set(key, value);
+    });
+
+    // Replace variables
+    for (const [key, value] of allVariables) {
       const resolvedValue = typeof value === 'function' ? value() : value;
-      processedContent = processedContent.replace(regex, resolvedValue);
+      const pattern = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
+      processed = processed.replace(pattern, String(resolvedValue));
     }
 
-    return {
-      ...promptData,
-      content: processedContent,
-      processedAt: new Date().toISOString(),
-      variables: allVariables
-    };
+    return processed;
   }
 
   /**
-   * Get resolved global variables
-   * @returns {Object} Global variables with resolved values
+   * Check if cached data is valid
+   * @private
    */
-  _getGlobalVariables() {
-    const resolved = {};
-    for (const [key, value] of this.globalVariables) {
-      resolved[key] = typeof value === 'function' ? value() : value;
-    }
-    return resolved;
-  }
-
-  /**
-   * Extract version from prompt content
-   * @param {string} content - Prompt content
-   * @returns {string} Version string
-   */
-  _extractVersion(content) {
-    const versionMatch = content.match(/\*模式版本:\s*v?(\d+\.\d+\.\d+)\*/);
-    return versionMatch ? versionMatch[1] : '1.0.0';
-  }
-
-  /**
-   * Parse metadata from prompt content
-   * @param {string} content - Prompt content
-   * @returns {Object} Metadata object
-   */
-  _parseMetadata(content) {
-    const metadata = {};
-    
-    // Extract title
-    const titleMatch = content.match(/^#\s+(.+)$/m);
-    if (titleMatch) {
-      metadata.title = titleMatch[1];
-    }
-
-    // Extract description
-    const descMatch = content.match(/##\s+模式描述\s*\n(.+)/);
-    if (descMatch) {
-      metadata.description = descMatch[1].trim();
-    }
-
-    // Extract available templates
-    const templatesMatch = content.match(/### 可用模板\s*\n((?:- .+\n?)*)/);
-    if (templatesMatch) {
-      metadata.templates = templatesMatch[1]
-        .split('\n')
-        .filter(line => line.trim().startsWith('-'))
-        .map(line => line.replace(/^-\s*`?([^`\s]+)`?.*/, '$1'));
-    }
-
-    return metadata;
-  }
-
-  /**
-   * Check if cache is valid
-   * @param {string} cacheKey - Cache key
-   * @returns {boolean} Cache validity
-   */
-  _isCacheValid(cacheKey) {
+  _isValidCache(cacheKey) {
     if (!this.cache.has(cacheKey)) {
       return false;
     }
 
     const timestamp = this.cacheTimestamps.get(cacheKey);
     const now = Date.now();
-    
     return (now - timestamp) < this.config.cacheTTL;
   }
 
   /**
-   * Get cached prompt and process with new variables
-   * @param {string} cacheKey - Cache key
-   * @param {Object} variables - Template variables
-   * @returns {Object} Processed prompt
+   * Get cached prompt
+   * @private
    */
   _getCachedPrompt(cacheKey, variables) {
-    const cachedData = this.cache.get(cacheKey);
-    return this._processPrompt(cachedData, variables);
+    const cachedContent = this.cache.get(cacheKey);
+    const processedContent = this._processPrompt(cachedContent, variables);
+    
+    const [category, name] = cacheKey.split('/');
+    
+    return {
+      category,
+      name,
+      content: processedContent,
+      rawContent: cachedContent,
+      variables,
+      size: processedContent.length,
+      cached: true,
+      source: 'cache'
+    };
   }
 
   /**
-   * Cache a prompt
-   * @param {string} cacheKey - Cache key
-   * @param {Object} promptData - Prompt data to cache
+   * Cache prompt data
+   * @private
    */
-  _cachePrompt(cacheKey, promptData) {
-    this.cache.set(cacheKey, promptData);
+  _cachePrompt(cacheKey, content, lastModified) {
+    this.cache.set(cacheKey, content);
     this.cacheTimestamps.set(cacheKey, Date.now());
   }
 
   /**
-   * Invalidate cache for a specific file
-   * @param {string} filename - File that changed
-   */
-  _invalidateCache(filename) {
-    const cacheKey = filename.replace('.md', '').replace(/\\/g, '/');
-    
-    if (this.cache.has(cacheKey)) {
-      this.cache.delete(cacheKey);
-      this.cacheTimestamps.delete(cacheKey);
-      console.log(`Cache invalidated for: ${cacheKey}`);
-    }
-  }
-
-  /**
-   * Get all available prompts by category
-   * @param {string} category - Category to list
-   * @returns {Array} List of available prompts
-   */
-  async listPrompts(category = null) {
-    const categories = category ? [category] : ['modes', 'templates', 'snippets'];
-    const prompts = {};
-
-    for (const cat of categories) {
-      const categoryPath = join(this.config.promptsPath, cat);
-      
-      if (!existsSync(categoryPath)) {
-        prompts[cat] = [];
-        continue;
-      }
-
-      try {
-        const fs = await import('fs');
-        const files = await fs.promises.readdir(categoryPath);
-        prompts[cat] = files
-          .filter(file => file.endsWith('.md'))
-          .map(file => file.replace('.md', ''));
-      } catch (error) {
-        console.error(`Failed to list prompts in ${cat}:`, error);
-        prompts[cat] = [];
-      }
-    }
-
-    return category ? prompts[category] : prompts;
-  }
-
-  /**
-   * Set a global variable
-   * @param {string} key - Variable key
-   * @param {*} value - Variable value (can be a function)
-   */
-  setGlobalVariable(key, value) {
-    this.globalVariables.set(key, value);
-    console.log(`Global variable set: ${key}`);
-  }
-
-  /**
-   * Get cache statistics
-   * @returns {Object} Cache statistics
-   */
-  getCacheStats() {
-    return {
-      enabled: this.config.cacheEnabled,
-      size: this.cache.size,
-      entries: Array.from(this.cache.keys()),
-      ttl: this.config.cacheTTL,
-      hitRate: this._calculateHitRate()
-    };
-  }
-
-  /**
-   * Calculate cache hit rate (simplified)
-   * @returns {number} Hit rate percentage
-   */
-  _calculateHitRate() {
-    return this.cache.size > 0 ? 85 : 0;
-  }
-
-  /**
-   * Clear all caches
+   * Clear cache
    */
   clearCache() {
     this.cache.clear();
     this.cacheTimestamps.clear();
-    console.log('All caches cleared');
+    this.templateReader.clearCache();
+    console.log('[PromptManager] Cache cleared');
   }
 
   /**
-   * Get prompt manager status
-   * @returns {Object} Manager status
+   * Get manager status
    */
   getStatus() {
     return {
       version: this.config.version,
-      promptsPath: this.config.promptsPath,
+      initialized: true,
       cacheEnabled: this.config.cacheEnabled,
-      watchFiles: this.config.watchFiles,
-      cache: this.getCacheStats(),
-      globalVariables: Object.keys(Object.fromEntries(this.globalVariables)),
-      watchers: Array.from(this.watchers.keys())
+      cacheSize: this.cache.size,
+      globalVariables: Array.from(this.globalVariables.keys()),
+      type: 'direct-service',
+      dependencies: ['template-reader']
     };
   }
 
   /**
-   * Cleanup resources
+   * Set global variable
    */
-  destroy() {
-    // Close file watchers
-    for (const [name, watcher] of this.watchers) {
-      watcher.close();
-      console.log(`Closed file watcher: ${name}`);
-    }
-    
-    // Clear caches
-    this.clearCache();
-    
-    console.log('Prompt Manager destroyed');
+  setGlobalVariable(key, value) {
+    this.globalVariables.set(key, value);
+  }
+
+  /**
+   * Remove global variable
+   */
+  removeGlobalVariable(key) {
+    return this.globalVariables.delete(key);
   }
 }
 

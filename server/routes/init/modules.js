@@ -179,7 +179,7 @@ export function createModulesRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 5, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 5,
                 stepName: 'analyze_modules'
             });
@@ -251,7 +251,7 @@ export function createModulesRoutes(services) {
 
         } catch (err) {
             console.error('[Modules] 获取模块详情失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -405,7 +405,7 @@ export function createModulesRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 6, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 7,
                 stepName: 'generate_module_docs'
             });
@@ -481,7 +481,7 @@ export function createModulesRoutes(services) {
 
         } catch (err) {
             console.error('[ModuleDocs] 获取模块文档失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

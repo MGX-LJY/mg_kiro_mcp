@@ -6,11 +6,95 @@
 import { Router } from 'express';
 import LanguageIntelligenceService from '../../services/language-intelligence-service.js';
 import TemplateEngineService from '../../services/template-engine-service.js';
-import { success, error, workflowSuccess } from '../../utils/response.js';
+import UnifiedTemplateService from '../../services/unified-template-service.js';
+import { success, error, workflowSuccess } from '../../services/response-service.js';
 
 const router = Router();
 const languageService = new LanguageIntelligenceService();
 const templateService = new TemplateEngineService();
+const unifiedTemplateService = new UnifiedTemplateService();
+
+/**
+ * 🎯 POST /template/get-by-context
+ * 核心统一模板获取端点 - 中央化模板管理的核心API
+ */
+router.post('/get-by-context', async (req, res) => {
+    try {
+        const {
+            contextData,
+            templateRequest = {}
+        } = req.body;
+
+        // 验证必需参数
+        if (!contextData) {
+            return error(res, '缺少必需参数: contextData', 400);
+        }
+
+        // 执行统一模板获取
+        const result = await unifiedTemplateService.getTemplateByContext(contextData, templateRequest);
+
+        const responseData = {
+            ...result,
+            metadata: {
+                ...result.metadata,
+                endpoint: 'template/get-by-context',
+                timestamp: new Date().toISOString(),
+                unifiedTemplateService: true
+            }
+        };
+
+        return success(res, responseData, '统一模板获取成功');
+
+    } catch (err) {
+        console.error('[Unified Template] 获取失败:', err);
+        return error(res, `统一模板获取失败: ${err.message}`, 500);
+    }
+});
+
+/**
+ * GET /template/service-stats
+ * 获取统一模板服务统计信息
+ */
+router.get('/service-stats', async (req, res) => {
+    try {
+        const stats = unifiedTemplateService.getServiceStats();
+
+        const responseData = {
+            ...stats,
+            metadata: {
+                endpoint: 'template/service-stats', 
+                timestamp: new Date().toISOString()
+            }
+        };
+
+        return success(res, responseData, '获取统一模板服务统计成功');
+
+    } catch (err) {
+        console.error('[Unified Template Stats] 获取失败:', err);
+        return error(res, `获取统计信息失败: ${err.message}`, 500);
+    }
+});
+
+/**
+ * POST /template/clear-cache
+ * 清除统一模板服务缓存
+ */
+router.post('/clear-cache', async (req, res) => {
+    try {
+        unifiedTemplateService.clearCache();
+
+        const responseData = {
+            cleared: true,
+            timestamp: new Date().toISOString()
+        };
+
+        return success(res, responseData, '统一模板服务缓存已清除');
+
+    } catch (err) {
+        console.error('[Unified Template Cache] 清除失败:', err);
+        return error(res, `缓存清除失败: ${err.message}`, 500);
+    }
+});
 
 /**
  * POST /template/generate

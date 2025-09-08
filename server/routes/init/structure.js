@@ -64,7 +64,7 @@ export function createStructureRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 0, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 1,
                 stepName: 'scan_structure'
             });
@@ -100,7 +100,7 @@ export function createStructureRoutes(services) {
 
         } catch (err) {
             console.error('[Structure] 获取项目结构摘要失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

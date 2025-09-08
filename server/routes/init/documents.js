@@ -65,27 +65,41 @@ export function createDocumentsRoutes(services) {
                 projectName: structureResult.projectPath.split('/').pop()
             };
 
-            // 获取AI分析模板
-            const analysisTemplate = await promptService.loadPrompt(
-                'analysis-templates',
-                'system-architecture-analysis'
-            );
+            // 通过统一模板服务获取AI分析模板
+            const analysisTemplate = await services.unifiedTemplateService.getTemplateByContext({
+                projectPath: workflow.projectPath,
+                mode: 'analyze',
+                step: 'analyze_architecture',
+                templateType: 'system-architecture-analysis',
+                language: languageResult.detection.primaryLanguage
+            }, {
+                category: 'analysis-templates',
+                name: 'system-architecture-analysis'
+            });
 
-            // 获取文档生成模板
-            const documentTemplate = await promptService.loadPrompt(
-                'document-templates', 
-                'system-architecture-generation'
-            );
+            // 通过统一模板服务获取文档生成模板
+            const documentTemplate = await services.unifiedTemplateService.getTemplateByContext({
+                projectPath: workflow.projectPath,
+                mode: 'create',
+                step: 'generate_architecture', 
+                templateType: 'system-architecture-generation',
+                language: languageResult.detection.primaryLanguage
+            }, {
+                category: 'document-templates',
+                name: 'system-architecture-generation'
+            });
 
             // 构建AI驱动的分析数据包
             const aiAnalysisPackage = {
                 rawData: rawAnalysisData,
                 analysisTemplate: {
-                    content: analysisTemplate.content,
+                    content: analysisTemplate.template.content,
+                    intelligence: analysisTemplate.intelligence,
                     instructions: "使用此模板对项目数据进行系统架构分析"
                 },
                 documentTemplate: {
-                    content: documentTemplate.content, 
+                    content: documentTemplate.template.content,
+                    intelligence: documentTemplate.intelligence,
                     instructions: "基于分析结果生成系统架构文档"
                 },
                 processingInstructions: {
@@ -189,26 +203,40 @@ export function createDocumentsRoutes(services) {
                 analysisTimestamp: new Date().toISOString()
             };
 
-            // 获取模块目录分析和生成模板
-            const moduleAnalysisTemplate = await promptService.loadPrompt(
-                'analysis-templates',
-                'modules-catalog-analysis'
-            );
+            // 通过统一模板服务获取模块目录分析和生成模板
+            const moduleAnalysisTemplate = await services.unifiedTemplateService.getTemplateByContext({
+                projectPath: workflow.projectPath,
+                mode: 'analyze',
+                step: 'analyze_modules',
+                templateType: 'modules-catalog-analysis',
+                language: languageResult.detection.primaryLanguage
+            }, {
+                category: 'analysis-templates', 
+                name: 'modules-catalog-analysis'
+            });
 
-            const catalogTemplate = await promptService.loadPrompt(
-                'document-templates',
-                'modules-catalog-generation'
-            );
+            const catalogTemplate = await services.unifiedTemplateService.getTemplateByContext({
+                projectPath: workflow.projectPath,
+                mode: 'create',
+                step: 'generate_catalog',
+                templateType: 'modules-catalog-generation',
+                language: languageResult.detection.primaryLanguage
+            }, {
+                category: 'document-templates',
+                name: 'modules-catalog-generation'
+            });
 
             // 构建AI驱动的模块分析包
             const aiModulePackage = {
                 rawData: rawModuleData,
                 analysisTemplate: {
-                    content: moduleAnalysisTemplate.content,
+                    content: moduleAnalysisTemplate.template.content,
+                    intelligence: moduleAnalysisTemplate.intelligence,
                     instructions: "分析项目模块结构和依赖关系"
                 },
                 documentTemplate: {
-                    content: catalogTemplate.content,
+                    content: catalogTemplate.template.content,
+                    intelligence: catalogTemplate.intelligence,
                     instructions: "生成模块目录文档"
                 },
                 processingGuidance: {

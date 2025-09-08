@@ -200,7 +200,7 @@ export function createPerformanceRoutes(services) {
             
         } catch (err) {
             console.error('[PerformanceScan] AI性能分析失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -269,7 +269,7 @@ export function createPerformanceRoutes(services) {
             
         } catch (err) {
             console.error('[PerformanceReport] 获取性能分析报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

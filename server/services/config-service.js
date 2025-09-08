@@ -1,11 +1,16 @@
 /**
- * 配置服务
- * 管理系统配置、环境变量和配置验证
+ * 统一配置服务
+ * 管理系统配置、环境变量、JSON文件和配置验证
  */
 
+import fs from 'fs';
+import path from 'path';
+
 class ConfigService {
-    constructor() {
+    constructor(configDir = './config') {
+        this.configDir = configDir;
         this.config = this._loadDefaultConfig();
+        this._loadConfigFiles();
         this._applyEnvironmentOverrides();
     }
 
@@ -62,6 +67,60 @@ class ConfigService {
                 }
             }
         };
+    }
+
+    /**
+     * 加载JSON配置文件
+     */
+    _loadConfigFiles() {
+        try {
+            // 加载主配置文件
+            const mainConfigPath = path.join(this.configDir, 'mcp.config.json');
+            if (fs.existsSync(mainConfigPath)) {
+                const mainConfig = JSON.parse(fs.readFileSync(mainConfigPath, 'utf-8'));
+                this._mergeConfig(this.config, mainConfig);
+                console.log('✅ 主配置文件已加载');
+            }
+
+            // 加载模式配置文件
+            const modesConfigPath = path.join(this.configDir, 'modes.config.json');
+            if (fs.existsSync(modesConfigPath)) {
+                const modesConfig = JSON.parse(fs.readFileSync(modesConfigPath, 'utf-8'));
+                this.config.modes = modesConfig;
+                console.log('✅ 模式配置文件已加载');
+            }
+
+            // 加载模板配置文件
+            const templatesConfigPath = path.join(this.configDir, 'templates.config.json');
+            if (fs.existsSync(templatesConfigPath)) {
+                const templatesConfig = JSON.parse(fs.readFileSync(templatesConfigPath, 'utf-8'));
+                this.config.templates = templatesConfig;
+                console.log('✅ 模板配置文件已加载');
+            }
+
+        } catch (error) {
+            console.warn('⚠️ 配置文件加载失败，使用默认配置:', error.message);
+        }
+    }
+
+    /**
+     * 深度合并配置对象
+     * @param {Object} target - 目标配置
+     * @param {Object} source - 源配置
+     */
+    _mergeConfig(target, source) {
+        for (const key in source) {
+            if (source.hasOwnProperty(key)) {
+                if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+                    if (!target[key] || typeof target[key] !== 'object') {
+                        target[key] = {};
+                    }
+                    this._mergeConfig(target[key], source[key]);
+                } else {
+                    target[key] = source[key];
+                }
+            }
+        }
     }
 
     /**

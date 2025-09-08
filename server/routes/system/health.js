@@ -100,7 +100,7 @@ export function createHealthRoutes(services) {
             success(res, metricsData);
         } catch (err) {
             console.error('Failed to get metrics:', err);
-            error(res, 'Failed to retrieve metrics', 500);
+            return error(res, 'Failed to retrieve metrics', 500);
         }
     });
 

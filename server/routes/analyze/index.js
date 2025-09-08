@@ -128,7 +128,7 @@ export function createAnalyzeModeRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeMode] 状态检查失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -304,7 +304,7 @@ export function createAnalyzeModeRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeMode] 获取帮助信息失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -381,7 +381,7 @@ export function createAnalyzeModeRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeMode] 获取分析预设失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -445,7 +445,7 @@ export function createAnalyzeModeRoutes(services) {
 
         } catch (err) {
             console.error('[RunPreset] 执行预设分析失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

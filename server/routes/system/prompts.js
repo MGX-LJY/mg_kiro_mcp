@@ -42,7 +42,7 @@ export function createPromptsRoutes(services) {
             const fallbackData = {
                 fallback: _getSystemPrompt(server.currentMode)
             };
-            error(res, 'Failed to load system prompt', 500, fallbackData);
+            return error(res, 'Failed to load system prompt', 500, fallbackData);
         }
     });
 
@@ -81,7 +81,7 @@ export function createPromptsRoutes(services) {
             console.log(`Mode switched: ${previousMode} -> ${mode}`);
         } catch (err) {
             console.error('Mode switch failed:', err);
-            error(res, 'Mode switch failed', 500);
+            return error(res, 'Mode switch failed', 500);
         }
     });
 
@@ -121,7 +121,7 @@ export function createPromptsRoutes(services) {
                 prompt: `Mode ${req.params.mode} prompt placeholder`,
                 templates: _getModeTemplates(req.params.mode)
             };
-            error(res, `Failed to load prompt for mode ${req.params.mode}`, 500, fallbackData);
+            return error(res, `Failed to load prompt for mode ${req.params.mode}`, 500, fallbackData);
         }
     });
 
@@ -137,7 +137,7 @@ export function createPromptsRoutes(services) {
             success(res, prompts);
         } catch (err) {
             console.error('Failed to list prompts:', err);
-            error(res, 'Failed to list prompts', 500);
+            return error(res, 'Failed to list prompts', 500);
         }
     });
 
@@ -151,7 +151,7 @@ export function createPromptsRoutes(services) {
             success(res, status);
         } catch (err) {
             console.error('Failed to get prompt manager status:', err);
-            error(res, 'Failed to get prompt manager status', 500);
+            return error(res, 'Failed to get prompt manager status', 500);
         }
     });
 
@@ -169,7 +169,7 @@ export function createPromptsRoutes(services) {
             });
         } catch (err) {
             console.error('Failed to clear cache:', err);
-            error(res, 'Failed to clear cache', 500);
+            return error(res, 'Failed to clear cache', 500);
         }
     });
 
@@ -188,7 +188,7 @@ export function createPromptsRoutes(services) {
             success(res, template);
         } catch (err) {
             console.error(`Failed to load template ${req.params.name}:`, err);
-            error(res, 'Template not found', 404);
+            return error(res, 'Template not found', 404);
         }
     });
 

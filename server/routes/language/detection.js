@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import LanguageIntelligenceService from '../../services/language-intelligence-service.js';
-import { success, error, workflowSuccess } from '../../utils/response.js';
+import { success, error, workflowSuccess } from '../../services/response-service.js';
 
 const router = Router();
 const languageService = new LanguageIntelligenceService();

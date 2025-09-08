@@ -103,7 +103,7 @@ export function createQualityRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeQuality] 代码质量分析失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'analyze_quality',
                 targetPath: req.body.targetPath
             });
@@ -177,7 +177,7 @@ export function createQualityRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeComplexity] 复杂度分析失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'analyze_complexity'
             });
         }
@@ -245,7 +245,7 @@ export function createQualityRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeCoverage] 覆盖率分析失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'analyze_coverage'
             });
         }
@@ -321,7 +321,7 @@ export function createQualityRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeTechnicalDebt] 技术债务分析失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'analyze_technical_debt'
             });
         }
@@ -469,7 +469,7 @@ export function createQualityRoutes(services) {
             
         } catch (err) {
             console.error('[QualityScan] AI代码质量扫描失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -537,7 +537,7 @@ export function createQualityRoutes(services) {
             
         } catch (err) {
             console.error('[QualityReport] 获取质量分析报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

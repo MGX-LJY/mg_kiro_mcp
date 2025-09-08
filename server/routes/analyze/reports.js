@@ -100,7 +100,7 @@ export function createReportsRoutes(services) {
 
         } catch (err) {
             console.error('[GenerateReport] 生成报告失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'generate_report'
             });
         }
@@ -160,7 +160,7 @@ export function createReportsRoutes(services) {
 
         } catch (err) {
             console.error('[GenerateTrendReport] 生成趋势报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -227,7 +227,7 @@ export function createReportsRoutes(services) {
 
         } catch (err) {
             console.error('[ExportData] 导出数据失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -289,7 +289,7 @@ export function createReportsRoutes(services) {
 
         } catch (err) {
             console.error('[GenerateComparison] 生成对比报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

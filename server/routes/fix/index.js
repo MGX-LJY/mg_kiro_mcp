@@ -116,7 +116,7 @@ export function createFixModeRoutes(services) {
 
         } catch (err) {
             console.error('[FixMode] 状态检查失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -243,7 +243,7 @@ export function createFixModeRoutes(services) {
 
         } catch (err) {
             console.error('[FixMode] 获取帮助信息失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -331,7 +331,7 @@ export function createFixModeRoutes(services) {
 
         } catch (err) {
             console.error('[FixMode] 获取统计信息失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -454,7 +454,7 @@ export function createFixModeRoutes(services) {
 
         } catch (err) {
             console.error('[FixMode] 获取工作流模板失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

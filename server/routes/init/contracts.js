@@ -199,7 +199,7 @@ export function createContractsRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 7, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 8,
                 stepName: 'generate_contracts'
             });
@@ -281,7 +281,7 @@ export function createContractsRoutes(services) {
 
         } catch (err) {
             console.error('[Contracts] 获取集成契约文档失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 8,
                 stepName: 'contracts'
             });
@@ -370,7 +370,7 @@ export function createContractsRoutes(services) {
 
         } catch (err) {
             console.error('[Contracts] 获取集成关系图失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

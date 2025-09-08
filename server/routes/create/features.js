@@ -103,7 +103,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[AnalyzeRequirements] 需求分析失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'analyze_requirements'
             });
         }
@@ -270,7 +270,7 @@ export function createFeatureRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 2, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 2,
                 stepName: 'tech_design'
             });
@@ -311,7 +311,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[TechDesign] 获取技术设计文档失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -489,7 +489,7 @@ export function createFeatureRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 3, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 3,
                 stepName: 'generate_todo'
             });
@@ -530,7 +530,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[TodoGeneration] 获取开发任务列表失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -706,7 +706,7 @@ export function createFeatureRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 4, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 4,
                 stepName: 'generate_architecture'
             });
@@ -895,7 +895,7 @@ export function createFeatureRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 5, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 5,
                 stepName: 'generate_modules'
             });
@@ -1099,7 +1099,7 @@ export function createFeatureRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 6, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 6,
                 stepName: 'update_contracts'
             });
@@ -1140,7 +1140,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[ArchGeneration] 获取代码架构详情失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -1178,7 +1178,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[ModulesGeneration] 获取模块文档详情失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -1216,7 +1216,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[ContractsUpdate] 获取集成契约详情失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -1304,7 +1304,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[UpdateUserStories] 用户故事文档更新失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'update_user_stories'
             });
         }
@@ -1396,7 +1396,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[PlanFeature] 功能规划失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'plan_feature'
             });
         }
@@ -1449,7 +1449,7 @@ export function createFeatureRoutes(services) {
                 deployment: _generateDeploymentArchitecture(featureName),
                 
                 // 架构文档
-                documentation: await _generateArchitectureDocumentation(featureName, language, promptService)
+                documentation: await _generateArchitectureDocumentation(featureName, language, services.unifiedTemplateService)
             };
 
             const executionTime = Date.now() - startTime;
@@ -1482,7 +1482,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[DesignArchitecture] 架构设计失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'design_architecture'
             });
         }
@@ -1563,7 +1563,7 @@ export function createFeatureRoutes(services) {
 
         } catch (err) {
             console.error('[CreatePrototype] 原型创建失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'create_prototype'
             });
         }
@@ -1690,16 +1690,25 @@ function _generateEstimation(requirements, complexity) {
  * @param {Object} promptService - 提示词服务
  * @returns {Object} 技术设计
  */
-async function _generateTechnicalDesign(featureName, requirements, language, promptService) {
+async function _generateTechnicalDesign(featureName, requirements, language, unifiedTemplateService) {
     try {
-        const template = await promptService.loadPrompt('templates', 'technical-design', {
-            feature_name: featureName,
-            requirements: requirements.join('\n- '),
+        const template = await unifiedTemplateService.getTemplateByContext({
+            mode: 'create',
+            step: 'technical_design',
+            templateType: 'technical-design',
             language
+        }, {
+            category: 'document-templates',
+            name: 'technical-design',
+            variables: {
+                feature_name: featureName,
+                requirements: requirements.join('\n- '),
+                language
+            }
         });
 
         return {
-            overview: template.content || `技术设计概述：${featureName}功能实现方案`,
+            overview: template.template.content || `技术设计概述：${featureName}功能实现方案`,
             components: _generateTechnicalComponents(featureName, language),
             dataFlow: _generateTechnicalDataFlow(requirements),
             apis: _generateTechnicalAPIs(featureName, requirements),
@@ -2077,14 +2086,23 @@ function _generateDeploymentArchitecture(featureName) {
     };
 }
 
-async function _generateArchitectureDocumentation(featureName, language, promptService) {
+async function _generateArchitectureDocumentation(featureName, language, unifiedTemplateService) {
     try {
-        const template = await promptService.loadPrompt('templates', 'architecture-documentation', {
-            feature_name: featureName,
+        const template = await unifiedTemplateService.getTemplateByContext({
+            mode: 'create',
+            step: 'architecture_docs',
+            templateType: 'architecture-documentation',
             language
+        }, {
+            category: 'document-templates',
+            name: 'architecture-documentation',
+            variables: {
+                feature_name: featureName,
+                language
+            }
         });
         
-        return template.content;
+        return template.template.content;
     } catch (error) {
         return `# ${featureName} 架构文档\n\n## 概述\n\n${featureName}功能的技术架构说明`;
     }
@@ -2763,15 +2781,24 @@ function _groupIntoEpics(userStories) {
  * @param {Object} promptService - 提示词服务
  * @returns {string} 文档内容
  */
-async function _generateUserStoriesDocument(userStories, format, templateType, promptService) {
+async function _generateUserStoriesDocument(userStories, format, templateType, unifiedTemplateService) {
     try {
-        const template = await promptService.loadPrompt('templates', `user-stories-${templateType}`, {
-            stories_count: userStories.length,
-            format: format
+        const template = await unifiedTemplateService.getTemplateByContext({
+            mode: 'create',
+            step: 'user_stories',
+            templateType: `user-stories-${templateType}`,
+            language: 'general'
+        }, {
+            category: 'document-templates',
+            name: `user-stories-${templateType}`,
+            variables: {
+                stories_count: userStories.length,
+                format: format
+            }
         });
         
-        if (template && template.content) {
-            return template.content;
+        if (template && template.template && template.template.content) {
+            return template.template.content;
         }
     } catch (error) {
         // 使用默认模板

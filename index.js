@@ -18,53 +18,43 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 // 服务组件导入
+import ConfigService from './server/services/config-service.js';
 import { PromptManager } from './server/prompt-manager.js';
 import { ProjectScanner } from './server/analyzers/project-scanner.js';
 import { WorkflowState } from './server/services/workflow-state-service.js';
 import WorkflowService from './server/services/workflow-service.js';
 import { EnhancedLanguageDetector } from './server/analyzers/enhanced-language-detector.js';
 import { FileContentAnalyzer } from './server/analyzers/file-content-analyzer.js';
+import UnifiedTemplateService from './server/services/unified-template-service.js';
 import { createAppRoutes } from './server/routes/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 /**
- * Load configuration file
+ * Load configuration using unified ConfigService
  */
 function loadConfig() {
-  const configPath = join(__dirname, 'config', 'mcp.config.json');
+  const configService = new ConfigService(join(__dirname, 'config'));
+  const validation = configService.validate();
   
-  if (existsSync(configPath)) {
-    try {
-      const configData = readFileSync(configPath, 'utf-8');
-      return JSON.parse(configData);
-    } catch (error) {
-      console.warn('⚠️  Failed to load config file, using defaults:', error.message);
-    }
-  } else {
-    console.log('ℹ️  Config file not found, using default configuration');
+  if (!validation.valid) {
+    console.error('❌ 配置验证失败:', validation.errors);
+    process.exit(1);
   }
   
-  // Default configuration
+  if (validation.warnings.length > 0) {
+    validation.warnings.forEach(warning => console.warn('⚠️', warning));
+  }
+  
+  console.log('✅ 统一配置服务已加载');
   return {
-    server: {
-      port: 3000,
-      host: 'localhost',
-      cors: {
-        enabled: true,
-        origins: ['http://localhost:*']
-      }
-    },
-    modes: {
-      default: 'init',
-      available: ['init', 'create', 'fix', 'analyze'],
-      auto_switch: true
-    },
-    cache: {
-      enabled: true,
-      ttl: 3600
-    }
+    server: configService.getServerConfig(),
+    mcp: configService.getMCPConfig(),
+    prompt: configService.getPromptConfig(),
+    workflow: configService.getWorkflowConfig(),
+    analyzers: configService.getAnalyzersConfig(),
+    configService // 传递完整服务实例
   };
 }
 
@@ -134,6 +124,11 @@ async function createApp(config = {}, wsManager = null) {
   const workflowService = new WorkflowService(workflowState);
   const enhancedLanguageDetector = new EnhancedLanguageDetector();
   const fileContentAnalyzer = new FileContentAnalyzer();
+  
+  // 初始化统一模板服务
+  console.log('Initializing Unified Template Service...');
+  const unifiedTemplateService = new UnifiedTemplateService();
+  console.log('Unified Template Service initialized');
 
   // ========== 路由设置 ==========
 
@@ -144,6 +139,7 @@ async function createApp(config = {}, wsManager = null) {
     projectScanner,
     languageDetector: enhancedLanguageDetector,
     fileAnalyzer: fileContentAnalyzer,
+    unifiedTemplateService,
     configService: { config: serverConfig }
   };
 
@@ -156,7 +152,36 @@ async function createApp(config = {}, wsManager = null) {
     projectScanner,
     languageDetector: enhancedLanguageDetector,
     enhancedLanguageDetector,
-    fileAnalyzer: fileContentAnalyzer
+    fileAnalyzer: fileContentAnalyzer,
+    
+    // WebSocket广播函数
+    _broadcastModeChange(previousMode, newMode, context = {}) {
+      const message = {
+        type: 'modeChanged',
+        previousMode,
+        currentMode: newMode,
+        context,
+        timestamp: new Date().toISOString()
+      };
+      
+      // 广播给所有WebSocket客户端
+      if (this.clients) {
+        this.clients.forEach((client, clientId) => {
+          if (client.ws && client.ws.readyState === 1) {
+            try {
+              client.ws.send(JSON.stringify(message));
+              console.log(`[WebSocket] Mode change broadcast sent to ${clientId}: ${previousMode} -> ${newMode}`);
+            } catch (error) {
+              console.error(`[WebSocket] Failed to broadcast mode change to ${clientId}:`, error);
+            }
+          }
+        });
+      }
+      
+      // 更新当前模式
+      this.currentMode = newMode;
+      console.log(`[Mode] Switched from ${previousMode} to ${newMode}`);
+    }
   };
 
   // 集成模块化路由系统

@@ -221,7 +221,7 @@ export function createDependenciesRoutes(services) {
             
         } catch (err) {
             console.error('[DependencyScan] AI依赖分析失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -295,7 +295,7 @@ export function createDependenciesRoutes(services) {
             
         } catch (err) {
             console.error('[DepsReport] 获取依赖分析报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

@@ -178,7 +178,7 @@ export function createLanguageRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 1, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 2,
                 stepName: 'detect_language'
             });
@@ -214,7 +214,7 @@ export function createLanguageRoutes(services) {
 
         } catch (err) {
             console.error('[Language] 获取语言检测报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

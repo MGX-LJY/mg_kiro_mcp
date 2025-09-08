@@ -113,7 +113,7 @@ export function createIssuesRoutes(services) {
 
         } catch (err) {
             console.error('[ReportIssue] 问题报告失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 action: 'report_issue'
             });
         }
@@ -180,7 +180,7 @@ export function createIssuesRoutes(services) {
 
         } catch (err) {
             console.error('[GetIssues] 获取问题列表失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -224,7 +224,7 @@ export function createIssuesRoutes(services) {
 
         } catch (err) {
             console.error('[GetIssue] 获取问题详情失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -303,7 +303,7 @@ export function createIssuesRoutes(services) {
 
         } catch (err) {
             console.error('[UpdateIssueStatus] 更新问题状态失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -346,7 +346,7 @@ export function createIssuesRoutes(services) {
 
         } catch (err) {
             console.error('[DeleteIssue] 删除问题失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -392,13 +392,22 @@ function _calculatePriority(severity, category, reproducible) {
  * @param {Object} promptService - 提示词服务
  * @returns {Object} 分析结果
  */
-async function _analyzeIssue(title, description, stackTrace, promptService) {
+async function _analyzeIssue(title, description, stackTrace, unifiedTemplateService) {
     try {
-        // 使用提示词服务进行问题分析
-        const template = await promptService.loadPrompt('templates', 'issue-analysis', {
-            title,
-            description,
-            stack_trace: stackTrace || 'No stack trace provided'
+        // 使用统一模板服务进行问题分析
+        const template = await unifiedTemplateService.getTemplateByContext({
+            mode: 'fix',
+            step: 'analyze_issue',
+            templateType: 'issue-analysis',
+            language: 'general'
+        }, {
+            category: 'analysis-templates',
+            name: 'issue-analysis',
+            variables: {
+                title,
+                description,
+                stack_trace: stackTrace || 'No stack trace provided'
+            }
         });
 
         return {
@@ -933,7 +942,7 @@ function _getDiagnosticSteps(category) {
             
         } catch (err) {
             console.error('[IdentifyScope] AI范围识别失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 1,
                 stepName: 'identify_scope'
             });
@@ -992,7 +1001,7 @@ function _getDiagnosticSteps(category) {
             
         } catch (err) {
             console.error('[AffectedModules] 获取受影响模块失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -1153,7 +1162,7 @@ function _getDiagnosticSteps(category) {
             
         } catch (err) {
             console.error('[FindDocs] AI文档检索失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 2,
                 stepName: 'find_docs'
             });
@@ -1205,7 +1214,7 @@ function _getDiagnosticSteps(category) {
             
         } catch (err) {
             console.error('[RelevantDocs] 获取相关文档失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 
@@ -1387,7 +1396,7 @@ function _getDiagnosticSteps(category) {
             
         } catch (err) {
             console.error('[AssessImpact] AI影响度评估失败:', err);
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 3,
                 stepName: 'assess_impact'
             });
@@ -1453,7 +1462,7 @@ function _getDiagnosticSteps(category) {
             
         } catch (err) {
             console.error('[ImpactReport] 获取影响评估报告失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

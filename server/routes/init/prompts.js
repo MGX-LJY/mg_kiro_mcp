@@ -206,7 +206,7 @@ export function createLanguagePromptsRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 6, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 6,
                 stepName: 'generate_prompts'
             });
@@ -319,7 +319,7 @@ export function createLanguagePromptsRoutes(services) {
 
         } catch (err) {
             console.error('[LanguagePrompts] 获取语言特定提示词失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

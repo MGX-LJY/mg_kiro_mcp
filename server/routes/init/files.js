@@ -206,7 +206,7 @@ export function createFilesRoutes(services) {
                 workflowService.updateStep(req.body.workflowId, 3, 'failed', null, err.message);
             }
             
-            error(res, err.message, 500, {
+            return error(res, err.message, 500, {
                 step: 3,
                 stepName: 'scan_files'
             });
@@ -266,7 +266,7 @@ export function createFilesRoutes(services) {
 
         } catch (err) {
             console.error('[Files] 获取文件概览失败:', err);
-            error(res, err.message, 500);
+            return error(res, err.message, 500);
         }
     });
 

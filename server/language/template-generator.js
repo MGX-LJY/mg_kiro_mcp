@@ -425,6 +425,137 @@ ${suggestions.map(s => `- ${s}`).join('\n')}
             }
         };
     }
+
+    /**
+     * 批量处理多个模板生成请求
+     * @param {Array} requests - 批量请求数组
+     * @param {Object} batchOptions - 批量选项
+     * @returns {Object} 批量处理结果
+     */
+    async batchGenerate(requests, batchOptions = {}) {
+        const results = [];
+        const errors = [];
+        const startTime = Date.now();
+        
+        const maxConcurrency = Math.min(batchOptions.maxConcurrency || 5, 10);
+        const failFast = batchOptions.failFast || false;
+        
+        // 验证请求格式
+        for (let i = 0; i < requests.length; i++) {
+            const request = requests[i];
+            if (!request.languageDetection || !request.languageDetection.language) {
+                errors.push({
+                    index: i,
+                    error: `请求${i + 1}缺少有效的languageDetection`,
+                    request: request
+                });
+                
+                if (failFast) {
+                    throw new Error(`批量请求验证失败: 请求${i + 1}格式不正确`);
+                }
+            }
+        }
+
+        // 处理请求（使用简单的并发控制）
+        const processRequest = async (request, index) => {
+            try {
+                const { languageDetection, options = {} } = request;
+                
+                // 模拟项目路径（在语言已知的情况下）
+                const projectPath = options.projectPath || process.cwd();
+                
+                // 确定模板类型
+                const templateType = options.templateType || 'user-story';
+                
+                // 调用单个模板生成
+                const result = await this.generateTemplate(projectPath, templateType);
+                
+                return {
+                    index,
+                    success: true,
+                    result,
+                    request,
+                    processingTime: Date.now() - startTime
+                };
+                
+            } catch (error) {
+                return {
+                    index,
+                    success: false,
+                    error: error.message,
+                    request,
+                    processingTime: Date.now() - startTime
+                };
+            }
+        };
+
+        // 批量处理（简单的并发控制）
+        const chunks = [];
+        for (let i = 0; i < requests.length; i += maxConcurrency) {
+            chunks.push(requests.slice(i, i + maxConcurrency));
+        }
+
+        for (const chunk of chunks) {
+            const chunkPromises = chunk.map((request, chunkIndex) => {
+                const globalIndex = chunks.indexOf(chunk) * maxConcurrency + chunkIndex;
+                return processRequest(request, globalIndex);
+            });
+            
+            try {
+                const chunkResults = await Promise.all(chunkPromises);
+                
+                chunkResults.forEach(result => {
+                    if (result.success) {
+                        results.push(result);
+                    } else {
+                        errors.push(result);
+                    }
+                });
+                
+                if (failFast && errors.length > 0) {
+                    break;
+                }
+                
+            } catch (error) {
+                if (failFast) {
+                    throw new Error(`批量处理失败: ${error.message}`);
+                }
+                errors.push({
+                    error: `批量处理异常: ${error.message}`,
+                    chunk: chunk
+                });
+            }
+        }
+
+        const endTime = Date.now();
+        const totalTime = endTime - startTime;
+
+        return {
+            processed: requests.length,
+            successful: results.length,
+            failed: errors.length,
+            results: results.map(r => ({
+                request: r.request,
+                result: r.result,
+                processingTime: r.processingTime
+            })),
+            errors: errors.length > 0 ? errors : undefined,
+            summary: {
+                totalRequests: requests.length,
+                successfulRequests: results.length,
+                failedRequests: errors.length,
+                successRate: ((results.length / requests.length) * 100).toFixed(2) + '%'
+            },
+            performance: {
+                totalTime,
+                averageTime: totalTime / requests.length,
+                maxConcurrency,
+                chunksProcessed: chunks.length
+            },
+            batchId: `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            timestamp: new Date().toISOString()
+        };
+    }
 }
 
 export default LanguageTemplateGenerator;
