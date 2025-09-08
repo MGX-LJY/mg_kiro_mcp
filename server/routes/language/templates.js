@@ -103,16 +103,35 @@ router.post('/clear-cache', async (req, res) => {
 router.post('/generate', async (req, res) => {
     try {
         const {
+            templateName,
+            variables,
             languageDetection,
             options = {}
         } = req.body;
 
-        // 验证必需参数
-        if (!languageDetection) {
-            return error(res, '缺少必需参数: languageDetection', 400);
+        // 支持多种参数格式
+        let finalLanguageDetection = languageDetection;
+        
+        // 如果没有languageDetection，但有templateName，创建默认的
+        if (!languageDetection && templateName) {
+            finalLanguageDetection = {
+                language: options.language || 'general',
+                confidence: 1.0
+            };
         }
 
-        if (!languageDetection.language) {
+        // 验证参数
+        if (!finalLanguageDetection && !templateName) {
+            return error(res, '缺少必需参数: languageDetection 或 templateName', 400, {
+                requiredParams: ['languageDetection', 'templateName'],
+                example: {
+                    templateName: 'test',
+                    variables: { name: 'example' }
+                }
+            });
+        }
+
+        if (finalLanguageDetection && !finalLanguageDetection.language) {
             return error(res, 'languageDetection缺少language字段', 400);
         }
 
@@ -126,7 +145,7 @@ router.post('/generate', async (req, res) => {
 
         // 生成模板
         const result = await languageService.generateLanguageTemplate(
-            languageDetection,
+            finalLanguageDetection,
             generateOptions
         );
 

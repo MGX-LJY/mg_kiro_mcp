@@ -37,15 +37,24 @@ export function error(res, error = 'Internal Server Error', status = 500, detail
 
 /**
  * 验证错误响应
- * @param {Object} res - Express响应对象
+ * @param {Object} res - Express响应对象  
+ * @param {Object|string} errors - 验证错误（对象或字符串）
  * @param {string} message - 错误信息
- * @param {Object} fields - 验证失败的字段
  */
-export function validationError(res, message = 'Validation failed', fields = null) {
+export function validationError(res, errors = {}, message = 'Validation failed') {
+    // 支持多种参数格式
+    let finalErrors = errors;
+    let finalMessage = message;
+    
+    if (typeof errors === 'string') {
+        finalMessage = errors;
+        finalErrors = {};
+    }
+    
     return res.status(400).json({
         success: false,
-        error: message,
-        fields,
+        error: finalMessage,
+        errors: finalErrors,
         timestamp: new Date().toISOString()
     });
 }
@@ -53,12 +62,16 @@ export function validationError(res, message = 'Validation failed', fields = nul
 /**
  * 未找到响应
  * @param {Object} res - Express响应对象
- * @param {string} resource - 资源名称
+ * @param {string} message - 错误信息
+ * @param {string} resource - 资源名称  
  */
-export function notFound(res, resource = 'Resource') {
+export function notFound(res, message = null, resource = 'Resource') {
+    const errorMessage = message || `${resource} not found`;
+    
     return res.status(404).json({
         success: false,
-        error: `${resource} not found`,
+        error: errorMessage,
+        resource: resource !== 'Resource' ? resource : undefined,
         timestamp: new Date().toISOString()
     });
 }
@@ -66,20 +79,17 @@ export function notFound(res, resource = 'Resource') {
 /**
  * 工作流响应 (专用于工作流API)
  * @param {Object} res - Express响应对象
- * @param {number} step - 步骤号
- * @param {string} stepName - 步骤名称
- * @param {string} workflowId - 工作流ID
  * @param {Object} data - 数据
- * @param {Object} workflowProgress - 工作流进度
+ * @param {string} workflow - 工作流名称
+ * @param {string} message - 消息
+ * @param {number} status - 状态码
  */
-export function workflowSuccess(res, step, stepName, workflowId, data, workflowProgress = null) {
-    return res.json({
+export function workflowSuccess(res, data, workflow, message = 'Workflow success', status = 200) {
+    return res.status(status).json({
         success: true,
-        step,
-        stepName,
-        workflowId,
+        message,
+        workflow,
         data,
-        workflowProgress,
         timestamp: new Date().toISOString()
     });
 }

@@ -21,20 +21,25 @@ export function createMCPRoutes(services) {
      */
     router.post('/handshake', (req, res) => {
         try {
-            const { version, clientId, capabilities } = req.body;
+            // 支持多种参数格式
+            const version = req.body.version || req.body.protocolVersion || '1.0.0';
+            const clientInfo = req.body.clientInfo || {};
+            const clientId = req.body.clientId || clientInfo.name || `client_${Date.now()}`;
+            const capabilities = req.body.capabilities || {};
             
-            if (!version || !_isCompatibleVersion(version)) {
+            if (!_isCompatibleVersion(version)) {
                 return error(res, 'Unsupported MCP version', 400, {
-                    supportedVersions: ['1.0.0', '1.1.0']
+                    supportedVersions: ['1.0.0', '1.1.0'],
+                    receivedVersion: version
                 });
             }
 
             const connectionId = _generateConnectionId();
             const connection = {
                 id: connectionId,
-                clientId: clientId || `client_${Date.now()}`,
+                clientId,
                 version,
-                capabilities: capabilities || {},
+                capabilities,
                 createdAt: new Date().toISOString(),
                 lastHeartbeat: new Date().toISOString()
             };
