@@ -69,6 +69,37 @@ export function createStructureRoutes(services) {
                     step: 1,
                     stepName: 'scan_structure',
                     timestamp: new Date().toISOString()
+                },
+                workflowGuide: {
+                    message: "🎯 工作流引导：第1步已完成，请继续后续步骤",
+                    nextStep: {
+                        step: 2,
+                        name: "detect-language",
+                        title: "智能语言检测",
+                        api: `POST /mode/init/detect-language`,
+                        requiredBody: {
+                            workflowId: workflowId,
+                            projectPath: projectPath
+                        }
+                    },
+                    workflowOverview: {
+                        currentProgress: "1/8 步骤已完成",
+                        completedSteps: ["✅ 项目结构扫描"],
+                        nextSteps: [
+                            "2️⃣ 智能语言检测",
+                            "3️⃣ 文件内容通读", 
+                            "4️⃣ 基础文档生成",
+                            "5️⃣ 深度模块分析",
+                            "6️⃣ 语言提示词生成",
+                            "7️⃣ 模块文档生成",
+                            "8️⃣ 集成契约文档"
+                        ]
+                    },
+                    tips: [
+                        "💡 使用工作流ID进行后续API调用",
+                        "🔄 每个步骤都会验证前置依赖",
+                        "📊 可通过 GET /workflow/status/{workflowId} 查看进度"
+                    ]
                 }
             };
 

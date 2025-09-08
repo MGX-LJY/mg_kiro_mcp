@@ -10,7 +10,7 @@
 
 import express from 'express';
 import { success, error, workflowSuccess } from '../../services/response-service.js';
-import FileContentAnalyzer from '../../analyzers/file-content-analyzer.js';
+import { FileContentAnalyzer } from '../../analyzers/file-content-analyzer.js';
 
 /**
  * 创建文件内容分析路由

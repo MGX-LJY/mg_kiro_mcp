@@ -3,7 +3,7 @@
     "system-architecture": {
       "id": "system-architecture",
       "name": "系统架构",
-      "path": "./prompts/templates/system-architecture.md",
+      "path": "./prompts/generation/architecture/system-architecture-generation.md",
       "category": "architecture",
       "priority": 1,
       "variables": [
@@ -18,7 +18,7 @@
     "modules-catalog": {
       "id": "modules-catalog",
       "name": "模块目录",
-      "path": "./prompts/templates/modules-catalog.md",
+      "path": "./prompts/generation/modules/modules-catalog-generation.md",
       "category": "documentation",
       "priority": 2,
       "variables": [

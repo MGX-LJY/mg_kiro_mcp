@@ -11,7 +11,7 @@
 import express from 'express';
 import { success, error, workflowSuccess } from '../../services/response-service.js';
 import { AIResponseHandlerService } from '../../services/ai-response-handler.js';
-import EnhancedLanguageDetector from '../../analyzers/enhanced-language-detector.js';
+import { EnhancedLanguageDetector } from '../../analyzers/enhanced-language-detector.js';
 
 /**
  * 创建语言识别路由
@@ -58,21 +58,25 @@ export function createLanguageRoutes(services) {
             
             // 智能集成：基于第1步的智能分层分析结果
             const step1IntelligentAnalysis = step1Results.intelligentAnalysis;
-            const enhancedResults = await enhancedDetector.performEnhancedDetection({
-                // 基于智能分层分析的上下文
-                contextData: {
-                    architectureInsights: step1IntelligentAnalysis?.architectureInsights,
-                    moduleInsights: step1IntelligentAnalysis?.moduleInsights,
-                    totalModules: step1IntelligentAnalysis?.moduleInsights?.totalModules || 0,
-                    designPatterns: step1IntelligentAnalysis?.architectureInsights?.designPatterns || {}
-                },
-                // 检测配置
-                detectionOptions: {
-                    deepFrameworkAnalysis: true,
-                    performanceOptimization: true,
-                    includeVersionAnalysis: true
+            const enhancedResults = await enhancedDetector.detectLanguageEnhanced(
+                projectPathToUse, 
+                step1Results, 
+                {
+                    // 基于智能分层分析的上下文
+                    contextData: {
+                        architectureInsights: step1IntelligentAnalysis?.architectureInsights,
+                        moduleInsights: step1IntelligentAnalysis?.moduleInsights,
+                        totalModules: step1IntelligentAnalysis?.moduleInsights?.totalModules || 0,
+                        designPatterns: step1IntelligentAnalysis?.architectureInsights?.designPatterns || {}
+                    },
+                    // 检测配置
+                    detectionOptions: {
+                        deepFrameworkAnalysis: true,
+                        performanceOptimization: true,
+                        includeVersionAnalysis: true
+                    }
                 }
-            });
+            );
             
             // 转换增强检测结果为兼容格式
             const detectionResult = _convertEnhancedResultsToLegacyFormat(
@@ -81,8 +85,16 @@ export function createLanguageRoutes(services) {
                 projectPathToUse
             );
             
+            // 创建AI分析数据包
+            const aiAnalysisPackage = {
+                step1Data: step1Results,
+                enhancedResults: enhancedResults,
+                contextData: step1IntelligentAnalysis,
+                analysisTimestamp: new Date().toISOString()
+            };
+            
             // 更新步骤状态为已完成
-            workflowService.updateStep(workflowId, 2, 'completed', {
+            workflowService.updateStep(workflowId, 1, 'completed', {
                 ...detectionResult,
                 aiAnalysisPackage // 包含AI分析数据包
             });

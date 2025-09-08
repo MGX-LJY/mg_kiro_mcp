@@ -19,7 +19,6 @@ import { createModulesAnalysisRoutes } from './init/modules-analysis.js'; // 第
 import { createModulesDocsRoutes } from './init/modules-docs.js';         // 第7步：模块文档生成
 import { createLanguagePromptsRoutes } from './init/prompts.js';
 import { createContractsRoutes } from './init/contracts.js';
-import { createInitDataRoutes } from './init/data.js';
 
 // Create模式路由
 import { createCreateModeRoutes } from './create/index.js';
@@ -99,9 +98,6 @@ export function createAppRoutes(services, server) {
     const contractsRouter = createContractsRoutes(routerServices);
     router.use('/mode/init', contractsRouter);
 
-    // 数据提供服务 (重构架构：AI主导分析)
-    const initDataRouter = createInitDataRoutes(routerServices);
-    router.use('/mode/init', initDataRouter);
 
     // ========== Create模式工作流路由 ==========
     
