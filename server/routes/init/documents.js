@@ -6,6 +6,7 @@
 import express from 'express';
 import { success, error, workflowSuccess } from '../../services/response-service.js';
 import { AIResponseHandlerService } from '../../services/ai-response-handler.js';
+import { UnifiedUltraDetailedGenerator } from '../../services/unified-ultra-detailed-generator.js';
 
 /**
  * 创建文档生成路由
@@ -90,7 +91,24 @@ export function createDocumentsRoutes(services) {
                 name: 'system-architecture-generation'
             });
 
-            // 构建AI驱动的分析数据包
+            // 执行超详细架构分析和文档生成
+            const ultraDetailedGenerator = new UnifiedUltraDetailedGenerator(workflow.projectPath);
+            console.log(`[Documents] 初始化UnifiedUltraDetailedGenerator进行架构文档生成`);
+            
+            // 生成超详细的架构文档
+            const realArchitectureResults = await ultraDetailedGenerator.generateUltraDetailedDocuments({
+                structureAnalysis: structureResult.realAnalysisResults, // 使用第1步真实结果
+                languageAnalysis: languageResult.realAnalysisResults,   // 使用第2步真实结果
+                filesAnalysis: filesResult.realAnalysisResults,         // 使用第3步真实结果
+                language: languageResult.detection.primaryLanguage,
+                focusAreas: ['architecture', 'system-design', 'technical-stack', 'deployment'],
+                includeCodeExamples: true,
+                includeDeploymentGuides: true,
+                includeBestPractices: true
+            });
+            console.log(`[Documents] 完成超详细架构文档生成`);
+
+            // 构建增强的AI驱动分析数据包（兼容现有模板系统）
             const aiAnalysisPackage = {
                 rawData: rawAnalysisData,
                 analysisTemplate: {
@@ -104,25 +122,37 @@ export function createDocumentsRoutes(services) {
                     instructions: "基于分析结果生成系统架构文档"
                 },
                 processingInstructions: {
-                    mode: "ai-driven-analysis",
+                    mode: "unified-ultra-detailed-generation",
                     steps: [
                         "1. 使用analysisTemplate分析rawData",
-                        "2. 基于分析结果使用documentTemplate生成文档"
+                        "2. 融合UnifiedUltraDetailedGenerator的超详细分析",
+                        "3. 基于综合分析使用documentTemplate生成增强文档"
                     ],
-                    expectedOutput: "完整的system-architecture.md文档内容"
+                    expectedOutput: "完整的system-architecture.md文档内容（超详细版）"
+                },
+                // 新增：超详细分析结果
+                ultraDetailedResults: {
+                    documentTypes: realArchitectureResults.documentTypes,
+                    totalDocuments: realArchitectureResults.totalDocuments,
+                    generationStrategy: realArchitectureResults.generationStrategy,
+                    architectureInsights: realArchitectureResults.architectureInsights,
+                    technicalRecommendations: realArchitectureResults.technicalRecommendations
                 }
             };
 
             const executionTime = Date.now() - startTime;
 
-            // 构建AI驱动的响应数据
+            // 构建增强的AI驱动响应数据
             const responseData = {
                 ...aiAnalysisPackage,
                 generation: {
                     executionTime,
-                    analysisMode: 'ai-driven',
+                    analysisMode: 'unified-ultra-detailed-generation',
                     dataProvider: 'mcp-server',
-                    aiCapabilities: ['system-analysis', 'architecture-design', 'document-generation'],
+                    aiCapabilities: ['system-analysis', 'architecture-design', 'document-generation', 'ultra-detailed-generation'],
+                    realDocumentsGenerated: realArchitectureResults.totalDocuments,
+                    ultraDetailedFeatures: ['deployment-guides', 'best-practices', 'code-examples', 'technical-recommendations'],
+                    generationStrategy: realArchitectureResults.generationStrategy,
                     language: languageResult.detection.primaryLanguage,
                     timestamp: new Date().toISOString()
                 },
@@ -134,15 +164,21 @@ export function createDocumentsRoutes(services) {
                 },
                 metadata: {
                     templateFiles: ['system-architecture-analysis.md', 'system-architecture-generation.md'],
+                    ultraDetailedDocuments: realArchitectureResults.documentTypes,
                     tokenOptimization: 'enabled',
-                    analysisComplexity: 'high'
+                    analysisComplexity: 'ultra-high',
+                    enhancementLevel: 'unified-ultra-detailed'
                 }
             };
 
             // 更新步骤状态为已完成
             workflowService.updateStep(workflowId, 4, 'completed', responseData);
 
-            console.log(`[Documents] 系统架构文档生成完成: ${executionTime}ms`);
+            console.log(`[Documents] 超详细架构文档生成完成: ${executionTime}ms`);
+            console.log(`[Documents] - 真实文档: ${realArchitectureResults.totalDocuments} 个超详细文档`);
+            console.log(`[Documents] - 文档类型: ${realArchitectureResults.documentTypes?.length || 0} 种类型`);
+            console.log(`[Documents] - 生成策略: ${realArchitectureResults.generationStrategy || 'ultra-detailed'}`);
+            console.log(`[Documents] - 增强功能: 部署指南、最佳实践、代码示例、技术建议`);
 
             workflowSuccess(res, 4, 'generate_architecture', workflowId, responseData, workflowService.getProgress(workflowId));
             
@@ -227,7 +263,23 @@ export function createDocumentsRoutes(services) {
                 name: 'modules-catalog-generation'
             });
 
-            // 构建AI驱动的模块分析包
+            // 执行超详细模块目录分析和文档生成
+            const ultraDetailedGenerator = new UnifiedUltraDetailedGenerator(workflow.projectPath);
+            console.log(`[Documents] 初始化UnifiedUltraDetailedGenerator进行模块目录文档生成`);
+            
+            // 生成超详细的模块目录文档
+            const realCatalogResults = await ultraDetailedGenerator.generateUltraDetailedDocuments({
+                filesAnalysis: filesResult.realAnalysisResults,         // 使用第3步真实结果
+                moduleAnalysis: workflow.results.step_5?.realAnalysisResults, // 如果有第5步结果也使用
+                language: languageResult.detection.primaryLanguage,
+                focusAreas: ['modules', 'dependencies', 'catalog', 'quality-metrics'],
+                includeCodeExamples: true,
+                includeDependencyGraphs: true,
+                includeQualityMetrics: true
+            });
+            console.log(`[Documents] 完成超详细模块目录文档生成`);
+
+            // 构建增强的AI驱动模块分析包（兼容现有模板系统）
             const aiModulePackage = {
                 rawData: rawModuleData,
                 analysisTemplate: {
@@ -241,22 +293,35 @@ export function createDocumentsRoutes(services) {
                     instructions: "生成模块目录文档"
                 },
                 processingGuidance: {
-                    focus: ['module-categorization', 'dependency-mapping', 'quality-assessment'],
-                    outputFormat: 'modules-catalog.md'
+                    mode: "unified-ultra-detailed-generation",
+                    focus: ['module-categorization', 'dependency-mapping', 'quality-assessment', 'ultra-detailed-insights'],
+                    outputFormat: 'modules-catalog.md（超详细版）'
+                },
+                // 新增：超详细分析结果
+                ultraDetailedResults: {
+                    documentTypes: realCatalogResults.documentTypes,
+                    totalDocuments: realCatalogResults.totalDocuments,
+                    generationStrategy: realCatalogResults.generationStrategy,
+                    moduleInsights: realCatalogResults.moduleInsights,
+                    dependencyAnalysis: realCatalogResults.dependencyAnalysis,
+                    qualityAssessment: realCatalogResults.qualityAssessment
                 }
             };
 
             const executionTime = Date.now() - startTime;
 
-            // 构建AI驱动的响应数据
+            // 构建增强的AI驱动响应数据
             const responseData = {
                 ...aiModulePackage,
                 generation: {
                     executionTime,
-                    analysisMode: 'ai-driven',
+                    analysisMode: 'unified-ultra-detailed-generation',
                     dataProvider: 'mcp-server',
                     modulesAnalyzed: filesResult.files.length,
-                    aiCapabilities: ['module-categorization', 'dependency-analysis', 'quality-metrics'],
+                    realDocumentsGenerated: realCatalogResults.totalDocuments,
+                    ultraDetailedFeatures: ['dependency-graphs', 'quality-metrics', 'code-examples', 'module-insights'],
+                    generationStrategy: realCatalogResults.generationStrategy,
+                    aiCapabilities: ['module-categorization', 'dependency-analysis', 'quality-metrics', 'ultra-detailed-generation'],
                     timestamp: new Date().toISOString()
                 },
                 workflow: {
@@ -267,12 +332,19 @@ export function createDocumentsRoutes(services) {
                 },
                 metadata: {
                     templateFiles: ['modules-catalog-analysis.md', 'modules-catalog-generation.md'],
+                    ultraDetailedDocuments: realCatalogResults.documentTypes,
                     tokenOptimization: 'enabled',
-                    complexityLevel: 'medium'
+                    complexityLevel: 'ultra-high',
+                    enhancementLevel: 'unified-ultra-detailed'
                 }
             };
 
-            console.log(`[Documents] 模块目录文档生成完成: ${executionTime}ms`);
+            console.log(`[Documents] 超详细模块目录文档生成完成: ${executionTime}ms`);
+            console.log(`[Documents] - 真实文档: ${realCatalogResults.totalDocuments} 个超详细文档`);
+            console.log(`[Documents] - 文档类型: ${realCatalogResults.documentTypes?.length || 0} 种类型`);
+            console.log(`[Documents] - 分析模块: ${filesResult.files.length} 个模块`);
+            console.log(`[Documents] - 生成策略: ${realCatalogResults.generationStrategy || 'ultra-detailed'}`);
+            console.log(`[Documents] - 增强功能: 依赖关系图、质量指标、代码示例、模块洞察`);
 
             workflowSuccess(res, 4, 'generate_catalog', workflowId, responseData, workflowService.getProgress(workflowId));
             
@@ -446,5 +518,28 @@ export function createDocumentsRoutes(services) {
 
     return router;
 }
+
+/**
+ * 重构更新 (Step 7):
+ * 
+ * 集成了UnifiedUltraDetailedGenerator增强文档生成功能：
+ * - POST /generate-architecture - 系统架构文档生成 (已升级使用UnifiedUltraDetailedGenerator)
+ * - POST /generate-catalog - 模块目录文档生成 (已升级使用UnifiedUltraDetailedGenerator)
+ * - POST /save-architecture - 保存AI生成的架构文档
+ * - POST /process-ai-package - 批量处理AI数据包
+ * 
+ * 关键改进：
+ * - 融合超详细分析结果到传统模板系统
+ * - 保持向后兼容现有unifiedTemplateService调用
+ * - 增强AI分析数据包，提供超详细洞察
+ * - 新增部署指南、最佳实践、代码示例、技术建议生成
+ * - 提供原始超详细结果供高级用户使用
+ * - 增强日志记录显示真实生成统计
+ * 
+ * 架构理念：
+ * - 使用真实前置步骤分析结果 (step_1, step_2, step_3, step_5)
+ * - 双重生成策略：模板驱动 + 超详细分析驱动
+ * - 提供legacy格式兼容和增强格式选择
+ */
 
 export default createDocumentsRoutes;

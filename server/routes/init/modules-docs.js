@@ -7,6 +7,7 @@
 import express from 'express';
 import { success, error, workflowSuccess } from '../../services/response-service.js';
 import { AIResponseHandlerService } from '../../services/ai-response-handler.js';
+import { UnifiedUltraDetailedGenerator } from '../../services/unified-ultra-detailed-generator.js';
 
 /**
  * 创建模块文档生成路由
@@ -76,67 +77,57 @@ export function createModulesDocsRoutes(services) {
                 }
             };
             
-            // AI生成文档结果 (实际使用时由AI完成)
-            const mockModuleDocuments = [
-                {
-                    moduleName: 'index',
-                    moduleId: 'server_index_js',
-                    relativePath: 'index.js',
-                    category: 'core',
-                    language: primaryLanguage,
-                    generatedAt: new Date().toISOString(),
-                    overview: {
-                        title: 'index 模块文档',
-                        description: 'index 是一个核心模块',
-                        keyMetrics: { lines: 150, functions: 8, classes: 0 }
-                    },
-                    sections: [
-                        { title: '模块概述', type: 'overview', content: {} },
-                        { title: '接口定义', type: 'interfaces', content: {} },
-                        { title: '使用方法', type: 'usage', content: {} }
-                    ],
-                    usage: { quickStart: '', commonPatterns: '', troubleshooting: '' },
-                    examples: [],
-                    metadata: {
-                        complexity: { rating: 'medium', score: 25 },
-                        dependencies: { imports: 0, exports: 0 },
-                        metrics: { lines: 150, functions: 8 }
-                    },
-                    recommendations: []
-                }
-            ];
+            // 执行真实的超详细文档生成
+            const ultraDetailedGenerator = new UnifiedUltraDetailedGenerator(workflow.projectPath);
+            console.log(`[ModulesDocs] 初始化UnifiedUltraDetailedGenerator，项目路径: ${workflow.projectPath}`);
             
-            const mockDocumentationSummary = {
-                total: mockModuleDocuments.length,
-                categories: { core: 1, business: 0, utility: 0 },
-                complexity: { low: 0, medium: 1, high: 0 },
-                sections: { total: 3, average: 3 },
-                coverage: { withExamples: 0, withInterfaces: 1, withDependencies: 0 }
-            };
+            // 基于第5步的模块分析结果生成超详细文档
+            const realDocumentationResults = await ultraDetailedGenerator.generateUltraDetailedDocuments({
+                moduleAnalysis: moduleAnalysisResult.realAnalysisResults, // 使用真实分析结果
+                language: primaryLanguage,
+                focusAreas: ['modules', 'interfaces', 'documentation', 'examples'],
+                includeCodeExamples: true,
+                includeUsagePatterns: true,
+                includeBestPractices: true
+            });
+            console.log(`[ModulesDocs] 完成真实超详细文档生成`);
             
-            // 使用模拟结果（实际使用时由AI生成）
-            const moduleDocuments = mockModuleDocuments;
-            const documentationSummary = mockDocumentationSummary;
+            // 转换结果为legacy格式保持向后兼容
+            const { moduleDocuments, documentationSummary } = _convertUltraDetailedResultsToLegacyFormat(
+                realDocumentationResults, 
+                moduleAnalysisResult.analysis.modules,
+                primaryLanguage
+            );
 
             const executionTime = Date.now() - startTime;
 
-            // AI驱动文档生成响应
+            // 真实超详细文档生成响应
             const responseData = {
                 // AI文档生成数据包 (提供给AI使用)
                 aiDocumentationPackage,
                 
-                // 模拟文档结果 (实际由AI生成)
+                // 真实超详细文档结果 (使用UnifiedUltraDetailedGenerator)
                 moduleDocuments,
                 summary: documentationSummary,
                 
+                // 真实生成原始数据 (用于高级用户)
+                realDocumentationResults: {
+                    documentTypes: realDocumentationResults.documentTypes,
+                    totalDocuments: realDocumentationResults.totalDocuments,
+                    generationStrategy: realDocumentationResults.generationStrategy,
+                    processingTime: realDocumentationResults.processingTime
+                },
+                
                 // 执行信息
                 execution: {
-                    mode: 'ai-driven',
+                    mode: 'unified-ultra-detailed-generation',
                     executionTime,
                     modulesDocumented: moduleDocuments.length,
                     totalSections: moduleDocuments.reduce((sum, doc) => sum + doc.sections.length, 0),
+                    realDocumentsGenerated: realDocumentationResults.totalDocuments,
+                    documentTypes: realDocumentationResults.documentTypes?.length || 0,
                     timestamp: new Date().toISOString(),
-                    tokensReduced: '预计45-50%令牌消耗',
+                    generationStrategy: 'ultra-detailed-with-examples-and-patterns',
                     aiDocumentTemplate: 'module-documentation-generation.md'
                 },
                 
@@ -153,10 +144,12 @@ export function createModulesDocsRoutes(services) {
             // 更新步骤状态为已完成（第7步，索引7，存储为step_7）
             workflowService.updateStep(workflowId, 7, 'completed', responseData);
 
-            console.log(`[ModulesDocs] 模块文档生成完成 (AI驱动): ${executionTime}ms，生成了 ${moduleDocuments.length} 个模块文档`);
-            console.log(`[ModulesDocs] - 模式: AI智能文档生成`);
-            console.log(`[ModulesDocs] - 令牌优化: 预计45-50%消耗`);
-            console.log(`[ModulesDocs] - AI模板: module-documentation-generation.md`);
+            console.log(`[ModulesDocs] 真实超详细文档生成完成: ${executionTime}ms`);
+            console.log(`[ModulesDocs] - 真实文档: ${realDocumentationResults.totalDocuments} 个超详细文档`);
+            console.log(`[ModulesDocs] - 文档类型: ${realDocumentationResults.documentTypes?.length || 0} 种类型`);
+            console.log(`[ModulesDocs] - Legacy模块: ${moduleDocuments.length} 个模块文档`);
+            console.log(`[ModulesDocs] - 总章节: ${moduleDocuments.reduce((sum, doc) => sum + doc.sections.length, 0)} 个章节`);
+            console.log(`[ModulesDocs] - 生成策略: ${realDocumentationResults.generationStrategy || 'ultra-detailed'}`);
 
             workflowSuccess(res, 7, 'generate_module_docs', workflowId, responseData, workflowService.getProgress(workflowId));
             
@@ -350,16 +343,172 @@ export function createModulesDocsRoutes(services) {
 }
 
 /**
+ * 转换UnifiedUltraDetailedGenerator结果为Legacy格式
+ * 确保与现有API保持向后兼容
+ */
+function _convertUltraDetailedResultsToLegacyFormat(realResults, legacyModules, primaryLanguage) {
+    console.log(`[ModulesDocs] 转换超详细文档结果为Legacy格式`);
+    
+    const moduleDocuments = [];
+    const categories = { core: 0, business: 0, utility: 0 };
+    const complexity = { low: 0, medium: 0, high: 0 };
+    let totalSections = 0;
+    
+    // 基于legacy模块数据构建文档
+    for (const module of legacyModules) {
+        // 从真实结果中查找对应的详细文档
+        const detailedDoc = _findMatchingDetailedDocument(realResults, module);
+        
+        const legacyDocument = {
+            moduleName: module.name,
+            moduleId: module.id,
+            relativePath: module.relativePath,
+            category: module.category,
+            language: module.analysis?.language || primaryLanguage,
+            generatedAt: new Date().toISOString(),
+            overview: {
+                title: `${module.name} 模块文档`,
+                description: detailedDoc?.description || `${module.name} 是一个${module.category}模块`,
+                keyMetrics: {
+                    lines: module.metrics?.lines || 0,
+                    functions: module.metrics?.functions || 0,
+                    classes: module.metrics?.classes || 0
+                }
+            },
+            sections: _generateDocumentSections(detailedDoc, module),
+            usage: _generateUsageInformation(detailedDoc, module),
+            examples: detailedDoc?.examples || [],
+            metadata: {
+                complexity: module.analysis?.complexity || { rating: 'medium', score: 25 },
+                dependencies: {
+                    imports: module.dependencies?.imports?.length || 0,
+                    exports: module.dependencies?.exports?.length || 0
+                },
+                metrics: module.metrics || { lines: 0, functions: 0, classes: 0 }
+            },
+            recommendations: module.recommendations || []
+        };
+        
+        moduleDocuments.push(legacyDocument);
+        categories[module.category]++;
+        complexity[module.analysis?.complexity?.rating || 'medium']++;
+        totalSections += legacyDocument.sections.length;
+    }
+    
+    const documentationSummary = {
+        total: moduleDocuments.length,
+        categories,
+        complexity,
+        sections: {
+            total: totalSections,
+            average: Math.round(totalSections / moduleDocuments.length) || 0
+        },
+        coverage: {
+            withExamples: moduleDocuments.filter(doc => doc.examples.length > 0).length,
+            withInterfaces: moduleDocuments.filter(doc => 
+                doc.sections.some(section => section.type === 'interfaces')).length,
+            withDependencies: moduleDocuments.filter(doc => 
+                doc.metadata.dependencies.imports > 0 || doc.metadata.dependencies.exports > 0).length
+        }
+    };
+    
+    return { moduleDocuments, documentationSummary };
+}
+
+/**
+ * 查找匹配的详细文档
+ */
+function _findMatchingDetailedDocument(realResults, module) {
+    // 从realResults中查找与module匹配的详细信息
+    // 这是一个简化的匹配逻辑，实际可能需要更复杂的匹配策略
+    if (realResults.documents) {
+        return realResults.documents.find(doc => 
+            doc.modulePath === module.relativePath || 
+            doc.moduleName === module.name
+        );
+    }
+    return null;
+}
+
+/**
+ * 生成文档章节
+ */
+function _generateDocumentSections(detailedDoc, module) {
+    const sections = [
+        {
+            title: '模块概述',
+            type: 'overview',
+            content: {
+                description: detailedDoc?.overview || `${module.name} 模块概述`,
+                purpose: detailedDoc?.purpose || '处理核心业务逻辑',
+                keyFeatures: detailedDoc?.features || []
+            }
+        },
+        {
+            title: '接口定义',
+            type: 'interfaces',
+            content: {
+                exports: module.dependencies?.exports || [],
+                publicMethods: detailedDoc?.publicMethods || [],
+                parameters: detailedDoc?.parameters || []
+            }
+        },
+        {
+            title: '使用方法',
+            type: 'usage',
+            content: {
+                quickStart: detailedDoc?.quickStart || '基本用法说明',
+                commonPatterns: detailedDoc?.patterns || [],
+                bestPractices: detailedDoc?.bestPractices || []
+            }
+        }
+    ];
+    
+    // 如果有依赖关系，添加依赖章节
+    if (module.dependencies?.imports?.length > 0) {
+        sections.push({
+            title: '依赖关系',
+            type: 'dependencies',
+            content: {
+                imports: module.dependencies.imports,
+                externalDeps: module.dependencies.external || []
+            }
+        });
+    }
+    
+    return sections;
+}
+
+/**
+ * 生成使用信息
+ */
+function _generateUsageInformation(detailedDoc, module) {
+    return {
+        quickStart: detailedDoc?.usage?.quickStart || `import { ${module.name} } from './${module.relativePath}';`,
+        commonPatterns: detailedDoc?.usage?.patterns || [
+            `// 基本使用方式\nconst ${module.name.toLowerCase()} = new ${module.name}();`
+        ],
+        troubleshooting: detailedDoc?.troubleshooting || '常见问题解决方案'
+    };
+}
+
+/**
  * 拆分说明:
  * 
  * 从 modules.js 中提取了第7步相关的所有功能：
- * - POST /generate-module-docs - 生成模块文档
+ * - POST /generate-module-docs - 生成模块文档 (已升级使用UnifiedUltraDetailedGenerator)
  * - GET /module-docs/:moduleName - 获取单个模块文档  
  * - POST /save-module-docs - 保存AI生成的模块文档
  * 
  * 专注于模块文档生成职责，依赖第5步的分析结果
  * 日志前缀更新为 [ModulesDocs] 以区分功能
  * 确保第7步索引正确 (workflowService.updateStep(workflowId, 7, ...))
+ * 
+ * 重构更新 (Step 6):
+ * - 集成了UnifiedUltraDetailedGenerator替换mock文档生成
+ * - 添加了完整的结果转换函数确保向后兼容
+ * - 保持原有API格式，客户端无需更改
+ * - 实现了超详细文档生成，包含示例、最佳实践、使用模式
  */
 
 export default createModulesDocsRoutes;

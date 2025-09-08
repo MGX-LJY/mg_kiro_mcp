@@ -1,11 +1,17 @@
 /**
  * Init模式 - 第2步：智能语言识别路由模块
  * 语言检测和技术栈分析端点
+ * 
+ * 🧠 已集成EnhancedLanguageDetector - 增强语言检测系统
+ * - 基于智能分层分析结果进行精确语言检测
+ * - 深度技术栈识别和框架检测
+ * - 项目特征和开发环境分析
  */
 
 import express from 'express';
 import { success, error, workflowSuccess } from '../../services/response-service.js';
 import { AIResponseHandlerService } from '../../services/ai-response-handler.js';
+import EnhancedLanguageDetector from '../../analyzers/enhanced-language-detector.js';
 
 /**
  * 创建语言识别路由
@@ -41,98 +47,39 @@ export function createLanguageRoutes(services) {
             const step1Results = workflow.results.step_1;
             const projectPathToUse = projectPath || workflow.projectPath;
 
-            console.log(`[Language] 开始智能语言检测: ${projectPathToUse}`);
+            console.log(`[Language] 开始增强智能语言检测: ${projectPathToUse}`);
             
             // 更新步骤状态为运行中
             workflowService.updateStep(workflowId, 1, 'running');
             
-            // 准备AI分析数据包 - 智能语言检测
-            const aiAnalysisPackage = {
-                // 项目结构数据
-                projectStructure: step1Results,
-                projectPath: projectPathToUse,
-                totalFiles: step1Results?.summary?.totalFiles || 0,
-                
-                // AI处理指令
-                aiInstructions: {
-                    analysisTemplate: 'language-detection-analysis.md',
-                    documentTemplate: 'language-detection-generation.md',
-                    analysisType: 'language_detection',
-                    complexity: 'comprehensive'
-                },
-                
-                // 元数据
-                metadata: {
-                    workflowId,
-                    mode: 'init',
-                    timestamp: new Date().toISOString()
-                }
-            };
+            // 🧠 使用增强语言检测器进行精确分析
+            console.log(`[EnhancedLanguageDetector] 启动增强语言检测器...`);
+            const enhancedDetector = new EnhancedLanguageDetector(projectPathToUse);
             
-            // AI分析结果 (实际使用时由AI完成)
-            const mockDetectionResult = {
-                detection: {
-                    primaryLanguage: 'javascript',
-                    confidence: 0.95,
-                    secondaryLanguages: [
-                        { language: 'json', usage: 0.1, purpose: '配置文件' },
-                        { language: 'markdown', usage: 0.05, purpose: '文档' }
-                    ],
-                    languageEvidence: {
-                        fileExtensions: { js: 45, json: 8, md: 3 },
-                        configFiles: ['package.json', 'package-lock.json'],
-                        frameworkMarkers: ['express', 'node'],
-                        buildTools: ['npm']
-                    },
-                    techStack: {
-                        frontend: { frameworks: [], libraries: [], buildTools: [] },
-                        backend: { frameworks: ['express'], databases: [], servers: ['node'] },
-                        development: { packageManagers: ['npm'], testing: [], linting: [], ide: [] },
-                        deployment: { containerization: [], cicd: [], cloud: [] }
-                    },
-                    projectCharacteristics: {
-                        type: 'API服务',
-                        scale: '中型',
-                        maturity: '开发中',
-                        complexity: '中等',
-                        architecture: '模块化'
-                    },
-                    developmentEnvironment: {
-                        current: { detected: ['Node.js', 'npm'], version: 'Node 18+' },
-                        recommended: { essentials: ['Node.js 18+', 'npm'], optional: ['nodemon'], version: 'LTS' },
-                        gaps: { missing: [], outdated: [], suggestions: ['添加TypeScript支持'] }
-                    },
-                    qualityIndicators: {
-                        hasTests: false,
-                        hasDocumentation: true,
-                        hasLinting: false,
-                        hasCI: false,
-                        codeOrganization: 75
-                    },
-                    nextStepRecommendations: [
-                        { step: '文件内容分析', reason: '理解代码结构', priority: 'high' }
-                    ]
+            // 智能集成：基于第1步的智能分层分析结果
+            const step1IntelligentAnalysis = step1Results.intelligentAnalysis;
+            const enhancedResults = await enhancedDetector.performEnhancedDetection({
+                // 基于智能分层分析的上下文
+                contextData: {
+                    architectureInsights: step1IntelligentAnalysis?.architectureInsights,
+                    moduleInsights: step1IntelligentAnalysis?.moduleInsights,
+                    totalModules: step1IntelligentAnalysis?.moduleInsights?.totalModules || 0,
+                    designPatterns: step1IntelligentAnalysis?.architectureInsights?.designPatterns || {}
                 },
-                workflowIntegration: {
-                    confidenceScore: 95,
-                    dataQuality: 'excellent',
-                    enhancementGain: 45,
-                    step1Integration: 'seamless',
-                    readinessForStep3: true
-                },
-                analysisId: `ai-lang-${Date.now()}`,
-                analysisDuration: 150,
-                timestamp: new Date().toISOString(),
-                metadata: {
-                    mode: 'ai-driven',
-                    tokensReduced: '预计45-50%令牌消耗',
-                    aiAnalysisTemplate: 'language-detection-analysis.md',
-                    aiDocumentTemplate: 'language-detection-generation.md'
+                // 检测配置
+                detectionOptions: {
+                    deepFrameworkAnalysis: true,
+                    performanceOptimization: true,
+                    includeVersionAnalysis: true
                 }
-            };
+            });
             
-            // 使用模拟结果（实际使用时由AI生成）
-            const detectionResult = mockDetectionResult;
+            // 转换增强检测结果为兼容格式
+            const detectionResult = _convertEnhancedResultsToLegacyFormat(
+                enhancedResults, 
+                step1Results, 
+                projectPathToUse
+            );
             
             // 更新步骤状态为已完成
             workflowService.updateStep(workflowId, 2, 'completed', {
@@ -166,10 +113,10 @@ export function createLanguageRoutes(services) {
 
             workflowSuccess(res, responseData, 'detect_language', '智能语言检测完成', 200);
 
-            console.log(`[Language] 智能语言检测完成 (AI驱动): ${projectPathToUse} (${detectionResult.analysisDuration}ms)`);
-            console.log(`[Language] - 模式: AI智能分析 + 报告生成`);
-            console.log(`[Language] - 令牌优化: 预计45-50%消耗`);
-            console.log(`[Language] - AI模板: language-detection-analysis.md`);
+            console.log(`[EnhancedLanguageDetector] 增强语言检测完成: ${projectPathToUse}`);
+            console.log(`[EnhancedLanguageDetector] 检测到主语言: ${enhancedResults.detection?.primaryLanguage || 'unknown'}, 置信度: ${enhancedResults.detection?.confidence || 0}%`);
+            console.log(`[EnhancedLanguageDetector] 识别框架: ${enhancedResults.detection?.frameworks?.join(', ') || 'none'}`);
+            console.log(`[EnhancedLanguageDetector] 项目类型: ${enhancedResults.analysis?.projectType || 'unknown'}`);
             
         } catch (err) {
             console.error('[Language] 智能语言检测失败:', err);
@@ -372,6 +319,209 @@ function _generateLanguageReport(detectionResult) {
             step3Readiness: detectionResult.workflowIntegration.readinessForStep3
         }
     };
+}
+
+/**
+ * 🧠 转换增强语言检测结果为兼容格式
+ * 保持API向后兼容，同时集成增强检测的丰富数据
+ * @param {Object} enhancedResults - 增强语言检测结果
+ * @param {Object} step1Results - 第1步智能分层分析结果
+ * @param {string} projectPath - 项目路径
+ * @returns {Object} 兼容格式的检测结果
+ */
+function _convertEnhancedResultsToLegacyFormat(enhancedResults, step1Results, projectPath) {
+    const analysis = enhancedResults.analysis || {};
+    const detection = enhancedResults.detection || {};
+    const techStack = enhancedResults.techStack || {};
+    
+    return {
+        // 核心检测结果 - 基于真实增强检测
+        detection: {
+            primaryLanguage: detection.primaryLanguage || 'unknown',
+            confidence: (detection.confidence || 0) / 100, // 转换为0-1范围
+            secondaryLanguages: _formatSecondaryLanguages(detection.secondaryLanguages),
+            languageEvidence: {
+                fileExtensions: detection.fileTypeAnalysis?.extensionCounts || {},
+                configFiles: detection.configurationFiles || [],
+                frameworkMarkers: detection.frameworks || [],
+                buildTools: detection.buildTools || []
+            },
+            techStack: {
+                frontend: {
+                    frameworks: techStack.frontend?.frameworks || [],
+                    libraries: techStack.frontend?.libraries || [],
+                    buildTools: techStack.frontend?.buildTools || []
+                },
+                backend: {
+                    frameworks: techStack.backend?.frameworks || [],
+                    databases: techStack.backend?.databases || [],
+                    servers: techStack.backend?.servers || []
+                },
+                development: {
+                    packageManagers: techStack.development?.packageManagers || [],
+                    testing: techStack.development?.testingFrameworks || [],
+                    linting: techStack.development?.lintingTools || [],
+                    ide: techStack.development?.ideSupport || []
+                },
+                deployment: {
+                    containerization: techStack.deployment?.containerization || [],
+                    cicd: techStack.deployment?.cicd || [],
+                    cloud: techStack.deployment?.cloudPlatforms || []
+                }
+            },
+            projectCharacteristics: {
+                type: analysis.projectType || 'Unknown',
+                scale: _assessProjectScale(analysis.projectScale),
+                maturity: analysis.maturityLevel || 'developing',
+                complexity: analysis.complexityLevel || 'medium',
+                architecture: analysis.architecturalPattern || 'modular'
+            },
+            developmentEnvironment: {
+                current: {
+                    detected: detection.detectedRuntimes || [],
+                    version: detection.runtimeVersions || 'Unknown'
+                },
+                recommended: {
+                    essentials: analysis.recommendedTools?.essential || [],
+                    optional: analysis.recommendedTools?.optional || [],
+                    version: analysis.recommendedVersions || 'LTS'
+                },
+                gaps: {
+                    missing: analysis.missingTools || [],
+                    outdated: analysis.outdatedDependencies || [],
+                    suggestions: analysis.improvementSuggestions || []
+                }
+            },
+            qualityIndicators: {
+                hasTests: analysis.qualityMetrics?.hasTests || false,
+                hasDocumentation: analysis.qualityMetrics?.hasDocumentation || false,
+                hasLinting: analysis.qualityMetrics?.hasLinting || false,
+                hasCI: analysis.qualityMetrics?.hasCI || false,
+                codeOrganization: analysis.qualityMetrics?.organizationScore || 50
+            },
+            nextStepRecommendations: _generateSmartNextSteps(enhancedResults, step1Results)
+        },
+        
+        // 工作流集成信息 - 基于真实分析质量
+        workflowIntegration: {
+            confidenceScore: detection.confidence || 75,
+            dataQuality: analysis.analysisQuality || 'good',
+            enhancementGain: _calculateEnhancementGain(enhancedResults, step1Results),
+            step1Integration: 'seamless',
+            readinessForStep3: _assessStep3Readiness(enhancedResults)
+        },
+        
+        // 🧠 增强检测的专有数据
+        enhancedAnalysis: {
+            performanceMetrics: analysis.performanceMetrics || {},
+            securityAssessment: analysis.securityAssessment || {},
+            dependencyAnalysis: analysis.dependencyAnalysis || {},
+            versionCompatibility: analysis.versionCompatibility || {},
+            ecosystemHealth: analysis.ecosystemHealth || {}
+        },
+        
+        // 元信息
+        analysisId: `enhanced-lang-${Date.now()}`,
+        analysisDuration: enhancedResults.analysisTime || 200,
+        timestamp: new Date().toISOString(),
+        metadata: {
+            mode: 'enhanced-detection',
+            detectorVersion: enhancedResults.detectorVersion || '2.0',
+            intelligentIntegration: true,
+            step1DataUsed: !!step1Results.intelligentAnalysis
+        }
+    };
+}
+
+/**
+ * 格式化次要语言信息
+ */
+function _formatSecondaryLanguages(secondaryLanguages) {
+    if (!Array.isArray(secondaryLanguages)) return [];
+    
+    return secondaryLanguages.map(lang => ({
+        language: lang.language,
+        usage: lang.percentage / 100,
+        purpose: lang.purpose || 'Unknown purpose'
+    }));
+}
+
+/**
+ * 评估项目规模
+ */
+function _assessProjectScale(projectScale) {
+    if (typeof projectScale === 'number') {
+        if (projectScale > 1000) return 'large';
+        if (projectScale > 100) return 'medium';
+        return 'small';
+    }
+    return projectScale || 'medium';
+}
+
+/**
+ * 生成智能下一步建议
+ */
+function _generateSmartNextSteps(enhancedResults, step1Results) {
+    const recommendations = [];
+    
+    const totalModules = step1Results.intelligentAnalysis?.moduleInsights?.totalModules || 0;
+    
+    // 基于模块数量建议
+    if (totalModules > 50) {
+        recommendations.push({
+            step: '深度模块分析',
+            reason: `检测到 ${totalModules} 个模块，建议进行完整模块内容分析`,
+            priority: 'high'
+        });
+    } else {
+        recommendations.push({
+            step: '文件内容分析',
+            reason: '项目规模适中，可直接进行文件分析',
+            priority: 'medium'
+        });
+    }
+    
+    // 基于检测到的技术栈建议
+    const frameworks = enhancedResults.detection?.frameworks || [];
+    if (frameworks.length > 2) {
+        recommendations.push({
+            step: '技术栈深度分析',
+            reason: `检测到多个框架 (${frameworks.join(', ')})，需要深度分析`,
+            priority: 'high'
+        });
+    }
+    
+    return recommendations;
+}
+
+/**
+ * 计算增强效果增益
+ */
+function _calculateEnhancementGain(enhancedResults, step1Results) {
+    let gain = 30; // 基础增益
+    
+    // 基于检测准确性增加
+    if ((enhancedResults.detection?.confidence || 0) > 80) gain += 20;
+    
+    // 基于与第1步集成质量增加
+    if (step1Results.intelligentAnalysis) gain += 25;
+    
+    // 基于框架检测数量增加
+    const frameworkCount = (enhancedResults.detection?.frameworks?.length || 0);
+    gain += Math.min(frameworkCount * 5, 25);
+    
+    return Math.min(gain, 100);
+}
+
+/**
+ * 评估第3步就绪状态
+ */
+function _assessStep3Readiness(enhancedResults) {
+    const confidence = enhancedResults.detection?.confidence || 0;
+    const hasFrameworks = (enhancedResults.detection?.frameworks?.length || 0) > 0;
+    const hasAnalysisData = !!enhancedResults.analysis;
+    
+    return confidence > 70 && hasFrameworks && hasAnalysisData;
 }
 
 export default createLanguageRoutes;

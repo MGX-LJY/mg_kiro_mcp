@@ -1,32 +1,125 @@
 /**
- * AI内容生成服务
- * 基于项目分析数据生成真实的AI文档内容
+ * AI内容生成服务 v2.0
+ * 集成超详细分析引擎，基于真实项目数据生成十分详细的文档内容
  */
 
+import UnifiedUltraDetailedGenerator from './unified-ultra-detailed-generator.js';
+
 class AIContentGeneratorService {
-    constructor() {
+    constructor(projectPath = process.cwd()) {
+        this.projectPath = projectPath;
         this.initialized = false;
+        this.ultraGenerator = null;
     }
 
     /**
-     * 初始化AI服务
+     * 初始化AI服务 - 使用超详细生成器
      */
     async initialize() {
         if (this.initialized) return;
         
-        console.log('[AIContentGenerator] 初始化AI内容生成服务...');
-        this.initialized = true;
+        console.log('[AIContentGenerator] 初始化超详细AI内容生成服务...');
+        
+        try {
+            this.ultraGenerator = new UnifiedUltraDetailedGenerator(this.projectPath);
+            this.initialized = true;
+            console.log('[AIContentGenerator] 超详细生成器初始化完成');
+        } catch (error) {
+            console.error('[AIContentGenerator] 初始化失败:', error);
+            throw error;
+        }
     }
 
     /**
-     * 生成项目概览文档
+     * 生成项目概览文档 - 使用超详细分析
      * @param {Object} projectData - 项目扫描数据
-     * @returns {Promise<string>} 生成的Markdown内容
+     * @returns {Promise<string>} 生成的超详细Markdown内容
      */
     async generateProjectOverview(projectData) {
         await this.initialize();
         
-        const { structure, stats, package: pkg, detectedLanguage } = projectData;
+        console.log('[AIContentGenerator] 使用超详细生成器生成项目概览...');
+        
+        try {
+            // 使用超详细生成器进行完整分析和文档生成
+            const result = await this.ultraGenerator.generateUltraDetailedDocuments({
+                maxLevel: 2, // 适合项目概览的分析深度
+                priorityFocus: 'architecture'
+            });
+            
+            if (result.success && result.documents && result.documents.projectOverview) {
+                console.log(`[AIContentGenerator] 成功生成超详细项目概览 (${result.documents.projectOverview.length} 字符)`);
+                return result.documents.projectOverview;
+            } else {
+                // 失败时使用回退方案
+                console.warn('[AIContentGenerator] 超详细生成器失败，使用简化版本');
+                return this.generateFallbackProjectOverview(projectData);
+            }
+        } catch (error) {
+            console.error('[AIContentGenerator] 超详细生成失败:', error.message);
+            // 失败时使用回退方案
+            return this.generateFallbackProjectOverview(projectData);
+        }
+    }
+
+    /**
+     * 通用的超详细文档生成方法
+     * @param {string} documentType - 文档类型
+     * @param {Object} inputData - 输入数据 
+     * @param {Object} options - 生成选项
+     * @returns {Promise<string>} 生成的超详细Markdown内容
+     */
+    async generateUltraDetailedDocument(documentType, inputData = {}, options = {}) {
+        await this.initialize();
+        
+        const { 
+            maxLevel = 3, 
+            priorityFocus = 'architecture',
+            fallbackGenerator = null 
+        } = options;
+        
+        console.log(`[AIContentGenerator] 生成超详细${documentType}文档...`);
+        
+        try {
+            const result = await this.ultraGenerator.generateUltraDetailedDocuments({
+                maxLevel,
+                priorityFocus,
+                ...options
+            });
+            
+            if (result.success && result.documents) {
+                const documentMap = {
+                    'projectOverview': result.documents.projectOverview,
+                    'languageAnalysis': result.documents.languageAnalysis,
+                    'fileAnalysis': result.documents.fileAnalysis,
+                    'systemArchitecture': result.documents.systemArchitecture,
+                    'techStack': result.documents.techStack,
+                    'modulesCatalog': result.documents.modulesCatalog,
+                    'integrationContracts': result.documents.integrationContracts
+                };
+                
+                const document = documentMap[documentType];
+                if (document) {
+                    console.log(`[AIContentGenerator] 成功生成超详细${documentType} (${document.length} 字符)`);
+                    return document;
+                }
+            }
+            
+            // 失败时使用回退方案
+            console.warn(`[AIContentGenerator] 超详细生成器失败，使用回退方案生成${documentType}`);
+            return fallbackGenerator ? fallbackGenerator(inputData) : this.generateGenericFallback(documentType, inputData);
+            
+        } catch (error) {
+            console.error(`[AIContentGenerator] ${documentType}生成失败:`, error.message);
+            return fallbackGenerator ? fallbackGenerator(inputData) : this.generateGenericFallback(documentType, inputData);
+        }
+    }
+
+    /**
+     * 简化版本的项目概览（回退方案）
+     */
+    generateFallbackProjectOverview(projectData) {
+        const { structure, stats, package: pkg, detectedLanguage } = projectData || {};
         
         return `# ${pkg?.name || '项目'} - 项目概览
 

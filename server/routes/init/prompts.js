@@ -1,26 +1,9 @@
 /**
  * Init模式 - 第6步：语言特定提示词生成路由模块 (AI驱动架构)
- * 提供数据源+AI提示词模板的方式生成专业提示词
- * AI模式：45-50%令牌消耗优化
  */
 
 import express from 'express';
 import { success, error, workflowSuccess } from '../../services/response-service.js';
-
-/**
- * 已移除的复杂业务逻辑模块（转为AI驱动）:
- * - LanguagePromptGenerator: 语言特定提示词生成器
- * - generateDevelopmentPrompt: 开发助手提示词生成
- * - generateCodeReviewPrompt: 代码审查提示词生成  
- * - generateBestPracticesPrompt: 最佳实践提示词生成
- * - generateFrameworkPrompts: 框架特定提示词生成
- * - customizePromptForProject: 项目定制提示词
- * 
- * 重构原理：
- * 旧架构: MCP执行复杂提示词生成业务逻辑
- * 新架构: MCP提供结构化数据 + AI分析模板 → AI执行生成
- * 优势: 大幅减少令牌消耗，提升生成质量和灵活性
- */
 
 /**
  * 创建语言提示词路由
