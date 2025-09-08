@@ -352,8 +352,7 @@ const aiPromptsPackage = {
   },
   metadata: {
     language: string,
-    frameworks: [],
-    tokensReduced: '预计45-50%令牌消耗'
+    frameworks: []
   }
 }
 ```
@@ -526,13 +525,6 @@ const aiAnalysisPackage = {
 };
 ```
 
-### 令牌优化策略
-
-- **预计减少45-50%令牌消耗**
-- **基于真实代码分析**而非完整代码内容
-- **结构化数据传输**而非自然语言描述
-- **上下文感知模板**提高AI理解效率
-
 ### AI模板系统
 
 每个步骤使用专门的AI模板：
@@ -677,7 +669,6 @@ curl http://localhost:3000/mode/init/status
 ### 生成器性能
 
 - **UnifiedUltraDetailedGenerator**: 超详细文档生成
-- **AI模板优化**: 预计减少45-50%令牌消耗
 - **并行处理**: 多文档并行生成
 - **缓存机制**: 避免重复分析
 

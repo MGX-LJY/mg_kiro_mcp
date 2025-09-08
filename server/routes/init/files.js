@@ -177,7 +177,6 @@ export function createFilesRoutes(services) {
                     step: 3,
                     stepName: 'scan_files',
                     timestamp: analysisResult.timestamp,
-                    tokensReduced: '预计45-50%令牌消耗',
                     aiAnalysisTemplate: 'file-content-analysis.md',
                     aiOverviewTemplate: 'file-overview-generation.md'
                 }
@@ -243,7 +242,6 @@ export function createFilesRoutes(services) {
                 // AI处理信息
                 aiGenerated: true,
                 aiTemplate: 'file-overview-generation.md',
-                tokensReduced: '预计45-50%令牌消耗',
                 
                 // 元数据
                 metadata: {

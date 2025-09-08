@@ -117,7 +117,6 @@ export function createLanguageRoutes(services) {
                     analysisId: detectionResult.analysisId,
                     analysisDuration: detectionResult.analysisDuration,
                     timestamp: detectionResult.timestamp,
-                    tokensReduced: '预计45-50%令牌消耗',
                     aiAnalysisTemplate: 'language-detection-analysis.md',
                     aiDocumentTemplate: 'language-detection-generation.md'
                 }

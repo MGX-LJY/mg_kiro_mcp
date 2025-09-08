@@ -161,8 +161,6 @@ export function createContractsRoutes(services) {
                     realDocumentsGenerated: realContractDocuments.totalDocuments,
                     intelligentFeatures: ['api-specifications', 'data-flows', 'testing-strategies', 'integration-patterns'],
                     timestamp: new Date().toISOString(),
-                    tokensReduced: '预计减少45-50%令牌消耗',
-                    analysisAccuracy: '基于真实代码分析'
                 },
                 
                 // 工作流信息

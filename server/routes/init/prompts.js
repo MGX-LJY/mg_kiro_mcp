@@ -116,8 +116,7 @@ export function createLanguagePromptsRoutes(services) {
                     language: detectionData.primaryLanguage?.language || detectionData.primaryLanguage,
                     frameworks: detectionData.techStack?.frameworks || [],
                     generated_at: new Date().toISOString(),
-                    mode: 'ai-driven',
-                    tokensReduced: '预计45-50%令牌消耗'
+                    mode: 'ai-driven'
                 }
             };
             
@@ -144,7 +143,6 @@ export function createLanguagePromptsRoutes(services) {
                     templateUsed: 'language-prompts-generation.md',
                     language: detectionData.primaryLanguage?.language || detectionData.primaryLanguage,
                     timestamp: new Date().toISOString(),
-                    tokensReduced: '预计45-50%令牌消耗',
                     aiGenerationTemplate: 'language-prompts-generation.md'
                 },
                 
@@ -260,8 +258,7 @@ export function createLanguagePromptsRoutes(services) {
                 metadata: {
                     language,
                     generated_at: new Date().toISOString(),
-                    mode: 'ai-static-generation',
-                    tokensReduced: '预计45-50%令牌消耗'
+                    mode: 'ai-static-generation'
                 }
             };
             
