@@ -62,6 +62,12 @@ export function createClaudeCodeInitRoutes(services) {
         try {
             console.log('[ClaudeCodeInit] 执行步骤1: 数据收集');
             
+            // 检查是否已初始化项目路径
+            const currentState = initService.getState();
+            if (!currentState.projectPath) {
+                return error(res, '请先调用 POST /init/initialize 初始化项目路径', 400);
+            }
+            
             const results = await initService.executeStep1_DataCollection();
             
             return success(res, {
@@ -90,6 +96,12 @@ export function createClaudeCodeInitRoutes(services) {
     router.post('/step2-architecture', async (req, res) => {
         try {
             console.log('[ClaudeCodeInit] 准备步骤2: 架构文档生成');
+            
+            // 检查是否已完成步骤1
+            const currentState = initService.getState();
+            if (!currentState.results.step1) {
+                return error(res, '请先完成步骤1数据收集', 400);
+            }
             
             const aiDataPackage = await initService.prepareStep2_ArchitectureGeneration();
             
