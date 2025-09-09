@@ -2,12 +2,11 @@
 
 /**
  * mg_kiro MCP Server
- * 统一入口点 - MCP协议服务器 + Express API + WebSocket + Init工具
+ * 统一入口点 - MCP协议服务器 + Express API + WebSocket
  * 
- * 支持三种运行模式:
+ * 支持两种运行模式:
  * 1. MCP服务器模式: node index.js (MCP服务器运行在stdio)
  * 2. Express服务器模式: MCP_PORT=3000 node index.js (Web服务器运行在指定端口)
- * 3. Init工具模式: node index.js init /path/to/project (执行Init流程)
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -24,30 +23,13 @@ import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
 import { createAppRoutes } from './server/routes/index.js';
 import { initializeServices } from './server/services/service-registry.js';
-import { executeInitFlow } from './tools/init-all.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const CONFIG_DIR = join(__dirname, 'config');
 
-// ========== 命令行参数处理 ==========
-const args = process.argv.slice(2);
-if (args[0] === 'init' && args[1]) {
-  // Init工具模式
-  console.log('🚀 运行Init工具模式...');
-  executeInitFlow(resolve(args[1]))
-    .then(() => {
-      console.log('✅ Init流程执行完成');
-      process.exit(0);
-    })
-    .catch(error => {
-      console.error('❌ Init流程执行失败:', error);
-      process.exit(1);
-    });
-} else {
-  // ========== 服务器模式 ==========
-  startServer();
-}
+// ========== 服务器模式 ==========
+startServer();
 
 async function startServer() {
   // 初始化服务系统
@@ -409,21 +391,29 @@ function handleWebSocketMessage(ws, data, serviceBus) {
   
   switch (type) {
     case 'init':
-      // 处理Init请求
+      // 处理Init请求 - 使用新的MCP协议服务
       const { projectPath } = payload;
-      executeInitFlow(projectPath)
-        .then(results => {
-          ws.send(JSON.stringify({
-            type: 'init_complete',
-            results
-          }));
-        })
-        .catch(error => {
-          ws.send(JSON.stringify({
-            type: 'error',
-            error: error.message
-          }));
-        });
+      const claudeCodeInit = serviceBus.get('claudeCodeInit');
+      
+      try {
+        claudeCodeInit.initialize(resolve(projectPath));
+        ws.send(JSON.stringify({
+          type: 'init_started',
+          message: 'Init流程已启动，请使用MCP工具进行分步执行',
+          availableTools: [
+            'init_step1_data_collection',
+            'init_step2_architecture',
+            'init_step3_deep_analysis',
+            'init_step4_module_docs',
+            'init_step5_contracts'
+          ]
+        }));
+      } catch (error) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          error: error.message
+        }));
+      }
       break;
       
     case 'status':
