@@ -1,467 +1,445 @@
 #!/usr/bin/env node
 
 /**
- * mg_kiro MCP Server Entry Point
- * Smart Project Documentation Management System
- * 完全集成的Express+WebSocket MCP协议服务器
+ * mg_kiro MCP Server
+ * 统一入口点 - MCP协议服务器 + Express API + WebSocket + Init工具
+ * 
+ * 支持三种运行模式:
+ * 1. MCP服务器模式: node index.js (MCP服务器运行在stdio)
+ * 2. Express服务器模式: MCP_PORT=3000 node index.js (Web服务器运行在指定端口)
+ * 3. Init工具模式: node index.js init /path/to/project (执行Init流程)
  */
 
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import express from 'express';
+import http from 'http';
 import { WebSocketServer } from 'ws';
 import cors from 'cors';
-import helmet from 'helmet';
-import compression from 'compression';
-import rateLimit from 'express-rate-limit';
-import { createServer } from 'http';
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-
-// 服务组件导入
-import ConfigService from './server/services/config-service.js';
-import { PromptManager } from './server/prompt-manager.js';
-import { ProjectScanner } from './server/analyzers/project-scanner.js';
-import { WorkflowState } from './server/services/workflow-state-service.js';
-import WorkflowService from './server/services/workflow-service.js';
-import { EnhancedLanguageDetector } from './server/analyzers/enhanced-language-detector.js';
-import { FileContentAnalyzer } from './server/analyzers/file-content-analyzer.js';
-import UnifiedTemplateService from './server/services/unified-template-service.js';
+import { dirname, join, resolve } from 'path';
 import { createAppRoutes } from './server/routes/index.js';
+import { initializeServices } from './server/services/service-registry.js';
+import { executeInitFlow } from './tools/init-all.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const CONFIG_DIR = join(__dirname, 'config');
 
-/**
- * Load configuration using unified ConfigService
- */
-function loadConfig() {
-  const configService = new ConfigService(join(__dirname, 'config'));
-  const validation = configService.validate();
-  
-  if (!validation.valid) {
-    console.error('❌ 配置验证失败:', validation.errors);
-    process.exit(1);
-  }
-  
-  if (validation.warnings.length > 0) {
-    validation.warnings.forEach(warning => console.warn('⚠️', warning));
-  }
-  
-  console.log('✅ 统一配置服务已加载');
-  return {
-    server: configService.getServerConfig(),
-    mcp: configService.getMCPConfig(),
-    prompt: configService.getPromptConfig(),
-    workflow: configService.getWorkflowConfig(),
-    analyzers: configService.getAnalyzersConfig(),
-    configService // 传递完整服务实例
-  };
+// ========== 命令行参数处理 ==========
+const args = process.argv.slice(2);
+if (args[0] === 'init' && args[1]) {
+  // Init工具模式
+  console.log('🚀 运行Init工具模式...');
+  executeInitFlow(resolve(args[1]))
+    .then(() => {
+      console.log('✅ Init流程执行完成');
+      process.exit(0);
+    })
+    .catch(error => {
+      console.error('❌ Init流程执行失败:', error);
+      process.exit(1);
+    });
+} else {
+  // ========== 服务器模式 ==========
+  startServer();
 }
 
-/**
- * Create and configure Express app
- */
-async function createApp(config = {}, wsManager = null) {
-  const app = express();
+async function startServer() {
+  // 初始化服务系统
+  console.log('[Server] 初始化服务系统...');
+  const serviceBus = await initializeServices(CONFIG_DIR);
+
+  // ========== Express服务器设置 ==========
+  const PORT = process.env.MCP_PORT || process.env.PORT;
   
-  // 服务器配置
-  const serverConfig = {
-    port: process.env.MCP_PORT || config.port || 3000,
-    host: process.env.MCP_HOST || config.host || 'localhost',
-    cors: config.cors || { enabled: true, origins: ['http://localhost:*'] },
-    rateLimit: config.rateLimit || { windowMs: 60000, max: 100 },
-    ...config
-  };
-
-  // ========== 中间件设置 ==========
-  
-  app.use(helmet());
-  app.use(compression());
-  
-  // CORS设置
-  if (serverConfig.cors.enabled) {
-    app.use(cors({
-      origin: serverConfig.cors.origins,
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-    }));
-  }
-
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-  // 限流中间件
-  const limiter = rateLimit({
-    windowMs: serverConfig.rateLimit.windowMs,
-    max: serverConfig.rateLimit.max
-  });
-  app.use(limiter);
-
-  // 请求日志中间件
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-    next();
-  });
-
-  // ========== 服务初始化 ==========
-
-  console.log('Initializing Prompt Manager...');
-  const promptManager = new PromptManager({
-    version: '2.0.0',
-    cacheEnabled: true,
-    watchFiles: true
-  });
-  console.log('Prompt Manager initialized');
-  
-
-  // 初始化项目扫描器和工作流状态
-  const projectScanner = new ProjectScanner({
-    maxDepth: 4,
-    excludePatterns: ['.git', 'node_modules', '.DS_Store', '*.log']
-  });
-
-  const workflowState = new WorkflowState();
-  const workflowService = new WorkflowService(workflowState);
-  const enhancedLanguageDetector = new EnhancedLanguageDetector();
-  const fileContentAnalyzer = new FileContentAnalyzer();
-  
-  // 初始化统一模板服务
-  console.log('Initializing Unified Template Service...');
-  const unifiedTemplateService = new UnifiedTemplateService();
-  console.log('Unified Template Service initialized');
-
-  // ========== 路由设置 ==========
-
-  // 服务依赖注入 - 包含WebSocket管理器信息
-  const services = {
-    promptManager,
-    workflowService,
-    projectScanner,
-    languageDetector: enhancedLanguageDetector,
-    fileAnalyzer: fileContentAnalyzer,
-    unifiedTemplateService,
-    configService: { config: serverConfig }
-  };
-
-  // 创建服务器对象，包含WebSocket连接信息和分析器
-  const serverObject = {
-    config: serverConfig,
-    currentMode: 'init',
-    clients: wsManager ? wsManager.clients : new Map(),
-    mcpConnections: wsManager ? wsManager.mcpConnections : new Map(),
-    projectScanner,
-    languageDetector: enhancedLanguageDetector,
-    enhancedLanguageDetector,
-    fileAnalyzer: fileContentAnalyzer,
+  if (PORT) {
+    // Express服务器模式
+    console.log('[Server] 启动Express服务器模式...');
     
-    // WebSocket广播函数
-    _broadcastModeChange(previousMode, newMode, context = {}) {
-      const message = {
-        type: 'modeChanged',
-        previousMode,
-        currentMode: newMode,
-        context,
-        timestamp: new Date().toISOString()
-      };
-      
-      // 广播给所有WebSocket客户端
-      if (this.clients) {
-        this.clients.forEach((client, clientId) => {
-          if (client.ws && client.ws.readyState === 1) {
-            try {
-              client.ws.send(JSON.stringify(message));
-              console.log(`[WebSocket] Mode change broadcast sent to ${clientId}: ${previousMode} -> ${newMode}`);
-            } catch (error) {
-              console.error(`[WebSocket] Failed to broadcast mode change to ${clientId}:`, error);
-            }
-          }
-        });
-      }
-      
-      // 更新当前模式
-      this.currentMode = newMode;
-      console.log(`[Mode] Switched from ${previousMode} to ${newMode}`);
-    }
-  };
+    const app = express();
+    const httpServer = http.createServer(app);
 
-  // 集成模块化路由系统
-  const appRoutes = createAppRoutes(services, serverObject);
-  app.use('/', appRoutes);
+    // 中间件配置
+    app.use(cors());
+    app.use(express.json({ limit: '50mb' }));
+    app.use(express.urlencoded({ extended: true }));
 
-  return {
-    app,
-    config: serverConfig,
-    services,
-    currentMode: 'init'
-  };
-}
+    // 请求日志
+    app.use((req, res, next) => {
+      console.log(`[HTTP] ${req.method} ${req.path}`);
+      next();
+    });
 
-/**
- * Setup WebSocket server
- */
-function setupWebSocket(server, services) {
-  const wsServer = new WebSocketServer({ 
-    server,
-    path: '/ws',
-    clientTracking: true
-  });
+    // 创建路由
+    const routes = createAppRoutes(serviceBus, null);
+    app.use('/', routes);
 
-  const clients = new Map();
-  const mcpConnections = new Map();
-
-  wsServer.on('connection', (ws, req) => {
-    const clientId = generateClientId();
-    const clientInfo = {
-      id: clientId,
-      ws: ws,
-      connectedAt: new Date().toISOString(),
-      lastPing: Date.now(),
-      protocol: 'unknown',
-      userAgent: req.headers['user-agent']
-    };
-
-    clients.set(clientId, clientInfo);
+    // WebSocket服务器
+    const wss = new WebSocketServer({ server: httpServer });
     
-    console.log(`[WebSocket] Client connected: ${clientId} from ${req.socket.remoteAddress}`);
-
-    // WebSocket消息处理
-    ws.on('message', async (data) => {
-      try {
-        const message = JSON.parse(data.toString());
-        await handleWebSocketMessage(clientInfo, message, services);
-      } catch (error) {
-        console.error(`[WebSocket] Message handling error for ${clientId}:`, error);
-        ws.send(JSON.stringify({
-          type: 'error',
-          error: 'Invalid message format'
-        }));
-      }
-    });
-
-    // 连接关闭处理
-    ws.on('close', () => {
-      clients.delete(clientId);
-      mcpConnections.delete(clientId);
-      console.log(`[WebSocket] Client disconnected: ${clientId}`);
-    });
-
-    // 错误处理
-    ws.on('error', (error) => {
-      console.error(`[WebSocket] Connection error for ${clientId}:`, error);
-      clients.delete(clientId);
-      mcpConnections.delete(clientId);
-    });
-
-    // 发送欢迎消息
-    ws.send(JSON.stringify({
-      type: 'welcome',
-      clientId: clientId,
-      timestamp: new Date().toISOString(),
-      serverInfo: {
-        name: 'mg_kiro MCP Server',
-        version: '2.0.0',
-        protocol: 'MCP/1.0'
-      }
-    }));
-  });
-
-  // 心跳机制
-  const heartbeatInterval = setInterval(() => {
-    clients.forEach((client) => {
-      if (Date.now() - client.lastPing > 60000) { // 60秒超时
-        console.log(`[WebSocket] Client ${client.id} timed out, closing connection`);
-        client.ws.terminate();
-        clients.delete(client.id);
-      } else if (client.ws.readyState === 1) {
-        client.ws.ping();
-      }
-    });
-  }, 30000); // 每30秒检查一次
-
-  return {
-    wsServer,
-    clients,
-    mcpConnections,
-    heartbeatInterval,
-    stop: () => {
-      clearInterval(heartbeatInterval);
-      wsServer.close();
-    }
-  };
-}
-
-/**
- * Handle WebSocket messages
- */
-async function handleWebSocketMessage(clientInfo, message, services) {
-  const { ws, id } = clientInfo;
-  
-  switch (message.type) {
-    case 'ping':
-      clientInfo.lastPing = Date.now();
-      ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
-      break;
-
-    case 'mcp_handshake':
-      // MCP协议握手
-      const handshakeResponse = {
-        type: 'mcp_handshake_response',
-        success: true,
-        protocol: 'MCP/1.0',
-        server: {
-          name: 'mg_kiro MCP Server',
-          version: '2.0.0'
-        },
-        capabilities: {
-          prompts: true,
-          resources: true,
-          tools: true
+    wss.on('connection', (ws) => {
+      console.log('[WebSocket] 新客户端连接');
+      
+      ws.on('message', (message) => {
+        try {
+          const data = JSON.parse(message);
+          console.log('[WebSocket] 收到消息:', data.type || 'unknown');
+          
+          // 处理WebSocket消息
+          handleWebSocketMessage(ws, data, serviceBus);
+        } catch (error) {
+          console.error('[WebSocket] 消息处理错误:', error);
+          ws.send(JSON.stringify({ error: error.message }));
         }
-      };
-      ws.send(JSON.stringify(handshakeResponse));
-      break;
+      });
+      
+      ws.on('close', () => {
+        console.log('[WebSocket] 客户端断开连接');
+      });
+    });
 
-    case 'get_prompts':
-      // 获取提示词列表
-      try {
-        const prompts = await services.promptManager.listPrompts();
-        ws.send(JSON.stringify({
-          type: 'prompts_response',
-          prompts: prompts
-        }));
-      } catch (error) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          error: error.message
-        }));
+    // 启动HTTP服务器
+    httpServer.listen(PORT, () => {
+      console.log(`\n✅ mg_kiro Express服务器已启动`);
+      console.log(`📡 HTTP服务: http://localhost:${PORT}`);
+      console.log(`🔌 WebSocket服务: ws://localhost:${PORT}`);
+      console.log(`📚 API文档: http://localhost:${PORT}/api-docs`);
+      console.log(`\n可用的端点:`);
+      console.log(`  - GET  /health - 健康检查`);
+      console.log(`  - POST /mcp/tools/init - 执行Init流程`);
+      console.log(`  - GET  /mode/init/status - Init模式状态`);
+    });
+  }
+
+  // ========== MCP服务器设置 ==========
+  console.log('[Server] 启动MCP协议服务器...');
+  
+  const server = new Server(
+    {
+      name: "mg_kiro",
+      version: "2.0.1",
+    },
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
+
+  // MCP工具：支持分步执行Init流程
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+      tools: [
+        {
+          name: "init_step1_data_collection",
+          description: "执行Init步靄1：数据收集（项目结构+语言检测+文件分析）",
+          inputSchema: {
+            type: "object",
+            properties: {
+              projectPath: {
+                type: "string",
+                description: "要分析的项目路径"
+              }
+            },
+            required: ["projectPath"]
+          }
+        },
+        {
+          name: "init_step2_architecture",
+          description: "执行Init步靄2：准备架构文档生成数据（需要Claude Code生成文档）",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        },
+        {
+          name: "init_step3_deep_analysis",
+          description: "执行Init步靄3：深度分析（模块分析+提示词生成）",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        },
+        {
+          name: "init_step4_module_docs",
+          description: "执行Init步靄4：准备模块文档生成数据（需要Claude Code生成文档）",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        },
+        {
+          name: "init_step5_contracts",
+          description: "执行Init步靄5：准备集成契约生成数据（需要Claude Code生成文档）",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        },
+        {
+          name: "get_init_status",
+          description: "获取当前Init流程的状态和进度",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        },
+        {
+          name: "reset_init",
+          description: "重置Init流程状态",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            required: []
+          }
+        }
+      ]
+    };
+  });
+
+  // 处理工具调用
+  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    const { name, arguments: args } = request.params;
+    const claudeCodeInit = serviceBus.get('claudeCodeInit');
+
+    try {
+      switch (name) {
+        case "init_step1_data_collection": {
+          const { projectPath } = args;
+          if (!projectPath) {
+            throw new Error("项目路径不能为空");
+          }
+          
+          console.log(`[MCP] 执行Init步靄1：数据收集 - ${projectPath}`);
+          claudeCodeInit.initialize(resolve(projectPath));
+          const results = await claudeCodeInit.executeStep1_DataCollection();
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  success: true,
+                  step: 1,
+                  message: "数据收集完成",
+                  results: {
+                    structureFiles: results.structureAnalysis?.layeredResults?.moduleAnalysis?.totalModules || 0,
+                    primaryLanguage: results.languageDetection?.detection?.primaryLanguage || 'unknown',
+                    totalFiles: results.fileAnalysis?.totalFiles || 0,
+                    qualityScore: results.fileAnalysis?.quality?.overallScore || 0
+                  },
+                  nextStep: "执行 init_step2_architecture 准备架构文档生成"
+                }, null, 2)
+              }
+            ]
+          };
+        }
+        
+        case "init_step2_architecture": {
+          console.log(`[MCP] 执行Init步靄2：架构文档生成准备`);
+          const aiDataPackage = await claudeCodeInit.prepareStep2_ArchitectureGeneration();
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  success: true,
+                  step: 2,
+                  message: "架构文档生成数据已准备",
+                  aiDataPackage,
+                  instructions: "请使用aiDataPackage中的数据生成system-architecture.md文档，然后调用 init_step3_deep_analysis",
+                  targetFile: "mg_kiro/architecture/system-architecture.md"
+                }, null, 2)
+              }
+            ]
+          };
+        }
+        
+        case "init_step3_deep_analysis": {
+          console.log(`[MCP] 执行Init步靄3：深度分析`);
+          const results = await claudeCodeInit.executeStep3_DeepAnalysis();
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  success: true,
+                  step: 3,
+                  message: "深度分析完成",
+                  results: {
+                    totalModules: results.moduleAnalysis?.totalModules || 0,
+                    promptsGenerated: results.promptGeneration ? true : false
+                  },
+                  nextStep: "执行 init_step4_module_docs 准备模块文档生成"
+                }, null, 2)
+              }
+            ]
+          };
+        }
+        
+        case "init_step4_module_docs": {
+          console.log(`[MCP] 执行Init步靄4：模块文档生成准备`);
+          const aiDataPackage = await claudeCodeInit.prepareStep4_ModuleDocGeneration();
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  success: true,
+                  step: 4,
+                  message: "模块文档生成数据已准备",
+                  aiDataPackage,
+                  instructions: "请使用aiDataPackage中的数据为每个模块生成文档，然后调用 init_step5_contracts",
+                  targetDirectory: "mg_kiro/modules/",
+                  expectedFiles: aiDataPackage.metadata?.expectedFileCount || 0
+                }, null, 2)
+              }
+            ]
+          };
+        }
+        
+        case "init_step5_contracts": {
+          console.log(`[MCP] 执行Init步靄5：集成契约生成准备`);
+          const aiDataPackage = await claudeCodeInit.prepareStep5_IntegrationContracts();
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  success: true,
+                  step: 5,
+                  message: "集成契约生成数据已准备",
+                  aiDataPackage,
+                  instructions: "请使用aiDataPackage中的数据生成integration-contracts.md文档",
+                  targetFile: "mg_kiro/contracts/integration-contracts.md",
+                  finalStep: true,
+                  completion: "Init流程全部完成！"
+                }, null, 2)
+              }
+            ]
+          };
+        }
+        
+        case "get_init_status": {
+          const status = claudeCodeInit.getState();
+          const progress = claudeCodeInit.getProgress();
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  status,
+                  progress,
+                  availableSteps: [
+                    "init_step1_data_collection",
+                    "init_step2_architecture", 
+                    "init_step3_deep_analysis",
+                    "init_step4_module_docs",
+                    "init_step5_contracts"
+                  ]
+                }, null, 2)
+              }
+            ]
+          };
+        }
+        
+        case "reset_init": {
+          claudeCodeInit.reset();
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  success: true,
+                  message: "Init流程已重置",
+                  nextStep: "调用 init_step1_data_collection 开始新的Init流程"
+                }, null, 2)
+              }
+            ]
+          };
+        }
+        
+        default:
+          throw new Error(`未知的工具: ${name}`);
       }
-      break;
+    } catch (error) {
+      console.error(`[MCP] 工具执行失败: ${name}`, error);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              error: true,
+              message: error.message,
+              suggestion: "请检查步骤顺序和前置条件"
+            })
+          }
+        ]
+      };
+    }
+  });
 
+  // 启动MCP服务器
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  
+  console.log("\n✅ mg_kiro MCP服务器已启动 (stdio模式)");
+  console.log("📡 等待MCP客户端连接...\n");
+}
+
+// WebSocket消息处理
+function handleWebSocketMessage(ws, data, serviceBus) {
+  const { type, payload } = data;
+  
+  switch (type) {
+    case 'init':
+      // 处理Init请求
+      const { projectPath } = payload;
+      executeInitFlow(projectPath)
+        .then(results => {
+          ws.send(JSON.stringify({
+            type: 'init_complete',
+            results
+          }));
+        })
+        .catch(error => {
+          ws.send(JSON.stringify({
+            type: 'error',
+            error: error.message
+          }));
+        });
+      break;
+      
+    case 'status':
+      // 获取状态
+      const initState = serviceBus.get('initState');
+      const status = initState ? initState.getProgress() : { status: 'idle' };
+      ws.send(JSON.stringify({
+        type: 'status',
+        status
+      }));
+      break;
+      
     default:
       ws.send(JSON.stringify({
         type: 'error',
-        error: `Unknown message type: ${message.type}`
+        error: `未知的消息类型: ${type}`
       }));
   }
 }
-
-/**
- * Generate unique client ID
- */
-function generateClientId() {
-  return 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-}
-
-/**
- * Setup graceful shutdown
- */
-function setupGracefulShutdown(server, wsManager) {
-  const shutdown = async (signal) => {
-    console.log(`\n🔄 Received ${signal}, gracefully shutting down...`);
-    try {
-      // 停止WebSocket服务
-      if (wsManager) {
-        wsManager.stop();
-      }
-      
-      // 关闭HTTP服务器
-      await new Promise((resolve) => {
-        server.close(resolve);
-      });
-      
-      console.log('🛑 mg_kiro MCP Server stopped');
-      process.exit(0);
-    } catch (error) {
-      console.error('❌ Error during shutdown:', error);
-      process.exit(1);
-    }
-  };
-
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  
-  // Handle uncaught exceptions
-  process.on('uncaughtException', (error) => {
-    console.error('💥 Uncaught Exception:', error);
-    shutdown('uncaughtException');
-  });
-
-  process.on('unhandledRejection', (reason, promise) => {
-    console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
-    shutdown('unhandledRejection');
-  });
-}
-
-/**
- * Start the MCP server
- */
-async function startServer() {
-  console.log('🤖 mg_kiro MCP Server Starting...\n');
-  
-  try {
-    // Load configuration
-    const config = loadConfig();
-    console.log('📋 Configuration loaded');
-    
-    // Create HTTP server first (needed for WebSocket)
-    const tempApp = express();
-    const server = createServer(tempApp);
-    
-    // Setup WebSocket early so we have the connection managers
-    const wsManager = setupWebSocket(server, {});
-    
-    // Now create Express app with WebSocket manager
-    const { app, config: serverConfig } = await createApp(config.server, wsManager);
-    
-    // Replace the temp app with the real app
-    server.removeAllListeners('request');
-    server.on('request', app);
-    
-    // Setup graceful shutdown
-    setupGracefulShutdown(server, wsManager);
-    
-    // Start listening
-    await new Promise((resolve, reject) => {
-      server.listen(serverConfig.port, serverConfig.host, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-    
-    console.log(`🚀 mg_kiro MCP Server started on ${serverConfig.host}:${serverConfig.port}`);
-    console.log(`📡 WebSocket endpoint: ws://${serverConfig.host}:${serverConfig.port}/ws`);
-    console.log(`🏥 Health check: http://${serverConfig.host}:${serverConfig.port}/health`);
-    console.log(`📊 Metrics: http://${serverConfig.host}:${serverConfig.port}/metrics`);
-    console.log('🔧 Current mode: init');
-    
-    console.log('\n✅ Server is ready and accepting connections!');
-    console.log('📖 Available endpoints:');
-    console.log(`   🏥 Health: http://${serverConfig.host}:${serverConfig.port}/health`);
-    console.log(`   📊 Status: http://${serverConfig.host}:${serverConfig.port}/status`);
-    console.log(`   🤝 Handshake: POST http://${serverConfig.host}:${serverConfig.port}/mcp/handshake`);
-    console.log(`   💬 WebSocket: ws://${serverConfig.host}:${serverConfig.port}/ws`);
-    console.log('\n🎯 Press Ctrl+C to stop the server\n');
-    
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
-}
-
-/**
- * Main function
- */
-async function main() {
-  await startServer();
-}
-
-// Check if running as main module
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch(error => {
-    console.error('💥 Fatal error:', error);
-    process.exit(1);
-  });
-}
-
-export { loadConfig, setupGracefulShutdown, main, createApp, setupWebSocket };

@@ -9,6 +9,7 @@ import express from 'express';
 import { createHealthRoutes } from './system/health.js';
 import { createMCPRoutes } from './system/mcp.js';
 import { createPromptsRoutes } from './system/prompts.js';
+import { createClaudeCodeInitRoutes } from './system/claude-code-init.js';
 
 // Init模式路由
 import { createStructureRoutes } from './init/structure.js';
@@ -48,6 +49,11 @@ export function createAppRoutes(services, server) {
     router.use('/template', promptsRouter);
 
     // 模式切换端点 (独立路径)
+    router.use('/mode', promptsRouter);
+
+    // Claude Code Init路由 (新的简化流程)
+    const claudeCodeInitRouter = createClaudeCodeInitRoutes(routerServices);
+    router.use('/init', claudeCodeInitRouter);
     router.use('/mode', promptsRouter);
 
     // ========== Init模式工作流路由 ==========

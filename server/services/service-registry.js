@@ -7,13 +7,14 @@ import { getServiceBus } from './service-bus.js';
 import ConfigService from './config-service.js';
 import { PromptManager } from '../prompt-manager.js';
 import { ProjectScanner } from '../analyzers/project-scanner.js';
-import { WorkflowState } from './workflow-state-service.js';
-import WorkflowService from './workflow-service.js';
+
 import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
 import { FileContentAnalyzer } from '../analyzers/file-content-analyzer.js';
 import UnifiedTemplateService from './unified-template-service.js';
 import LanguageIntelligenceService from './language-intelligence-service.js';
 import TemplateReader from './template-reader.js';
+import InitStateService from './init-state-service.js';
+import { ClaudeCodeInitService } from './claude-code-init-service.js';
 
 /**
  * 注册所有系统服务到ServiceBus
@@ -25,8 +26,9 @@ export function registerServices(configDir = './config') {
     // 基础服务层（无依赖）
     serviceBus
         .register('templateReader', TemplateReader, {}, [])
-        .register('workflowState', WorkflowState, {}, [])
-        .register('configService', ConfigService, { configDir }, []);
+        .register('configService', ConfigService, { configDir }, [])
+        .register('initState', InitStateService, {}, [])
+        .register('claudeCodeInit', ClaudeCodeInitService, {}, []);
 
     // 核心服务层（依赖基础服务）
     serviceBus
@@ -48,8 +50,6 @@ export function registerServices(configDir = './config') {
 
     // 高级服务层（依赖核心服务）
     serviceBus
-        .register('workflowService', WorkflowService, {}, ['workflowState'])
-        
         .register('unifiedTemplateService', UnifiedTemplateService, {}, [
             'templateReader', 
             'languageIntelligence'
@@ -91,8 +91,9 @@ export function getServices() {
     
     return {
         promptManager: serviceBus.get('promptManager'),
-        workflowService: serviceBus.get('workflowService'), 
         projectScanner: serviceBus.get('projectScanner'),
+        initState: serviceBus.get('initState'),
+        claudeCodeInit: serviceBus.get('claudeCodeInit'),
         languageDetector: serviceBus.get('enhancedLanguageDetector'),
         fileAnalyzer: serviceBus.get('fileContentAnalyzer'),
         unifiedTemplateService: serviceBus.get('unifiedTemplateService'),
