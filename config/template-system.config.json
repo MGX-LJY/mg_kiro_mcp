@@ -1,0 +1,85 @@
+{
+  "templateSystem": {
+    "version": "3.0.0",
+    "description": "mg_kiro MCP 统一模板系统配置",
+    "enableCache": true,
+    "cacheSettings": {
+      "enabled": true,
+      "ttl": 3600000,
+      "maxSize": 200,
+      "cleanupInterval": 900000
+    },
+    "intelligence": {
+      "enabled": true,
+      "languageDetection": true,
+      "confidenceThresholds": {
+        "high": 0.8,
+        "medium": 0.6,
+        "low": 0.4
+      },
+      "languageWeights": {
+        "javascript": 0.95,
+        "typescript": 0.92,
+        "python": 0.90,
+        "java": 0.85,
+        "go": 0.80,
+        "rust": 0.75,
+        "csharp": 0.80,
+        "general": 0.50
+      },
+      "modeWeights": {
+        "create": 0.95,
+        "fix": 0.90,
+        "init": 0.85,
+        "analyze": 0.75
+      },
+      "strategies": {
+        "default": "intelligent",
+        "fallback": "direct",
+        "available": ["direct", "intelligent", "language-specific", "fallback"]
+      }
+    },
+    "paths": {
+      "templates": "./prompts/templates",
+      "languages": "./prompts/languages",
+      "modes": "./prompts/modes",
+      "snippets": "./prompts/snippets",
+      "analysis": "./prompts/templates/analysis"
+    },
+    "categoryMapping": {
+      "modes": "modes",
+      "analysis": "templates/analysis",
+      "generation": "templates",
+      "snippets": "snippets",
+      "languages": "languages",
+      "analysis-templates": "templates/analysis",
+      "document-templates": "templates",
+      "templates": "templates"
+    },
+    "defaultVariables": {
+      "timestamp": "{{auto-generated}}",
+      "version": "3.0.0",
+      "server_name": "mg_kiro MCP Server",
+      "project_name": "{{auto-detected}}"
+    }
+  },
+  "performance": {
+    "enableMetrics": true,
+    "metricsRetention": 86400000,
+    "responseTimeWarning": 1000,
+    "cacheHitRateTarget": 0.8
+  },
+  "compatibility": {
+    "legacyApiSupport": true,
+    "deprecationWarnings": false,
+    "strictMode": false
+  },
+  "features": {
+    "intelligentGeneration": true,
+    "languageSpecificTemplates": true,
+    "contextAwarePrompts": true,
+    "batchProcessing": true,
+    "templateValidation": false,
+    "autoBackup": false
+  }
+}
