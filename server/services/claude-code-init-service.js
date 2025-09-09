@@ -91,12 +91,11 @@ export class ClaudeCodeInitService {
       
       // 3. 文件内容分析
       console.log('📁 执行文件内容分析...');
-      const fileAnalyzer = new FileContentAnalyzer(projectPath);
-      const fileAnalysisResults = await fileAnalyzer.performDeepAnalysis({
-        contextData: {
-          structureAnalysis: results.structureAnalysis,
-          languageData: results.languageDetection
-        }
+      const fileAnalyzer = new FileContentAnalyzer();
+      const fileAnalysisResults = await fileAnalyzer.analyzeFiles({
+        projectPath,
+        structureAnalysis: results.structureAnalysis,
+        languageData: results.languageDetection
       });
       
       results.fileAnalysis = fileAnalysisResults;

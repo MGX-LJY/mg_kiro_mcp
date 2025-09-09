@@ -1,6 +1,6 @@
 /**
- * 主路由索引文件
- * 聚合所有路由模块，提供统一的路由入口
+ * 主路由索引文件 (新版简化架构)
+ * 只保留必要的系统路由和新的ClaudeCodeInit服务
  */
 
 import express from 'express';
@@ -11,19 +11,8 @@ import { createMCPRoutes } from './system/mcp.js';
 import { createPromptsRoutes } from './system/prompts.js';
 import { createClaudeCodeInitRoutes } from './system/claude-code-init.js';
 
-// Init模式路由
-import { createStructureRoutes } from './init/structure.js';
-import { createLanguageRoutes } from './init/language.js';
-import { createFilesRoutes } from './init/files.js';
-import { createDocumentsRoutes } from './init/documents.js';
-import { createModulesAnalysisRoutes } from './init/modules-analysis.js'; // 第5步：深度模块分析
-import { createModulesDocsRoutes } from './init/modules-docs.js';         // 第7步：模块文档生成
-import { createLanguagePromptsRoutes } from './init/prompts.js';
-import { createContractsRoutes } from './init/contracts.js';
-
-
 /**
- * 创建应用程序主路由
+ * 创建应用程序主路由 (简化版)
  * @param {Object} services - 服务依赖
  * @param {Object} server - 服务器实例
  * @returns {express.Router} 主路由实例
@@ -32,7 +21,7 @@ export function createAppRoutes(services, server) {
     const router = express.Router();
     const routerServices = { ...services, server };
 
-    // ========== 系统路由 ==========
+    // ========== 核心系统路由 ==========
     
     // 健康检查和监控路由
     const healthRouter = createHealthRoutes(routerServices);
@@ -48,71 +37,80 @@ export function createAppRoutes(services, server) {
     router.use('/prompts', promptsRouter);
     router.use('/template', promptsRouter);
 
-    // 模式切换端点 (独立路径)
-    router.use('/mode', promptsRouter);
-
-    // Claude Code Init路由 (新的简化流程)
+    // ========== Claude Code Init服务 (新的5步流程) ==========
+    
+    // Claude Code Init路由 (替代旧的workflow系统)
     const claudeCodeInitRouter = createClaudeCodeInitRoutes(routerServices);
     router.use('/init', claudeCodeInitRouter);
-    router.use('/mode', promptsRouter);
 
-    // ========== Init模式工作流路由 ==========
-
-    // 第1步：项目结构分析
-    const structureRouter = createStructureRoutes(routerServices);
-    router.use('/mode/init', structureRouter);
-
-    // 第2步：智能语言识别
-    const languageRouter = createLanguageRoutes(routerServices);
-    router.use('/mode/init', languageRouter);
-
-    // 第3步：文件内容通读
-    const filesRouter = createFilesRoutes(routerServices);
-    router.use('/mode/init', filesRouter);
+    // ========== 服务状态和监控 ==========
     
-    // 通用文件扫描端点
-    router.use('/files', filesRouter);
-
-    // 第4步：生成基础架构文档
-    const documentsRouter = createDocumentsRoutes(routerServices);
-    router.use('/mode/init', documentsRouter);
-
-    // 第5步：深度模块分析
-    const modulesAnalysisRouter = createModulesAnalysisRoutes(routerServices);
-    router.use('/mode/init', modulesAnalysisRouter);
-    
-    // 第7步：模块文档生成
-    const modulesDocsRouter = createModulesDocsRoutes(routerServices);
-    router.use('/mode/init', modulesDocsRouter);
-
-    // 第6步：集成语言提示词路由
-    const languagePromptRouter = createLanguagePromptsRoutes(routerServices);
-    router.use('/mode/init', languagePromptRouter);
-
-    // 第8步：集成契约文档生成
-    const contractsRouter = createContractsRoutes(routerServices);
-    router.use('/mode/init', contractsRouter);
-
-
-
-    // ========== 工作流状态管理 ==========
-    
-    // 工作流状态查询
-    router.get('/workflow/status/:workflowId', async (req, res) => {
+    // 服务状态查询
+    router.get('/services/status', async (req, res) => {
         try {
-            const { workflowId } = req.params;
-            const progress = services.workflowService.getProgress(workflowId);
+            const stats = services.getStats ? services.getStats() : {};
             
-            if (!progress) {
-                return res.status(404).json({
-                    success: false,
-                    error: `工作流不存在: ${workflowId}`
-                });
-            }
+            res.json({
+                success: true,
+                message: '服务状态',
+                data: {
+                    serviceStats: stats,
+                    availableServices: [
+                        'claudeCodeInit',
+                        'promptManager', 
+                        'projectScanner',
+                        'languageDetector',
+                        'fileAnalyzer',
+                        'configService'
+                    ],
+                    timestamp: new Date().toISOString()
+                }
+            });
+
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message
+            });
+        }
+    });
+
+    // 服务信息查询
+    router.get('/services/info', async (req, res) => {
+        try {
+            const info = {
+                architecture: 'claude-code-init',
+                version: '2.0.1',
+                features: [
+                    'MCP协议支持',
+                    '5步Init流程',
+                    '智能语言检测',
+                    '项目结构分析',
+                    '文档生成数据准备'
+                ],
+                endpoints: {
+                    init: [
+                        'POST /init/initialize',
+                        'POST /init/step1-data-collection',
+                        'POST /init/step2-architecture', 
+                        'POST /init/step3-deep-analysis',
+                        'POST /init/step4-module-docs',
+                        'POST /init/step5-contracts',
+                        'GET /init/status',
+                        'POST /init/reset'
+                    ],
+                    system: [
+                        'GET /health',
+                        'GET /services/status',
+                        'GET /services/info'
+                    ]
+                }
+            };
 
             res.json({
                 success: true,
-                progress
+                message: '服务信息',
+                data: info
             });
 
         } catch (error) {
@@ -127,8 +125,9 @@ export function createAppRoutes(services, server) {
     
     // 全局错误处理中间件
     router.use((error, req, res, next) => {
-        console.error('Route error:', error);
+        console.error('[Route Error]:', error);
         res.status(500).json({
+            success: false,
             error: 'Internal server error',
             timestamp: new Date().toISOString()
         });
@@ -137,14 +136,16 @@ export function createAppRoutes(services, server) {
     // 404处理
     router.use('*', (req, res) => {
         res.status(404).json({
+            success: false,
             error: 'Endpoint not found',
             method: req.method,
-            path: req.originalUrl
+            path: req.originalUrl,
+            suggestion: 'Check /services/info for available endpoints',
+            timestamp: new Date().toISOString()
         });
     });
 
     return router;
 }
-
 
 export default createAppRoutes;

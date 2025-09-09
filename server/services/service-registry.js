@@ -26,7 +26,7 @@ export function registerServices(configDir = './config') {
     // 基础服务层（无依赖）
     serviceBus
         .register('templateReader', TemplateReader, {}, [])
-        .register('configService', ConfigService, { configDir }, [])
+        .register('configService', ConfigService, configDir, [])
         .register('initState', InitStateService, {}, [])
         .register('claudeCodeInit', ClaudeCodeInitService, {}, []);
 
