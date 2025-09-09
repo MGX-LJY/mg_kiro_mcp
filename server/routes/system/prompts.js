@@ -8,6 +8,7 @@ import express from 'express';
 import { success, error } from '../../services/response-service.js';
 import MasterTemplateService from '../../services/unified/master-template-service.js';
 import TemplateConfigManager from '../../services/unified/template-config-manager.js';
+import ModeTemplateService from '../../services/unified/mode-template-service.js';
 
 /**
  * 创建提示词路由
@@ -16,11 +17,18 @@ import TemplateConfigManager from '../../services/unified/template-config-manage
  */
 export function createPromptsRoutes(services) {
     const router = express.Router();
-    const { server, promptService } = services;
+    const { server, promptService, modeTemplateService } = services;
     
     // 初始化统一模板服务
     const configManager = new TemplateConfigManager();
     const masterTemplateService = new MasterTemplateService(configManager.getTemplateSystemConfig());
+    
+    // 初始化模式模板服务
+    const modeService = modeTemplateService || new ModeTemplateService({
+        enableCache: true,
+        enableIntelligence: true,
+        defaultLanguage: 'general'
+    });
     
     // 向后兼容：如果没有传入promptService，使用MasterTemplateService
     const templateService = promptService || masterTemplateService;
@@ -446,6 +454,162 @@ export function createPromptsRoutes(services) {
         } catch (err) {
             console.error('Analytics generation failed:', err);
             return error(res, 'Analytics generation failed', 500);
+        }
+    });
+
+    // === 新的模式模板服务API端点 ===
+    
+    /**
+     * 按模式和步骤获取模板 (新API)
+     * POST /mode-template/get
+     */
+    router.post('/mode-template/get', async (req, res) => {
+        try {
+            const request = req.body;
+            const result = await modeService.getTemplateByMode(request);
+            
+            if (!result.success) {
+                return error(res, result.error, 400);
+            }
+            
+            success(res, result);
+        } catch (err) {
+            console.error('Mode template request failed:', err);
+            return error(res, 'Mode template request failed', 500);
+        }
+    });
+    
+    /**
+     * 获取Init模式模板
+     * GET /mode-template/init/:step
+     */
+    router.get('/mode-template/init/:step', async (req, res) => {
+        try {
+            const { step } = req.params;
+            const { language = 'general', ...variables } = req.query;
+            
+            const result = await modeService.getInitTemplate(step, language, variables);
+            
+            if (!result.success) {
+                return error(res, result.error, 400);
+            }
+            
+            success(res, result);
+        } catch (err) {
+            console.error(`Init template request failed for step ${req.params.step}:`, err);
+            return error(res, 'Init template request failed', 500);
+        }
+    });
+    
+    /**
+     * 获取Create模式模板
+     * GET /mode-template/create/:step
+     */
+    router.get('/mode-template/create/:step', async (req, res) => {
+        try {
+            const { step } = req.params;
+            const { language = 'general', ...variables } = req.query;
+            
+            const result = await modeService.getCreateTemplate(step, language, variables);
+            
+            if (!result.success) {
+                return error(res, result.error, 400);
+            }
+            
+            success(res, result);
+        } catch (err) {
+            console.error(`Create template request failed for step ${req.params.step}:`, err);
+            return error(res, 'Create template request failed', 500);
+        }
+    });
+    
+    /**
+     * 获取可用模式列表
+     * GET /mode-template/modes
+     */
+    router.get('/mode-template/modes', (req, res) => {
+        try {
+            const modes = modeService.getAvailableModes();
+            success(res, {
+                modes: modes,
+                total: modes.length,
+                service: 'ModeTemplateService',
+                version: '4.0.0'
+            });
+        } catch (err) {
+            console.error('Failed to get available modes:', err);
+            return error(res, 'Failed to get available modes', 500);
+        }
+    });
+    
+    /**
+     * 获取模式的可用步骤
+     * GET /mode-template/modes/:mode/steps
+     */
+    router.get('/mode-template/modes/:mode/steps', (req, res) => {
+        try {
+            const { mode } = req.params;
+            const steps = modeService.getModeSteps(mode);
+            
+            success(res, {
+                mode: mode,
+                steps: steps,
+                total: steps.length,
+                service: 'ModeTemplateService'
+            });
+        } catch (err) {
+            console.error(`Failed to get steps for mode ${req.params.mode}:`, err);
+            return error(res, `Mode ${req.params.mode} not found`, 404);
+        }
+    });
+    
+    /**
+     * 获取支持的语言列表
+     * GET /mode-template/languages
+     */
+    router.get('/mode-template/languages', (req, res) => {
+        try {
+            const languages = modeService.getSupportedLanguages();
+            success(res, {
+                languages: languages,
+                total: languages.length,
+                service: 'ModeTemplateService'
+            });
+        } catch (err) {
+            console.error('Failed to get supported languages:', err);
+            return error(res, 'Failed to get supported languages', 500);
+        }
+    });
+    
+    /**
+     * 获取模式模板服务状态
+     * GET /mode-template/status
+     */
+    router.get('/mode-template/status', (req, res) => {
+        try {
+            const status = modeService.getServiceStatus();
+            success(res, status);
+        } catch (err) {
+            console.error('Failed to get mode template service status:', err);
+            return error(res, 'Failed to get mode template service status', 500);
+        }
+    });
+    
+    /**
+     * 清除模式模板服务缓存
+     * POST /mode-template/cache/clear
+     */
+    router.post('/mode-template/cache/clear', (req, res) => {
+        try {
+            modeService.clearCache();
+            success(res, {
+                message: 'Mode template service cache cleared successfully',
+                service: 'ModeTemplateService',
+                timestamp: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error('Failed to clear mode template cache:', err);
+            return error(res, 'Failed to clear mode template cache', 500);
         }
     });
 

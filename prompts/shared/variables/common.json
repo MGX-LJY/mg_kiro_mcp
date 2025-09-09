@@ -1,0 +1,50 @@
+{
+  "system": {
+    "service_name": "mg_kiro MCP Server",
+    "version": "4.0.0",
+    "description": "智能模板管理系统",
+    "author": "mg_kiro Team"
+  },
+  "time": {
+    "timestamp": "{{timestamp}}",
+    "date": "{{date}}",
+    "year": "{{year}}",
+    "month": "{{month}}",
+    "day": "{{day}}"
+  },
+  "project": {
+    "project_name": "{{project_name}}",
+    "project_path": "{{project_path}}",
+    "project_description": "{{project_description}}",
+    "project_version": "1.0.0"
+  },
+  "common_placeholders": {
+    "todo_count": "{{todo_count}}",
+    "file_count": "{{file_count}}",
+    "module_count": "{{module_count}}",
+    "complexity": "{{complexity}}",
+    "priority": "{{priority}}"
+  },
+  "modes": {
+    "init": {
+      "description": "项目初始化模式",
+      "steps": ["project-analysis", "task-creation", "file-documentation", "module-integration", "overview-generation", "connection-analysis"],
+      "icon": "🎯"
+    },
+    "create": {
+      "description": "功能创建模式", 
+      "steps": ["feature-planning", "module-creation", "existing-project", "new-project"],
+      "icon": "🚀"
+    },
+    "fix": {
+      "description": "问题修复模式",
+      "steps": ["issue-analysis", "diagnosis", "resolution"],
+      "icon": "🔧"
+    },
+    "analyze": {
+      "description": "代码分析模式",
+      "steps": ["quality-analysis", "security-analysis", "performance-analysis"],
+      "icon": "📊"
+    }
+  }
+}

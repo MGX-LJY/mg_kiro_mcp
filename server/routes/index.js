@@ -12,6 +12,7 @@ import { createPromptsRoutes } from './system/prompts.js';
 import { createClaudeCodeInitRoutes } from './init/claude-code-init.js';
 import { createTurboInitRoutes } from './init/turbo-init.js';
 import { createAIBatchInitRoutes } from './init/ai-batch-init.js';
+import { createCreateModeRoutes } from './create/index.js';
 
 /**
  * 创建应用程序主路由 (简化版)
@@ -52,6 +53,12 @@ export function createAppRoutes(services, server) {
     // AI Batch Init路由 (智能AI批量分析版本)
     const aiBatchInitRouter = createAIBatchInitRoutes(routerServices);
     router.use('/ai-batch', aiBatchInitRouter);
+
+    // ========== Create模式路由 (功能创建和新项目) ==========
+    
+    // Create模式路由 (功能添加和项目创建)
+    const createModeRouter = createCreateModeRoutes(routerServices);
+    router.use('/mode/create', createModeRouter);
 
     // ========== 服务状态和监控 ==========
     
@@ -108,6 +115,14 @@ export function createAppRoutes(services, server) {
                         'POST /init/step5-contracts',
                         'GET /init/status',
                         'POST /init/reset'
+                    ],
+                    create: [
+                        'GET /mode/create/status',
+                        'GET /mode/create/help',
+                        'POST /mode/create/analyze-requirement',
+                        'POST /mode/create/start-workflow',
+                        'POST /mode/create/existing-project/start',
+                        'POST /mode/create/new-project/start'
                     ],
                     system: [
                         'GET /health',

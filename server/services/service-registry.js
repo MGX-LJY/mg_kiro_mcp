@@ -6,6 +6,8 @@
 import { getServiceBus } from './service-bus.js';
 import ConfigService from './config-service.js';
 import { ProjectScanner } from '../analyzers/project-scanner.js';
+import AITodoManager from './ai-todo-manager.js';
+import CompleteTaskMonitor from './complete-task-monitor.js';
 
 import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
 import { FileContentAnalyzer } from '../analyzers/file-content-analyzer.js';
@@ -16,6 +18,7 @@ import LanguageIntelligenceService from './language-intelligence-service.js';
 // 新的统一模板系统
 import MasterTemplateService from './unified/master-template-service.js';
 import TemplateConfigManager from './unified/template-config-manager.js';
+import ModeTemplateService from './unified/mode-template-service.js';
 
 /**
  * 注册所有系统服务到ServiceBus
@@ -44,11 +47,21 @@ export function registerServices(configDir = './config') {
         .register('enhancedLanguageDetector', EnhancedLanguageDetector, {}, [])
         .register('fileContentAnalyzer', FileContentAnalyzer, {}, [])
         
-        .register('languageIntelligence', LanguageIntelligenceService, {}, []);
+        .register('languageIntelligence', LanguageIntelligenceService, {}, [])
+        .register('aiTodoManager', AITodoManager, {}, [])
+        .register('completeTaskMonitor', CompleteTaskMonitor, {}, []);
 
     // 高级服务层（依赖核心服务）
     serviceBus
         .register('masterTemplateService', MasterTemplateService, {}, [
+            'templateConfigManager',
+            'languageIntelligence'
+        ])
+        .register('modeTemplateService', ModeTemplateService, {
+            enableCache: true,
+            enableIntelligence: true,
+            defaultLanguage: 'general'
+        }, [
             'templateConfigManager',
             'languageIntelligence'
         ]);
@@ -77,12 +90,18 @@ export async function initializeServices(configDir = './config') {
     
     // 设置相互依赖关系，避免构造函数中的循环依赖
     const masterTemplateService = serviceBus.get('masterTemplateService');
+    const modeTemplateService = serviceBus.get('modeTemplateService');
     const languageIntelligence = serviceBus.get('languageIntelligence');
     
     if (masterTemplateService && languageIntelligence) {
         masterTemplateService.setLanguageIntelligence(languageIntelligence);
         languageIntelligence.setTemplateService(masterTemplateService);
-        console.log('[ServiceRegistry] 交叉依赖关系设置完成');
+        console.log('[ServiceRegistry] MasterTemplateService 交叉依赖关系设置完成');
+    }
+    
+    if (modeTemplateService && languageIntelligence) {
+        // ModeTemplateService 目前不需要设置交叉依赖，依赖注入已处理
+        console.log('[ServiceRegistry] ModeTemplateService 依赖关系设置完成');
     }
     
     const stats = serviceBus.getStats();
@@ -100,6 +119,7 @@ export function getServices() {
     return {
         // 新的统一模板系统
         masterTemplateService: serviceBus.get('masterTemplateService'),
+        modeTemplateService: serviceBus.get('modeTemplateService'),
         templateConfigManager: serviceBus.get('templateConfigManager'),
         
         // 其他核心服务
@@ -110,6 +130,10 @@ export function getServices() {
         fileAnalyzer: serviceBus.get('fileContentAnalyzer'),
         languageIntelligence: serviceBus.get('languageIntelligence'),
         configService: serviceBus.get('configService'),
+        
+        // Create模式所需服务
+        aiTodoManager: serviceBus.get('aiTodoManager'),
+        completeTaskMonitor: serviceBus.get('completeTaskMonitor'),
         
         // 向后兼容的别名（指向新服务）
         promptService: serviceBus.get('masterTemplateService'), // promptManager 的替代

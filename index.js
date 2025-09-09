@@ -22,11 +22,41 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
 import { createAppRoutes } from './server/routes/index.js';
-import { initializeServices } from './server/services/service-registry.js';
+import { initializeServices, getServices } from './server/services/service-registry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const CONFIG_DIR = join(__dirname, 'config');
+
+// ========== 服务容器包装器 ==========
+function getServiceContainer(serviceBus) {
+  return {
+    // 新的统一模板系统
+    masterTemplateService: serviceBus.get('masterTemplateService'),
+    templateConfigManager: serviceBus.get('templateConfigManager'),
+    
+    // 其他核心服务
+    projectScanner: serviceBus.get('projectScanner'),
+    languageDetector: serviceBus.get('enhancedLanguageDetector'),
+    fileAnalyzer: serviceBus.get('fileContentAnalyzer'),
+    languageIntelligence: serviceBus.get('languageIntelligence'),
+    configService: serviceBus.get('configService'),
+    
+    // Create模式所需服务
+    aiTodoManager: serviceBus.get('aiTodoManager'),
+    completeTaskMonitor: serviceBus.get('completeTaskMonitor'),
+    
+    // 向后兼容的别名（指向新服务）
+    promptService: serviceBus.get('masterTemplateService'),
+    unifiedTemplateService: serviceBus.get('masterTemplateService'),
+    
+    // ServiceBus工具方法
+    getService: (name) => serviceBus.get(name),
+    getServiceStatus: (name) => serviceBus.getServiceStatus(name),
+    getStats: () => serviceBus.getStats(),
+    getAllServices: () => serviceBus.getAllServices()
+  };
+}
 
 // ========== 服务器模式 ==========
 startServer();
@@ -57,8 +87,9 @@ async function startServer() {
       next();
     });
 
-    // 创建路由
-    const routes = createAppRoutes(serviceBus, null);
+    // 创建服务容器并生成路由
+    const serviceContainer = getServiceContainer(serviceBus);
+    const routes = createAppRoutes(serviceContainer, null);
     app.use('/', routes);
 
     // WebSocket服务器
