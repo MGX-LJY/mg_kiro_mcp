@@ -4,199 +4,162 @@ Claude Code 工作指南 - mg_kiro MCP Server
 
 ## 项目概述
 
-mg_kiro MCP Server 是一个 Model Context Protocol 智能提示词管理服务器，专为 Claude Code 设计。
+专为 Claude Code 设计的 MCP 服务器，提供项目初始化和文档生成功能。
 
-**状态**: 生产就绪 (100%完成度) - 全新模块化架构重构完成 + 语言智能系统集成
-**核心功能**: MCP协议服务器、四种工作模式、智能语言识别、文档模板系统、语言智能API系统
+**版本**: v2.0.0 | **状态**: 生产就绪  
+**核心功能**: 项目概览生成、渐进式文档生成、语言智能识别
 
-**🏗️ 架构更新**: 
-- 全新模块化路由系统 - 分层服务架构
-- 标准化响应格式 - 统一错误处理
-- 服务依赖注入 - 松耦合设计  
-- 完整的端点覆盖 - 100%功能测试通过
-
-**工作模式**:
-- **Init** - 项目初始化和文档生成
-- **Create** - 新功能开发和模块创建
-- **Fix** - 问题修复和代码优化  
-- **Analyze** - 代码分析和质量评估
+**架构特点**: 统一入口点 + 服务化设计 + 精简2步流程
 
 ## 开发命令
 
-### 基本命令
 ```bash
-npm start                # 启动服务器
-npm run dev             # 开发模式(热重载)
-npm test               # 运行测试
-npm run test:config    # 配置测试
-node run-multitest.js  # 多语言测试
+# 启动服务
+npm start                     # MCP模式 (推荐)
+MCP_PORT=3000 npm start      # Web服务器模式
+npm run dev                   # 开发模式
+
+# 测试和检查
+npm test                      # 运行测试
+curl http://localhost:3000/health  # 健康检查 (HTTP模式)
 ```
 
-### 健康检查
-```bash
-curl http://localhost:3000/health
-curl http://localhost:3000/status
-```
+## 核心架构
 
-## 项目架构 (全新模块化设计)
+### 主要组件
+- `index.js` - 统一入口点 (MCP + Express + WebSocket)
+- `server/routes/` - 路由系统 (system, init, create)
+- `server/services/` - 服务层 (依赖注入 + 服务总线)
+- `server/language/` - 语言处理 (检测 + 智能分析)
+- `server/analyzers/` - 项目分析器 (扫描 + 内容分析)
 
-### 🏗️ 核心组件 (重构完成)
-- `index.js` - **统一入口点** - MCP协议服务器+Express+WebSocket (完全集成)
-- `server/prompt-manager.js` - 提示词管理
-- `server/config-manager.js` - 配置管理
-- `server/routes/` - **模块化路由系统** (全新架构)
-  - `system/` - 系统路由 (health, mcp, prompts)
-  - `init/` - Init模式路由 (6个步骤模块)
-  - `create/` - Create模式路由 (modules, api, features)  
-  - `fix/` - Fix模式路由 (issues, diagnosis, fixes)
-  - `analyze/` - Analyze模式路由 (quality, security, reports)
-  - **`language/`** - **语言智能系统路由** (detection, templates, prompts)
-- `server/services/` - 服务层 (依赖注入)
-  - **`language-intelligence-service.js`** - **语言智能核心服务**
-  - **`template-engine-service.js`** - **模板引擎服务**  
-- `server/utils/response.js` - 标准化响应格式
-- `server/language/` - 语言处理模块
-  - `detector.js` - 语言识别引擎
-  - **`template-generator.js`** - **智能模板生成器**
-  - **`prompt-intelligence.js`** - **智能提示词系统**
-- `server/analyzers/` - 项目扫描和文件分析
+## MCP工具 (核心功能)
 
-### 🔌 关键API (重构后)
-**系统API:**
+| 工具 | 功能 | 参数 |
+|------|------|------|
+| `generate_project_overview` | 生成项目概览包 | `projectPath`(必需), `maxDepth`, `includeFiles` |
+| `progressive_documentation` | 渐进式文档生成 | `batchSize`, `style`, `focusAreas`, `includeTests` |
+| `get_init_status` | 获取状态和进度 | 无 |
+| `reset_init` | 重置流程状态 | 无 |
+
+## 主要API端点 (HTTP模式)
+
 - `GET /health` - 健康检查
-- `POST /mcp/handshake` - MCP握手  
-- `POST /mode/switch` - 切换模式
-- `GET /prompt/mode/:mode` - 模式提示词
-- `GET /template/:name` - 文档模板
+- `POST /init/*` - 初始化流程
+- `GET /mode/create/*` - Create模式
+- `GET /services/*` - 服务管理
 
-**Create模式API:**
-- `GET /mode/create/status` - Create模式状态
-- `GET /mode/create/help` - Create模式帮助
-- `POST /mode/create/plan-feature` - 功能规划
-- `POST /mode/create/create-module` - 创建模块
-- `POST /mode/create/create-api` - 创建API
+## 语言支持
 
-**Fix模式API:**
-- `POST /mode/fix/report-issue` - 报告问题
-- `GET /mode/fix/help` - Fix模式帮助
-- `POST /mode/fix/diagnose-issue` - 问题诊断
-- `POST /mode/fix/apply-fix` - 应用修复
-
-**Analyze模式API:**
-- `POST /mode/analyze/analyze-quality` - 质量分析
-- `POST /mode/analyze/analyze-security` - 安全分析
-- `POST /mode/analyze/generate-report` - 生成报告
-
-**🧠 语言智能系统API (新增):**
-- **语言检测引擎API:**
-  - `POST /language/detect` - 项目语言检测  
-  - `GET /language/supported` - 支持的语言列表
-  - `GET /language/frameworks/:lang` - 语言支持的框架
-- **模板生成引擎API:**
-  - `POST /template/generate` - 基于语言生成模板
-  - `GET /template/variants/:lang` - 语言特定模板变体  
-  - `POST /template/batch-generate` - 批量模板生成
-- **提示词智能系统API:**
-  - `GET /prompts/language-specific/:lang` - 语言特定提示词
-  - `POST /prompts/context-generate` - 基于上下文生成提示词
-  - `GET /prompts/best-practices/:lang` - 语言最佳实践提示
-
-## 多语言支持
-
-### 支持语言
-- JavaScript/Node.js (React/Vue/Angular)
-- Python (Django/Flask/FastAPI)
-- Java/Go/Rust/C#/.NET
-
-### 语言识别
-自动检测文件扩展名、配置文件、框架特征进行智能识别，测试通过率100%
+**支持语言**: JavaScript/Node.js, Python, Java, Go, Rust, C#/.NET  
+**识别机制**: 文件扩展名 + 配置文件 + 目录结构 + 框架特征检测
 
 ## 配置
 
 ### 环境变量
 ```bash
-export MCP_PORT=3000              # 服务端口
-export MCP_HOST=localhost         # 主机地址  
-export MCP_LOG_LEVEL=info        # 日志级别
-export MCP_API_KEY=your-key      # API密钥(可选)
+export MCP_PORT=3000        # HTTP端口 (可选)
+export MCP_LOG_LEVEL=info   # 日志级别
 ```
 
 ### 配置文件
 - `config/mcp.config.json` - 服务器配置
-- `config/modes.config.json` - 工作模式配置
-- `config/templates.config.json` - 模板系统配置
+- `config/modes.config.json` - 工作模式
+- `config/templates.config.json` - 模板系统
 
 ## 模板系统
 
-### 文档模板 (15+种)
-包含系统架构、用户故事、技术分析、任务清单等标准文档模板，支持变量替换和多语言变体。
-
-模板位置: `prompts/templates/` 和 `prompts/language-variants/`
+**模板类型**: 系统架构、模块目录、用户故事、技术分析、行动项目、变更日志  
+**目录结构**: `prompts/modes/`, `prompts/languages/`, `prompts/shared/`  
+**特性**: 变量替换、语言适配、动态生成、缓存机制
 
 ## 开发实践
 
-### 代码架构
-- ES6模块化，使用import/export语法
-- 事件驱动设计，异步处理
-- 配置驱动，通过JSON文件控制行为
-- 完整错误处理和日志记录
+### 架构原则
+- ES6模块化 + 服务化架构 + 配置驱动
+- 异步优先 + 标准化响应 + 完整错误处理
 
-### 文件命名约定
-- 服务: `*-server.js`
-- 管理器: `*-manager.js` 
-- 处理器: `*-handler.js`
-- 分析器: `*-analyzer.js`
+### 命名约定
+- 服务: `*-service.js` | 分析器: `*-analyzer.js` | 管理器: `*-manager.js`
+- 配置: `*.config.json` | 测试: `*.test.js`
 
-## 常见任务
+### 服务开发
+```javascript
+// 注册服务
+serviceBus.register('serviceName', ServiceClass, config, deps);
+// 获取服务
+const service = serviceBus.get('serviceName');
+// 标准响应
+return success(res, data); // error(res, msg, code);
+```
 
-### 添加新模板
-1. 在 `prompts/templates/` 创建Markdown文件
-2. 使用变量占位符 `{{project_name}}`
-3. 测试: `curl http://localhost:3000/template/your-template`
+## 开发任务
 
-### 扩展工作模式  
-1. 在 `server/mode-handler.js` 添加处理逻辑
-2. 创建提示词文件 `prompts/modes/your-mode.md`
-3. 更新 `config/modes.config.json`
+### 添加MCP工具
+1. 在 `index.js` 添加工具定义和执行逻辑
+2. 更新服务依赖
+3. 测试功能
 
-### 增强语言支持
-1. 在 `server/language/detector.js` 添加语言规则
-2. 扩展多语言测试 `run-multitest.js`
+### 扩展服务
+1. 创建服务文件 `server/services/`
+2. 在 `service-registry.js` 注册
+3. 配置依赖关系
+
+### 添加语言支持
+1. 更新 `detector.js` 检测规则
+2. 创建 `prompts/languages/your-lang/`
+3. 更新支持列表
 
 ## 问题排查
 
 ### 常见问题
+- **MCP连接**: 检查Claude Code配置路径
 - **端口占用**: `MCP_PORT=3001 npm start`
-- **语言识别**: `node run-multitest.js`
-- **文件扫描**: `node debug-scanner.js`
-- **配置错误**: 检查 `config/*.json` 文件格式
+- **服务依赖**: 检查 `service-registry.js`
+- **配置错误**: 验证 `config/*.json` 格式
+
+### 调试命令
+```bash
+# 健康检查
+curl http://localhost:3000/health
+# 详细日志
+MCP_LOG_LEVEL=debug npm start
+# 测试
+npm run test:config
+```
 
 ## 项目状态
 
-- **版本**: v2.0.1  
-- **完成度**: 100% ✅
-- **状态**: 生产就绪 - 全新模块化架构
-- **多语言测试**: 100%通过率
-- **功能测试**: 100%通过率
+**版本**: v2.0.0 | **状态**: 生产就绪 ✅  
+**MCP工具**: 4个核心工具 | **服务**: 模块化架构
 
-## 🎉 重构完成摘要
+**技术栈**: Node.js + ES6模块 + MCP协议 + Express + Jest
 
-### ✅ 已完成 (2025-09-07)
-- **全量重构**: 所有4种工作模式完全迁移到新架构
-- **模块化路由**: 22个路由模块，分层服务架构
-- **目录结构优化**: 删除双架构系统，统一services目录
-  - 删除架构2: main.js, mcp-server-new.js, core/目录
-  - 删除未使用目录: middleware/, utils/, workflow/
-  - 迁移到services: response-service.js, workflow-state-service.js
-- **功能测试**: 所有API端点测试通过，系统完整性100%
-- **🔥 最终整合**: 完全删除mcp-server.js，所有功能集成到index.js统一入口
-- **文档更新**: README.md和CLAUDE.md同步更新架构变更
+## Claude Code集成
 
-### 🏗️ 新架构特点
-- **统一入口**: index.js集成Express+WebSocket+MCP协议完整功能
-- **分层设计**: routes → services → infrastructure  
-- **依赖注入**: 统一服务管理
-- **标准响应**: success/error/workflowSuccess格式
-- **错误处理**: 完善的错误处理中间件
-- **易扩展**: 新模式可快速接入
-- **🧠 语言智能系统**: 完整的语言检测、模板生成、智能提示词API集成
+### MCP配置
+```json
+{
+  "mcpServers": {
+    "mg_kiro": {
+      "command": "node",
+      "args": ["/path/to/mg_kiro_mcp/index.js"]
+    }
+  }
+}
+```
+
+### 使用流程
+1. `generate_project_overview` - 项目分析
+2. `progressive_documentation` - 文档生成  
+3. `get_init_status` - 监控进度
+4. `reset_init` - 重置状态 (可选)
+
+### 最佳实践
+- 使用绝对路径
+- 默认80KB批次大小
+- comprehensive/concise/technical文档风格
+- 定期检查状态
+
+---
+MIT许可证
