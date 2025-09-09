@@ -75,9 +75,7 @@ export function createAppRoutes(services, server) {
                     availableServices: [
                         'claudeCodeInit',
                         'promptManager', 
-                        'projectScanner',
                         'languageDetector',
-                        'fileAnalyzer',
                         'configService'
                     ],
                     timestamp: new Date().toISOString()

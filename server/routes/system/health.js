@@ -56,9 +56,7 @@ export function createHealthRoutes(services) {
                     available: [
                         'claudeCodeInit',
                         'promptManager', 
-                        'projectScanner',
                         'languageDetector',
-                        'fileAnalyzer',
                         'configService'
                     ]
                 }

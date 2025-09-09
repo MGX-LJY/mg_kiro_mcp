@@ -36,9 +36,7 @@ function getServiceContainer(serviceBus) {
     templateConfigManager: serviceBus.get('templateConfigManager'),
     
     // 其他核心服务
-    projectScanner: serviceBus.get('projectScanner'),
     languageDetector: serviceBus.get('enhancedLanguageDetector'),
-    fileAnalyzer: serviceBus.get('fileContentAnalyzer'),
     languageIntelligence: serviceBus.get('languageIntelligence'),
     configService: serviceBus.get('configService'),
     

@@ -60,9 +60,7 @@ mg_kiro_mcp/
 │   │   ├── language-prompt-generator.js
 │   │   └── prompt-intelligence.js
 │   └── analyzers/              # 📊 项目分析器
-│       ├── enhanced-language-detector.js
-│       ├── file-content-analyzer.js
-│       └── project-scanner.js
+│       └── enhanced-language-detector.js
 ├── prompts/                    # 📝 提示词和模板
 │   ├── modes/                  # 工作模式提示词
 │   │   ├── init/
@@ -184,8 +182,7 @@ curl http://localhost:3000/health
 ### 📊 项目分析器系统
 
 **核心组件**：
-- **项目扫描器** (`server/analyzers/project-scanner.js`)
-- **文件内容分析器** (`server/analyzers/file-content-analyzer.js`)
+- **增强语言检测器** (`server/analyzers/enhanced-language-detector.js`)
 
 **功能特性**：
 - 智能目录树生成，可配置扫描深度

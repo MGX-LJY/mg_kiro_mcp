@@ -5,12 +5,10 @@
 
 import { getServiceBus } from './service-bus.js';
 import ConfigService from './config-service.js';
-import { ProjectScanner } from '../analyzers/project-scanner.js';
 import AITodoManager from './ai-todo-manager.js';
 import CompleteTaskMonitor from './complete-task-monitor.js';
 
 import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
-import { FileContentAnalyzer } from '../analyzers/file-content-analyzer.js';
 import LanguageIntelligenceService from './language-intelligence-service.js';
 // 已删除: import InitStateService from './init-state-service.js';
 // 已删除: import { ClaudeCodeInitService } from './claude-code-init-service.js';
@@ -39,13 +37,7 @@ export function registerServices(configDir = './config') {
 
     // 核心服务层（依赖基础服务）
     serviceBus
-        .register('projectScanner', ProjectScanner, {
-            maxDepth: 4,
-            excludePatterns: ['.git', 'node_modules', '.DS_Store', '*.log']
-        }, [])
-        
         .register('enhancedLanguageDetector', EnhancedLanguageDetector, {}, [])
-        .register('fileContentAnalyzer', FileContentAnalyzer, {}, [])
         
         .register('languageIntelligence', LanguageIntelligenceService, {}, [])
         .register('aiTodoManager', AITodoManager, {}, [])
@@ -123,11 +115,9 @@ export function getServices() {
         templateConfigManager: serviceBus.get('templateConfigManager'),
         
         // 其他核心服务
-        projectScanner: serviceBus.get('projectScanner'),
         // 已删除: initState: serviceBus.get('initState'),
         // 已删除: claudeCodeInit: serviceBus.get('claudeCodeInit'),
         languageDetector: serviceBus.get('enhancedLanguageDetector'),
-        fileAnalyzer: serviceBus.get('fileContentAnalyzer'),
         languageIntelligence: serviceBus.get('languageIntelligence'),
         configService: serviceBus.get('configService'),
         

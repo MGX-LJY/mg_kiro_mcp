@@ -49,21 +49,10 @@ class ConfigService {
                 maxAge: 86400000 // 24小时
             },
             analyzers: {
-                projectScanner: {
-                    maxDepth: 4,
-                    enableCaching: true,
-                    maxFiles: 1000
-                },
                 languageDetector: {
                     enableDeepAnalysis: true,
                     maxFilesToAnalyze: 15,
                     confidenceThreshold: 60
-                },
-                fileContentAnalyzer: {
-                    maxFileSize: 1048576, // 1MB
-                    maxFilesToAnalyze: 50,
-                    enableDeepAnalysis: true,
-                    pythonPriority: true
                 }
             }
         };
