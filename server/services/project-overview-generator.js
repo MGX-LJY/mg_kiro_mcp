@@ -18,7 +18,7 @@
 import { promises as fs } from 'fs';
 import { join, resolve, relative, extname, basename } from 'path';
 import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
-import { TemplateReader } from './template-reader.js';
+import TemplateReader from './template-reader.js';
 
 export class ProjectOverviewGenerator {
     constructor() {
@@ -243,7 +243,7 @@ export class ProjectOverviewGenerator {
                 count, 
                 ext 
             }))
-            .filter(item => item.language !== ext.slice(1)) // 过滤未知扩展名
+            .filter(item => item.language !== item.ext.slice(1)) // 过滤未知扩展名
             .sort((a, b) => b.count - a.count);
 
         return {
@@ -593,7 +593,7 @@ export class ProjectOverviewGenerator {
         
         try {
             // 应用架构文档模版
-            const template = await this.templateReader.readTemplate('architecture/system-architecture-generation');
+            const template = await this.templateReader.readTemplate('templates', 'architecture/system-architecture-generation');
             
             const architectureDoc = {
                 title: `${data.projectMetadata.name} - 系统架构文档`,
@@ -700,6 +700,10 @@ export class ProjectOverviewGenerator {
     
     identifyCoreModules(keyFiles, structure) {
         const coreModules = [];
+        
+        if (!keyFiles || typeof keyFiles !== 'object') {
+            return coreModules;
+        }
         
         // 识别入口模块
         const entryFiles = Object.keys(keyFiles).filter(file => 

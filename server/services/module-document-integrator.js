@@ -20,7 +20,7 @@
 
 import { promises as fs } from 'fs';
 import { join, resolve, basename, dirname, extname } from 'path';
-import { TemplateReader } from './template-reader.js';
+import TemplateReader from './template-reader.js';
 
 export class ModuleDocumentIntegrator {
     constructor() {
