@@ -9,7 +9,9 @@ import express from 'express';
 import { createHealthRoutes } from './system/health.js';
 import { createMCPRoutes } from './system/mcp.js';
 import { createPromptsRoutes } from './system/prompts.js';
-import { createClaudeCodeInitRoutes } from './system/claude-code-init.js';
+import { createClaudeCodeInitRoutes } from './init/claude-code-init.js';
+import { createTurboInitRoutes } from './init/turbo-init.js';
+import { createAIBatchInitRoutes } from './init/ai-batch-init.js';
 
 /**
  * 创建应用程序主路由 (简化版)
@@ -42,6 +44,14 @@ export function createAppRoutes(services, server) {
     // Claude Code Init路由 (替代旧的workflow系统)
     const claudeCodeInitRouter = createClaudeCodeInitRoutes(routerServices);
     router.use('/init', claudeCodeInitRouter);
+    
+    // Turbo Init路由 (高性能批量处理版本) 
+    const turboInitRouter = createTurboInitRoutes(routerServices);
+    router.use('/turbo', turboInitRouter);
+    
+    // AI Batch Init路由 (智能AI批量分析版本)
+    const aiBatchInitRouter = createAIBatchInitRoutes(routerServices);
+    router.use('/ai-batch', aiBatchInitRouter);
 
     // ========== 服务状态和监控 ==========
     

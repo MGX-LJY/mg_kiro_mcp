@@ -10,8 +10,8 @@ import { ProjectScanner } from '../analyzers/project-scanner.js';
 import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
 import { FileContentAnalyzer } from '../analyzers/file-content-analyzer.js';
 import LanguageIntelligenceService from './language-intelligence-service.js';
-import InitStateService from './init-state-service.js';
-import { ClaudeCodeInitService } from './claude-code-init-service.js';
+// 已删除: import InitStateService from './init-state-service.js';
+// 已删除: import { ClaudeCodeInitService } from './claude-code-init-service.js';
 
 // 新的统一模板系统
 import MasterTemplateService from './unified/master-template-service.js';
@@ -26,9 +26,9 @@ export function registerServices(configDir = './config') {
 
     // 基础服务层（无依赖）
     serviceBus
-        .register('configService', ConfigService, configDir, [])
-        .register('initState', InitStateService, {}, [])
-        .register('claudeCodeInit', ClaudeCodeInitService, {}, []);
+        .register('configService', ConfigService, configDir, []);
+        // 已删除: .register('initState', InitStateService, {}, [])
+        // 已删除: .register('claudeCodeInit', ClaudeCodeInitService, {}, [])
 
     // 新的统一模板系统（基础层）
     serviceBus
@@ -104,8 +104,8 @@ export function getServices() {
         
         // 其他核心服务
         projectScanner: serviceBus.get('projectScanner'),
-        initState: serviceBus.get('initState'),
-        claudeCodeInit: serviceBus.get('claudeCodeInit'),
+        // 已删除: initState: serviceBus.get('initState'),
+        // 已删除: claudeCodeInit: serviceBus.get('claudeCodeInit'),
         languageDetector: serviceBus.get('enhancedLanguageDetector'),
         fileAnalyzer: serviceBus.get('fileContentAnalyzer'),
         languageIntelligence: serviceBus.get('languageIntelligence'),
