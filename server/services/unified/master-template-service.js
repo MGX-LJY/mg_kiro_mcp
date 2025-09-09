@@ -479,17 +479,32 @@ class MasterTemplateService {
     _buildTemplatePath(category, name) {
         const fileName = name.endsWith('.md') ? name : `${name}.md`;
         
+        // 首先检查特定的模板路径映射（基于实际请求路径）
+        const specificMappings = {
+            'templates/architecture/system-architecture-generation': 'generation/architecture/system-architecture-generation.md',
+            'templates/existing-project-requirement': 'modes/create/existing-project-requirement/template.md',
+            'templates/new-project-requirement': 'modes/create/new-project-requirement/template.md'
+        };
+        
+        const fullTemplateName = `${category}/${name}`;
+        if (specificMappings[fullTemplateName]) {
+            const specificPath = path.join(this.promptsDir, specificMappings[fullTemplateName]);
+            if (fs.existsSync(specificPath)) {
+                return specificPath;
+            }
+        }
+        
         // 统一的类别映射
         const categoryPaths = {
             'modes': 'modes',
             'analysis': 'templates/analysis',
-            'generation': 'templates',
+            'generation': 'generation',
             'snippets': 'snippets',
             'languages': 'languages',
             // 向后兼容映射
             'analysis-templates': 'templates/analysis',
-            'document-templates': 'templates',
-            'templates': 'templates'
+            'document-templates': 'modes/create',
+            'templates': 'modes/create'
         };
 
         const categoryDir = categoryPaths[category] || category;

@@ -49,12 +49,15 @@
     "categoryMapping": {
       "modes": "modes",
       "analysis": "templates/analysis",
-      "generation": "templates",
+      "generation": "modes/create",
       "snippets": "snippets",
       "languages": "languages",
       "analysis-templates": "templates/analysis",
-      "document-templates": "templates",
-      "templates": "templates"
+      "document-templates": "modes/create",
+      "templates": "modes/create",
+      "templates/existing-project-requirement": "modes/create/existing-project-requirement",
+      "templates/new-project-requirement": "modes/create/new-project-requirement",
+      "templates/architecture/system-architecture-generation": "generation/architecture/system-architecture-generation"
     },
     "defaultVariables": {
       "timestamp": "{{auto-generated}}",
