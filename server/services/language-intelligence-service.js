@@ -4,14 +4,17 @@
  */
 
 import LanguageDetector from '../language/detector.js';
-import LanguageTemplateGenerator from '../language/template-generator.js';
 import PromptIntelligence from '../language/prompt-intelligence.js';
+import MasterTemplateService from './unified/master-template-service.js';
+import TemplateConfigManager from './unified/template-config-manager.js';
 
 class LanguageIntelligenceService {
     constructor() {
         this.detector = new LanguageDetector();
-        this.templateGenerator = new LanguageTemplateGenerator();
         this.promptIntelligence = new PromptIntelligence();
+        
+        // 延迟初始化模板服务，避免循环依赖
+        this.templateService = null;
         
         // 缓存配置
         this.cache = {
@@ -21,6 +24,25 @@ class LanguageIntelligenceService {
             maxSize: 100,
             ttl: 30 * 60 * 1000 // 30分钟
         };
+    }
+
+    /**
+     * 设置模板服务（用于依赖注入）
+     * @param {MasterTemplateService} templateService - 模板服务实例
+     */
+    setTemplateService(templateService) {
+        this.templateService = templateService;
+    }
+
+    /**
+     * 获取模板服务
+     * @private
+     */
+    _getTemplateService() {
+        if (!this.templateService) {
+            throw new Error('模板服务未初始化，请通过依赖注入设置');
+        }
+        return this.templateService;
     }
 
     /**
@@ -161,13 +183,20 @@ class LanguageIntelligenceService {
                 }
             }
 
-            // 生成模板
-            const result = await this.templateGenerator.generateTemplate(languageDetection, {
-                templateType,
-                includeFrameworks: true,
-                customVariables,
-                outputFormat: 'markdown'
-            });
+            // 生成模板 - 使用新的MasterTemplateService
+            const templateRequest = {
+                name: templateType === 'auto' ? 'project-overview' : templateType,
+                language: languageDetection.language,
+                framework: languageDetection.frameworks?.[0] || null,
+                variables: {
+                    ...customVariables,
+                    project_language: languageDetection.language,
+                    confidence: languageDetection.confidence,
+                    frameworks: languageDetection.frameworks?.join(', ') || 'None'
+                }
+            };
+            
+            const result = await this._getTemplateService().getTemplate(templateRequest);
 
             // 缓存结果
             if (useCache && result.success) {
@@ -219,7 +248,50 @@ class LanguageIntelligenceService {
      */
     async batchGenerateTemplates(requests) {
         try {
-            const result = await this.templateGenerator.batchGenerate(requests);
+            // 使用Promise.allSettled并发处理所有模板请求
+            const promises = requests.map(async (request, index) => {
+                try {
+                    const templateRequest = {
+                        name: request.templateType || 'project-overview',
+                        language: request.language || 'javascript',
+                        framework: request.framework || null,
+                        variables: request.variables || {}
+                    };
+                    
+                    const result = await this._getTemplateService().getTemplate(templateRequest);
+                    return {
+                        index,
+                        request: templateRequest,
+                        success: true,
+                        result
+                    };
+                } catch (error) {
+                    return {
+                        index,
+                        request,
+                        success: false,
+                        error: error.message
+                    };
+                }
+            });
+            
+            const results = await Promise.allSettled(promises);
+            const processedResults = results.map(r => r.status === 'fulfilled' ? r.value : r.reason);
+            
+            const successful = processedResults.filter(r => r.success);
+            const failed = processedResults.filter(r => !r.success);
+            
+            const result = {
+                success: failed.length === 0,
+                total: requests.length,
+                successful: successful.length,
+                failed: failed.length,
+                results: processedResults,
+                summary: {
+                    successRate: (successful.length / requests.length) * 100,
+                    failureReasons: failed.map(f => f.error)
+                }
+            };
             
             return {
                 ...result,

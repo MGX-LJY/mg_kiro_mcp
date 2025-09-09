@@ -7,11 +7,6 @@ export default {
   // 测试环境配置
   testEnvironment: 'node',
   
-  // 模块解析
-  moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1'
-  },
-  
   // 测试文件匹配模式
   testMatch: [
     '**/tests/**/*.test.js',
@@ -24,23 +19,6 @@ export default {
     '/node_modules/',
     '/coverage/',
     '/logs/'
-  ],
-  
-  // 变换配置 - 使用babel处理ES模块
-  transform: {
-    '^.+\\.js$': ['babel-jest', {
-      presets: [
-        ['@babel/preset-env', {
-          targets: { node: 'current' },
-          modules: 'commonjs'
-        }]
-      ]
-    }]
-  },
-  
-  // 变换忽略模式
-  transformIgnorePatterns: [
-    'node_modules/(?!(@jest/globals|supertest)/)'
   ],
   
   // 覆盖率配置

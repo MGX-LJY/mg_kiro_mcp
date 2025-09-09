@@ -5,16 +5,17 @@
 
 import { getServiceBus } from './service-bus.js';
 import ConfigService from './config-service.js';
-import { PromptManager } from '../prompt-manager.js';
 import { ProjectScanner } from '../analyzers/project-scanner.js';
 
 import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
 import { FileContentAnalyzer } from '../analyzers/file-content-analyzer.js';
-import UnifiedTemplateService from './unified-template-service.js';
 import LanguageIntelligenceService from './language-intelligence-service.js';
-import TemplateReader from './template-reader.js';
 import InitStateService from './init-state-service.js';
 import { ClaudeCodeInitService } from './claude-code-init-service.js';
+
+// 新的统一模板系统
+import MasterTemplateService from './unified/master-template-service.js';
+import TemplateConfigManager from './unified/template-config-manager.js';
 
 /**
  * 注册所有系统服务到ServiceBus
@@ -25,19 +26,16 @@ export function registerServices(configDir = './config') {
 
     // 基础服务层（无依赖）
     serviceBus
-        .register('templateReader', TemplateReader, {}, [])
         .register('configService', ConfigService, configDir, [])
         .register('initState', InitStateService, {}, [])
         .register('claudeCodeInit', ClaudeCodeInitService, {}, []);
 
+    // 新的统一模板系统（基础层）
+    serviceBus
+        .register('templateConfigManager', TemplateConfigManager, {}, []);
+
     // 核心服务层（依赖基础服务）
     serviceBus
-        .register('promptManager', PromptManager, {
-            version: '2.0.0',
-            cacheEnabled: true,
-            watchFiles: true
-        }, ['templateReader'])
-        
         .register('projectScanner', ProjectScanner, {
             maxDepth: 4,
             excludePatterns: ['.git', 'node_modules', '.DS_Store', '*.log']
@@ -50,8 +48,8 @@ export function registerServices(configDir = './config') {
 
     // 高级服务层（依赖核心服务）
     serviceBus
-        .register('unifiedTemplateService', UnifiedTemplateService, {}, [
-            'templateReader', 
+        .register('masterTemplateService', MasterTemplateService, {}, [
+            'templateConfigManager',
             'languageIntelligence'
         ]);
 
@@ -77,6 +75,16 @@ export async function initializeServices(configDir = './config') {
     const serviceBus = registerServices(configDir);
     await serviceBus.initializeAll();
     
+    // 设置相互依赖关系，避免构造函数中的循环依赖
+    const masterTemplateService = serviceBus.get('masterTemplateService');
+    const languageIntelligence = serviceBus.get('languageIntelligence');
+    
+    if (masterTemplateService && languageIntelligence) {
+        masterTemplateService.setLanguageIntelligence(languageIntelligence);
+        languageIntelligence.setTemplateService(masterTemplateService);
+        console.log('[ServiceRegistry] 交叉依赖关系设置完成');
+    }
+    
     const stats = serviceBus.getStats();
     console.log(`[ServiceRegistry] 服务系统初始化完成，共 ${stats.initializedServices} 个服务`);
     
@@ -90,14 +98,22 @@ export function getServices() {
     const serviceBus = getServiceBus();
     
     return {
-        promptManager: serviceBus.get('promptManager'),
+        // 新的统一模板系统
+        masterTemplateService: serviceBus.get('masterTemplateService'),
+        templateConfigManager: serviceBus.get('templateConfigManager'),
+        
+        // 其他核心服务
         projectScanner: serviceBus.get('projectScanner'),
         initState: serviceBus.get('initState'),
         claudeCodeInit: serviceBus.get('claudeCodeInit'),
         languageDetector: serviceBus.get('enhancedLanguageDetector'),
         fileAnalyzer: serviceBus.get('fileContentAnalyzer'),
-        unifiedTemplateService: serviceBus.get('unifiedTemplateService'),
+        languageIntelligence: serviceBus.get('languageIntelligence'),
         configService: serviceBus.get('configService'),
+        
+        // 向后兼容的别名（指向新服务）
+        promptService: serviceBus.get('masterTemplateService'), // promptManager 的替代
+        unifiedTemplateService: serviceBus.get('masterTemplateService'), // 保持兼容性
         
         // ServiceBus工具方法
         getService: (name) => serviceBus.get(name),

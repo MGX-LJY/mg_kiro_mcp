@@ -20,11 +20,14 @@
 
 import { promises as fs } from 'fs';
 import { join, resolve, basename, dirname, extname } from 'path';
-import TemplateReader from './template-reader.js';
+import MasterTemplateService from './unified/master-template-service.js';
+import TemplateConfigManager from './unified/template-config-manager.js';
 
 export class ModuleDocumentIntegrator {
     constructor() {
-        this.templateReader = new TemplateReader();
+        // 初始化统一模板服务
+        const configManager = new TemplateConfigManager();
+        this.templateService = new MasterTemplateService(configManager.getTemplateSystemConfig());
         
         // 模块分类规则
         this.modulePatterns = {
@@ -499,9 +502,10 @@ export class ModuleDocumentIntegrator {
     }
 
     async generateModuleDocument(moduleGroup) {
-        const template = await this.templateReader.readTemplate(
-            this.integrationState.templateName || 'module-documentation'
-        );
+        const templateResult = await this.templateService.getTemplate({
+            category: 'templates',
+            name: this.integrationState.templateName || 'module-documentation'
+        });
         
         // 构建模块文档内容
         const sections = [];

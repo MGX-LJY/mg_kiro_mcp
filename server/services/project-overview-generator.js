@@ -18,12 +18,16 @@
 import { promises as fs } from 'fs';
 import { join, resolve, relative, extname, basename } from 'path';
 import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
-import TemplateReader from './template-reader.js';
+import MasterTemplateService from './unified/master-template-service.js';
+import TemplateConfigManager from './unified/template-config-manager.js';
 
 export class ProjectOverviewGenerator {
     constructor() {
         this.languageDetector = new EnhancedLanguageDetector();
-        this.templateReader = new TemplateReader();
+        
+        // 初始化统一模板服务
+        const configManager = new TemplateConfigManager();
+        this.templateService = new MasterTemplateService(configManager.getTemplateSystemConfig());
         this.maxKeyFileSize = 50 * 1024; // 50KB，超过则智能截取
         this.keyFilePatterns = [
             // 配置文件
@@ -593,7 +597,10 @@ export class ProjectOverviewGenerator {
         
         try {
             // 应用架构文档模版
-            const template = await this.templateReader.readTemplate('templates', 'architecture/system-architecture-generation');
+            const templateResult = await this.templateService.getTemplate({
+                category: 'templates',
+                name: 'architecture/system-architecture-generation'
+            });
             
             const architectureDoc = {
                 title: `${data.projectMetadata.name} - 系统架构文档`,
