@@ -1,496 +1,415 @@
 /**
- * Claude Code Init服务
- * 专为配合Claude Code工作流设计的Init模式
+ * Claude Code Init服务 - 精简版 v3.0
+ * 基于新的2步精简流程重构
  * 
- * 新的5步流程：
- * 1. 数据收集（合并1-3步）- 项目结构+语言检测+文件分析
- * 2. 架构文档生成（第4步，AI）- 提供数据给Claude Code生成文档
- * 3. 深度分析（合并5-6步）- 模块分析+提示词生成  
- * 4. 模块文档生成（第7步，AI）- 提供数据给Claude Code生成文档
- * 5. 集成契约生成（第8步，AI）- 提供数据给Claude Code生成文档
+ * 新的简化流程：
+ * 1. generate_project_overview - 生成项目概览包
+ * 2. progressive_documentation - 渐进式文档生成
+ * 
+ * 核心设计原则：
+ * - 极致简化：从5步减少到2步
+ * - AI集中协作：机器准备数据，AI生成文档
+ * - 智能处理：自动裁切和批次管理
  */
 
-import IntelligentLayeredAnalyzer from '../analyzers/intelligent-layered-analyzer.js';
-import ArchitectureKeyExtractor from '../analyzers/architecture-key-extractor.js';
-import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
-import { FileContentAnalyzer } from '../analyzers/file-content-analyzer.js';
-import { ModuleAnalyzer } from '../analyzers/module-analyzer.js';
-import { PromptManager } from '../prompt-manager.js';
-import TemplateReader from './template-reader.js';
+import { ProjectOverviewGenerator } from './project-overview-generator.js';
+import { AICollaborationOrchestrator } from './ai-collaboration-orchestrator.js';
 
 export class ClaudeCodeInitService {
-  constructor() {
-    this.currentState = {
-      projectPath: null,
-      currentStep: 0,
-      totalSteps: 5,
-      results: {},
-      status: 'idle',
-      createdAt: null,
-      updatedAt: null
-    };
-  }
+    constructor() {
+        this.overviewGenerator = new ProjectOverviewGenerator();
+        this.aiOrchestrator = new AICollaborationOrchestrator();
+        
+        // 简化的状态管理
+        this.state = {
+            projectPath: null,
+            status: 'idle', // idle, initialized, overview_ready, documentation_in_progress, completed
+            flowId: null,
+            currentStage: null,
+            createdAt: null,
+            lastUpdated: null,
+            
+            // 缓存生成的数据
+            projectOverview: null,
+            collaborationFlow: null,
+            
+            // 错误信息
+            lastError: null
+        };
+    }
 
-  /**
-   * 初始化Init流程
-   */
-  initialize(projectPath) {
-    this.currentState = {
-      projectPath,
-      currentStep: 0,
-      totalSteps: 5,
-      results: {},
-      status: 'initialized',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    console.log(`[ClaudeCodeInit] 初始化Claude Code Init流程: ${projectPath}`);
-    return this.currentState;
-  }
+    /**
+     * 方法1: 生成项目概览包
+     * 对应MCP工具: generate_project_overview
+     */
+    async generateProjectOverview(projectPath, options = {}) {
+        console.log(`[SimplifiedInit] 生成项目概览: ${projectPath}`);
+        
+        try {
+            // 初始化状态
+            this.state = {
+                ...this.state,
+                projectPath,
+                status: 'initialized',
+                createdAt: new Date().toISOString(),
+                lastUpdated: new Date().toISOString(),
+                lastError: null
+            };
 
-  /**
-   * 步骤1: 数据收集（合并原1-3步）
-   * 项目结构分析 + 语言检测 + 文件内容分析
-   */
-  async executeStep1_DataCollection() {
-    console.log('\n📊 步骤1: 数据收集阶段');
-    console.log('整合项目结构分析、语言检测、文件内容分析...');
-    
-    const projectPath = this.currentState.projectPath;
-    const results = {};
-    
-    try {
-      // 1. 项目结构分析
-      console.log('🔍 执行项目结构分析...');
-      const layeredAnalyzer = new IntelligentLayeredAnalyzer(projectPath);
-      const architectureExtractor = new ArchitectureKeyExtractor(projectPath);
-      
-      const [layeredResults, architectureKeys] = await Promise.all([
-        layeredAnalyzer.performLayeredAnalysis(),
-        architectureExtractor.extractArchitectureKeys()
-      ]);
-      
-      results.structureAnalysis = { layeredResults, architectureKeys };
-      
-      // 2. 语言检测
-      console.log('🧠 执行语言检测...');
-      const languageDetector = new EnhancedLanguageDetector(projectPath);
-      const languageResults = await languageDetector.detectLanguageEnhanced(
-        projectPath,
-        results.structureAnalysis,
-        {
-          contextData: {
-            architectureInsights: layeredResults.architectureAnalysis,
-            moduleInsights: layeredResults.moduleAnalysis
-          }
+            // 生成项目概览
+            const overview = await this.overviewGenerator.generateOverview(projectPath, {
+                maxDepth: options.maxDepth || 3,
+                includeFiles: options.includeFiles || [],
+                maxKeyFileSize: options.maxKeyFileSize || 50 * 1024
+            });
+
+            // 缓存结果
+            this.state.projectOverview = overview;
+            this.state.status = 'overview_ready';
+            this.state.lastUpdated = new Date().toISOString();
+
+            console.log(`[SimplifiedInit] 项目概览生成完成`);
+
+            return {
+                success: true,
+                step: 1,
+                stepName: 'project-overview',
+                
+                // 核心数据包
+                dataPackage: {
+                    type: 'project-overview-package',
+                    version: '3.0',
+                    generatedAt: overview.generatedAt,
+                    generationTime: overview.generationTime,
+                    
+                    // 项目元数据
+                    projectMetadata: overview.projectMetadata,
+                    
+                    // 语言和技术栈分析
+                    languageProfile: overview.languageProfile,
+                    
+                    // 依赖分析
+                    dependencyAnalysis: overview.dependencyAnalysis,
+                    
+                    // 目录结构
+                    directoryStructure: overview.directoryStructure,
+                    
+                    // 关键文件内容
+                    keyFileContents: overview.keyFileContents,
+                    
+                    // 项目特征
+                    projectCharacteristics: overview.projectCharacteristics,
+                    
+                    // AI生成指导
+                    aiGenerationGuide: overview.aiGenerationGuide
+                },
+
+                // AI协作指令
+                aiInstructions: {
+                    task: '基于项目概览生成系统架构文档初版',
+                    objective: '快速理解项目整体架构和技术选型',
+                    targetDocument: 'system-architecture.md',
+                    expectedSections: [
+                        '项目概述',
+                        '技术栈分析',
+                        '架构概述',
+                        '目录结构说明',
+                        '核心依赖说明',
+                        '开发环境配置'
+                    ],
+                    focusAreas: overview.aiGenerationGuide?.keyFocusAreas || ['architecture', 'dependencies', 'structure'],
+                    estimatedTime: '2-3分钟',
+                    complexity: overview.aiGenerationGuide?.complexityLevel || 'medium'
+                },
+
+                // 下一步指导
+                nextStep: {
+                    method: 'progressive_documentation',
+                    description: '开始渐进式文档生成流程',
+                    when: '架构文档初版完成后',
+                    estimatedTime: '10-15分钟'
+                },
+
+                // 统计信息
+                statistics: {
+                    totalFiles: overview.projectMetadata.totalFiles,
+                    keyFilesAnalyzed: Object.keys(overview.keyFileContents).length,
+                    languagesDetected: [overview.languageProfile.primary, ...overview.languageProfile.secondary].filter(Boolean),
+                    dependencySystems: overview.dependencyAnalysis.systems?.length || 0,
+                    processingTime: overview.generationTime
+                }
+            };
+
+        } catch (error) {
+            console.error('[SimplifiedInit] 项目概览生成失败:', error);
+            
+            this.state.lastError = error.message;
+            this.state.status = 'error';
+            this.state.lastUpdated = new Date().toISOString();
+
+            return {
+                success: false,
+                error: error.message,
+                step: 1,
+                stepName: 'project-overview',
+                suggestion: '请检查项目路径是否正确，以及是否有足够的读取权限'
+            };
         }
-      );
-      
-      results.languageDetection = languageResults;
-      
-      // 3. 文件内容分析
-      console.log('📁 执行文件内容分析...');
-      const fileAnalyzer = new FileContentAnalyzer();
-      const fileAnalysisResults = await fileAnalyzer.analyzeFiles({
-        projectPath,
-        structureAnalysis: results.structureAnalysis,
-        languageData: results.languageDetection
-      });
-      
-      results.fileAnalysis = fileAnalysisResults;
-      
-      // 更新状态
-      this.currentState.results.step1 = results;
-      this.currentState.currentStep = 1;
-      this.currentState.status = 'step1_completed';
-      this.currentState.updatedAt = new Date().toISOString();
-      
-      console.log('✅ 步骤1完成 - 数据收集阶段');
-      return results;
-      
-    } catch (error) {
-      console.error('❌ 步骤1失败:', error);
-      this.currentState.status = 'step1_failed';
-      throw error;
     }
-  }
 
-  /**
-   * 步骤2: 架构文档生成（AI驱动）
-   * 提供数据包给Claude Code生成system-architecture.md
-   */
-  async prepareStep2_ArchitectureGeneration() {
-    console.log('\n📝 步骤2: 准备架构文档生成数据');
-    
-    if (!this.currentState.results.step1) {
-      throw new Error('请先完成步骤1数据收集');
-    }
-    
-    const step1Data = this.currentState.results.step1;
-    
-    // 构建给Claude Code的数据包
-    const aiDataPackage = {
-      // 项目基本信息
-      projectInfo: {
-        path: this.currentState.projectPath,
-        name: this.currentState.projectPath.split('/').pop(),
-        timestamp: new Date().toISOString()
-      },
-      
-      // 结构分析数据
-      structureAnalysis: {
-        layeredResults: step1Data.structureAnalysis.layeredResults,
-        architectureKeys: step1Data.structureAnalysis.architectureKeys,
-        totalFiles: step1Data.structureAnalysis.layeredResults?.moduleAnalysis?.totalModules || 0,
-        complexity: step1Data.structureAnalysis.layeredResults?.architectureAnalysis?.complexityScore || 0
-      },
-      
-      // 语言检测数据
-      languageData: {
-        primaryLanguage: step1Data.languageDetection.detection?.primaryLanguage || 'unknown',
-        frameworks: step1Data.languageDetection.detection?.frameworks || [],
-        techStack: step1Data.languageDetection.techStack || {},
-        confidence: step1Data.languageDetection.detection?.confidence || 0
-      },
-      
-      // 文件分析数据
-      fileAnalysis: {
-        totalFiles: step1Data.fileAnalysis.totalFiles || 0,
-        qualityScore: step1Data.fileAnalysis.quality?.overallScore || 0,
-        complexity: step1Data.fileAnalysis.complexity || 'unknown',
-        dependencies: step1Data.fileAnalysis.dependencies || {},
-        patterns: step1Data.fileAnalysis.patterns || []
-      },
-      
-      // AI生成指令
-      generationInstructions: {
-        documentType: 'system-architecture',
-        outputFormat: 'markdown',
-        sections: [
-          'project-overview',
-          'architecture-analysis', 
-          'technology-stack',
-          'file-structure',
-          'dependencies',
-          'quality-assessment',
-          'recommendations'
-        ],
-        template: 'architecture-document-template'
-      },
-      
-      // 元数据
-      metadata: {
-        step: 2,
-        stepName: 'architecture_generation',
-        requiresAI: true,
-        targetFile: 'system-architecture.md',
-        dataCollectionCompleted: true
-      }
-    };
-    
-    // 更新状态
-    this.currentState.results.step2 = {
-      status: 'prepared',
-      aiDataPackage,
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('✅ 步骤2数据准备完成 - 等待Claude Code生成架构文档');
-    return aiDataPackage;
-  }
+    /**
+     * 方法2: 渐进式文档生成
+     * 对应MCP工具: progressive_documentation
+     */
+    async progressiveDocumentation(options = {}) {
+        console.log(`[SimplifiedInit] 开始渐进式文档生成`);
 
-  /**
-   * 步骤3: 深度分析（合并原5-6步）
-   * 模块分析 + 提示词生成
-   */
-  async executeStep3_DeepAnalysis() {
-    console.log('\n🔬 步骤3: 深度分析阶段');
-    console.log('执行模块分析和提示词生成...');
-    
-    if (!this.currentState.results.step1) {
-      throw new Error('请先完成步骤1数据收集');
-    }
-    
-    const step1Data = this.currentState.results.step1;
-    const results = {};
-    
-    try {
-      // 1. 深度模块分析
-      console.log('🔍 执行深度模块分析...');
-      const moduleAnalyzer = new ModuleAnalyzer(this.currentState.projectPath);
-      const moduleAnalysisResults = await moduleAnalyzer.analyzeModules({
-        contextData: {
-          projectStructure: step1Data.structureAnalysis,
-          languageInfo: step1Data.languageDetection,
-          fileAnalysis: step1Data.fileAnalysis
+        try {
+            // 检查前置条件
+            if (!this.state.projectOverview) {
+                throw new Error('请先执行 generate_project_overview');
+            }
+
+            // 初始化AI协作流程
+            const flowConfig = await this.aiOrchestrator.initializeFlow(
+                this.state.projectPath,
+                {
+                    maxBatchSize: options.batchSize || '80KB',
+                    documentationStyle: options.style || 'comprehensive',
+                    focusAreas: options.focusAreas || [],
+                    includeTests: options.includeTests !== false
+                }
+            );
+
+            // 更新状态
+            this.state.collaborationFlow = flowConfig;
+            this.state.flowId = flowConfig.flowId;
+            this.state.status = 'documentation_in_progress';
+            this.state.currentStage = 'project-overview';
+            this.state.lastUpdated = new Date().toISOString();
+
+            // 执行项目概览阶段（基于已有的数据）
+            const overviewStage = await this.aiOrchestrator.executeStage('project-overview');
+
+            console.log(`[SimplifiedInit] 渐进式文档生成流程已启动`);
+
+            return {
+                success: true,
+                step: 2,
+                stepName: 'progressive-documentation',
+                
+                // 流程配置
+                flowConfiguration: {
+                    flowId: flowConfig.flowId,
+                    totalStages: 5,
+                    estimatedTotalTime: flowConfig.estimatedTotalTime,
+                    processingStrategy: 'ai-collaborative-progressive'
+                },
+
+                // 当前阶段数据（项目概览阶段）
+                currentStage: {
+                    stage: 'project-overview',
+                    status: 'completed',
+                    dataPackage: overviewStage.result,
+                    nextStage: overviewStage.nextStage
+                },
+
+                // 完整的渐进式流程计划
+                progressivePlan: {
+                    stages: [
+                        {
+                            name: 'project-overview',
+                            status: 'completed',
+                            description: '项目概览分析 → 系统架构文档初版',
+                            estimatedTime: '2-3分钟',
+                            output: 'system-architecture.md (初版)'
+                        },
+                        {
+                            name: 'file-level',
+                            status: 'ready',
+                            description: '源代码文件分析 → 文件级文档',
+                            estimatedTime: '5-10分钟',
+                            output: 'file-docs/*.md (多个文件)'
+                        },
+                        {
+                            name: 'module-level',
+                            status: 'pending',
+                            description: '模块整合分析 → 模块级文档',
+                            estimatedTime: '3-5分钟',
+                            output: 'module-docs/*.md'
+                        },
+                        {
+                            name: 'integration-level',
+                            status: 'pending',
+                            description: '模块连接分析 → 集成文档',
+                            estimatedTime: '2-4分钟',
+                            output: 'integration-docs/module-connections.md'
+                        },
+                        {
+                            name: 'architecture-optimization',
+                            status: 'pending',
+                            description: '架构优化 → 最终系统架构文档',
+                            estimatedTime: '2-3分钟',
+                            output: 'system-architecture.md (最终版)'
+                        }
+                    ]
+                },
+
+                // AI协作指令（当前阶段）
+                aiInstructions: overviewStage.result.instructions,
+
+                // 继续执行指令
+                continuationInstructions: {
+                    nextStage: overviewStage.nextStage,
+                    howToContinue: `调用 executeStage("${overviewStage.nextStage}") 继续下一阶段`,
+                    automationHint: '可以设置自动执行所有阶段',
+                    controlOptions: ['manual-step-by-step', 'semi-automatic', 'fully-automatic']
+                }
+            };
+
+        } catch (error) {
+            console.error('[SimplifiedInit] 渐进式文档生成失败:', error);
+            
+            this.state.lastError = error.message;
+            this.state.status = 'error';
+            this.state.lastUpdated = new Date().toISOString();
+
+            return {
+                success: false,
+                error: error.message,
+                step: 2,
+                stepName: 'progressive-documentation',
+                suggestion: '请确保已完成项目概览生成，并检查项目文件访问权限'
+            };
         }
-      });
-      
-      results.moduleAnalysis = moduleAnalysisResults;
-      
-      // 2. 语言特定提示词生成
-      console.log('💡 生成语言特定提示词...');
-      const templateReader = new TemplateReader();
-      const promptManager = new PromptManager({ templateReader });
-      
-      // 简化的提示词生成，使用现有方法
-      const primaryLanguage = step1Data.languageDetection.detection?.primaryLanguage || 'javascript';
-      const frameworks = step1Data.languageDetection.detection?.frameworks || [];
-      const projectType = step1Data.structureAnalysis.architectureKeys?.projectType || 'general';
-      
-      const prompts = {
-        language: primaryLanguage,
-        frameworks,
-        projectType,
-        generatedPrompts: [
-          `基于${primaryLanguage}语言的代码分析提示`,
-          `针对${frameworks.join(', ')}框架的特定优化建议`,
-          `${projectType}项目类型的最佳实践指南`
-        ],
-        timestamp: new Date().toISOString()
-      };
-      
-      results.promptGeneration = prompts;
-      
-      // 更新状态
-      this.currentState.results.step3 = results;
-      this.currentState.currentStep = 3;
-      this.currentState.status = 'step3_completed';
-      this.currentState.updatedAt = new Date().toISOString();
-      
-      console.log('✅ 步骤3完成 - 深度分析阶段');
-      return results;
-      
-    } catch (error) {
-      console.error('❌ 步骤3失败:', error);
-      this.currentState.status = 'step3_failed';
-      throw error;
     }
-  }
 
-  /**
-   * 步骤4: 模块文档生成（AI驱动）
-   * 提供数据包给Claude Code生成模块文档
-   */
-  async prepareStep4_ModuleDocGeneration() {
-    console.log('\n📚 步骤4: 准备模块文档生成数据');
-    
-    if (!this.currentState.results.step3) {
-      throw new Error('请先完成步骤3深度分析');
+    /**
+     * 执行特定阶段（辅助方法）
+     */
+    async executeStage(stageName, additionalContext = {}) {
+        console.log(`[SimplifiedInit] 执行阶段: ${stageName}`);
+
+        try {
+            if (!this.state.collaborationFlow) {
+                throw new Error('请先执行 progressive_documentation');
+            }
+
+            const stageResult = await this.aiOrchestrator.executeStage(stageName, additionalContext);
+
+            // 更新状态
+            this.state.currentStage = stageName;
+            this.state.lastUpdated = new Date().toISOString();
+
+            // 如果所有阶段完成，更新最终状态
+            if (!stageResult.nextStage) {
+                this.state.status = 'completed';
+            }
+
+            return {
+                success: true,
+                stageName,
+                result: stageResult,
+                flowStatus: this.aiOrchestrator.getFlowStatus(),
+                isCompleted: !stageResult.nextStage
+            };
+
+        } catch (error) {
+            console.error(`[SimplifiedInit] 阶段执行失败: ${stageName}`, error);
+            
+            this.state.lastError = error.message;
+            
+            return {
+                success: false,
+                error: error.message,
+                stageName,
+                suggestion: `检查${stageName}阶段的依赖条件和输入数据`
+            };
+        }
     }
-    
-    const step1Data = this.currentState.results.step1;
-    const step3Data = this.currentState.results.step3;
-    
-    // 构建给Claude Code的数据包
-    const aiDataPackage = {
-      // 项目基本信息
-      projectInfo: {
-        path: this.currentState.projectPath,
-        name: this.currentState.projectPath.split('/').pop(),
-        primaryLanguage: step1Data.languageDetection.detection?.primaryLanguage
-      },
-      
-      // 模块分析数据
-      moduleData: {
-        modules: step3Data.moduleAnalysis.modules || [],
-        totalModules: step3Data.moduleAnalysis.totalModules || 0,
-        dependencies: step1Data.fileAnalysis.dependencies || {},
-        architecture: step1Data.structureAnalysis.architectureKeys || {}
-      },
-      
-      // 上下文数据
-      contextData: {
-        languageFrameworks: step1Data.languageDetection.detection?.frameworks || [],
-        projectComplexity: step1Data.structureAnalysis.layeredResults?.architectureAnalysis?.complexityScore || 0,
-        qualityScore: step1Data.fileAnalysis.quality?.overallScore || 0
-      },
-      
-      // AI生成指令
-      generationInstructions: {
-        documentType: 'module-documentation',
-        outputFormat: 'multiple-markdown-files',
-        moduleFilePattern: 'module-{moduleName}.md',
-        sections: [
-          'module-overview',
-          'functionality',
-          'dependencies',
-          'interfaces',
-          'usage-examples',
-          'maintenance-notes'
-        ],
-        template: 'module-document-template'
-      },
-      
-      // 元数据
-      metadata: {
-        step: 4,
-        stepName: 'module_doc_generation',
-        requiresAI: true,
-        targetDirectory: 'modules/',
-        expectedFileCount: step3Data.moduleAnalysis.totalModules || 0
-      }
-    };
-    
-    // 更新状态
-    this.currentState.results.step4 = {
-      status: 'prepared',
-      aiDataPackage,
-      timestamp: new Date().toISOString()
-    };
-    
-    console.log('✅ 步骤4数据准备完成 - 等待Claude Code生成模块文档');
-    return aiDataPackage;
-  }
 
-  /**
-   * 步骤5: 集成契约生成（AI驱动）
-   * 提供数据包给Claude Code生成integration-contracts.md
-   */
-  async prepareStep5_IntegrationContracts() {
-    console.log('\n🔗 步骤5: 准备集成契约生成数据');
-    
-    if (!this.currentState.results.step3) {
-      throw new Error('请先完成步骤3深度分析');
+    /**
+     * 获取当前状态
+     */
+    getState() {
+        return {
+            ...this.state,
+            flowStatus: this.aiOrchestrator ? this.aiOrchestrator.getFlowStatus() : null
+        };
     }
-    
-    const step1Data = this.currentState.results.step1;
-    const step3Data = this.currentState.results.step3;
-    
-    // 构建给Claude Code的数据包
-    const aiDataPackage = {
-      // 项目基本信息
-      projectInfo: {
-        path: this.currentState.projectPath,
-        name: this.currentState.projectPath.split('/').pop(),
-        primaryLanguage: step1Data.languageDetection.detection?.primaryLanguage
-      },
-      
-      // 集成分析数据
-      integrationData: {
-        modules: step3Data.moduleAnalysis.modules || [],
-        dependencies: step1Data.fileAnalysis.dependencies || {},
-        architecture: step1Data.structureAnalysis.architectureKeys || {},
-        communicationPatterns: step1Data.structureAnalysis.layeredResults?.integrationAnalysis?.communicationPatterns || []
-      },
-      
-      // 系统契约数据
-      contractData: {
-        interfaces: step3Data.moduleAnalysis.interfaces || [],
-        dataContracts: step3Data.moduleAnalysis.dataContracts || [],
-        apiContracts: step3Data.moduleAnalysis.apiContracts || [],
-        eventContracts: step3Data.moduleAnalysis.eventContracts || []
-      },
-      
-      // AI生成指令
-      generationInstructions: {
-        documentType: 'integration-contracts',
-        outputFormat: 'markdown',
-        sections: [
-          'contract-overview',
-          'module-interfaces',
-          'data-contracts',
-          'api-specifications', 
-          'event-contracts',
-          'integration-patterns',
-          'testing-contracts',
-          'versioning-strategy'
-        ],
-        template: 'integration-contracts-template'
-      },
-      
-      // 元数据
-      metadata: {
-        step: 5,
-        stepName: 'integration_contracts_generation',
-        requiresAI: true,
-        targetFile: 'integration-contracts.md',
-        finalStep: true
-      }
-    };
-    
-    // 更新状态
-    this.currentState.results.step5 = {
-      status: 'prepared',
-      aiDataPackage,
-      timestamp: new Date().toISOString()
-    };
-    
-    this.currentState.currentStep = 5;
-    this.currentState.status = 'step5_prepared';
-    this.currentState.updatedAt = new Date().toISOString();
-    
-    console.log('✅ 步骤5数据准备完成 - 等待Claude Code生成集成契约文档');
-    return aiDataPackage;
-  }
 
-  /**
-   * 标记AI生成的文档已保存
-   */
-  markDocumentSaved(step, filePath) {
-    if (this.currentState.results[`step${step}`]) {
-      this.currentState.results[`step${step}`].status = 'completed';
-      this.currentState.results[`step${step}`].savedFile = filePath;
-      this.currentState.results[`step${step}`].completedAt = new Date().toISOString();
+    /**
+     * 获取进度信息
+     */
+    getProgress() {
+        const flowStatus = this.aiOrchestrator ? this.aiOrchestrator.getFlowStatus() : null;
+        
+        return {
+            projectPath: this.state.projectPath,
+            currentStatus: this.state.status,
+            currentStage: this.state.currentStage,
+            completedSteps: this.state.status === 'overview_ready' || 
+                           this.state.status === 'documentation_in_progress' || 
+                           this.state.status === 'completed' ? 1 : 0,
+            totalSteps: 2, // 简化后只有2个主要步骤
+            flowProgress: flowStatus ? flowStatus.completionPercentage : 0,
+            lastUpdated: this.state.lastUpdated,
+            hasError: !!this.state.lastError,
+            errorMessage: this.state.lastError
+        };
     }
-    
-    // 检查是否所有步骤完成
-    if (step === 5) {
-      this.currentState.status = 'completed';
-      this.currentState.completedAt = new Date().toISOString();
+
+    /**
+     * 重置服务状态
+     */
+    reset() {
+        console.log('[SimplifiedInit] 重置服务状态');
+        
+        this.state = {
+            projectPath: null,
+            status: 'idle',
+            flowId: null,
+            currentStage: null,
+            createdAt: null,
+            lastUpdated: null,
+            projectOverview: null,
+            collaborationFlow: null,
+            lastError: null
+        };
+
+        // 重置AI编排器
+        if (this.aiOrchestrator) {
+            this.aiOrchestrator = new AICollaborationOrchestrator();
+        }
+
+        return {
+            success: true,
+            message: '服务状态已重置',
+            newStatus: 'idle'
+        };
     }
-    
-    console.log(`✅ 步骤${step}文档已保存: ${filePath}`);
-  }
 
-  /**
-   * 获取当前状态
-   */
-  getState() {
-    return this.currentState;
-  }
-
-  /**
-   * 获取进度信息
-   */
-  getProgress() {
-    const completedSteps = Object.keys(this.currentState.results).filter(key => 
-      this.currentState.results[key].status === 'completed'
-    ).length;
-    
-    return {
-      projectPath: this.currentState.projectPath,
-      currentStep: this.currentState.currentStep,
-      totalSteps: this.currentState.totalSteps,
-      completedSteps,
-      progress: Math.round((completedSteps / this.currentState.totalSteps) * 100),
-      status: this.currentState.status,
-      stepsOverview: {
-        step1: '数据收集（结构+语言+文件）',
-        step2: '架构文档生成（AI）',
-        step3: '深度分析（模块+提示词）',
-        step4: '模块文档生成（AI）',
-        step5: '集成契约生成（AI）'
-      }
-    };
-  }
-
-  /**
-   * 重置状态
-   */
-  reset() {
-    this.currentState = {
-      projectPath: null,
-      currentStep: 0,
-      totalSteps: 5,
-      results: {},
-      status: 'idle',
-      createdAt: null,
-      updatedAt: null
-    };
-    console.log('[ClaudeCodeInit] 状态已重置');
-  }
+    /**
+     * 健康检查
+     */
+    healthCheck() {
+        return {
+            service: 'ClaudeCodeInitService',
+            version: '3.0-simplified',
+            status: this.state.status,
+            components: {
+                overviewGenerator: !!this.overviewGenerator,
+                aiOrchestrator: !!this.aiOrchestrator
+            },
+            lastActivity: this.state.lastUpdated,
+            hasActiveProject: !!this.state.projectPath,
+            capabilities: [
+                'generate_project_overview',
+                'progressive_documentation',
+                'ai_collaboration'
+            ]
+        };
+    }
 }
 
 export default ClaudeCodeInitService;

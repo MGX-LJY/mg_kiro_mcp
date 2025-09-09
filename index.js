@@ -91,10 +91,15 @@ async function startServer() {
       console.log(`📡 HTTP服务: http://localhost:${PORT}`);
       console.log(`🔌 WebSocket服务: ws://localhost:${PORT}`);
       console.log(`📚 API文档: http://localhost:${PORT}/api-docs`);
-      console.log(`\n可用的端点:`);
+      console.log(`\n可用的端点 (精简版 3.0):`);
       console.log(`  - GET  /health - 健康检查`);
-      console.log(`  - POST /mcp/tools/init - 执行Init流程`);
-      console.log(`  - GET  /mode/init/status - Init模式状态`);
+      console.log(`  - POST /init/project-overview - 生成项目概览包`);
+      console.log(`  - POST /init/progressive-documentation - 渐进式文档生成`);
+      console.log(`  - GET  /init/status - 获取Init状态`);
+      console.log(`  - GET  /init/help - API帮助信息`);
+      console.log(`\nMCP工具:`);
+      console.log(`  - generate_project_overview - 生成项目概览`);
+      console.log(`  - progressive_documentation - 渐进式文档生成`);
     });
   }
 
@@ -104,7 +109,7 @@ async function startServer() {
   const server = new Server(
     {
       name: "mg_kiro",
-      version: "2.0.1",
+      version: "3.0.0-simplified",
     },
     {
       capabilities: {
@@ -113,63 +118,75 @@ async function startServer() {
     }
   );
 
-  // MCP工具：支持分步执行Init流程
+  // MCP工具：精简版2步Init流程
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
         {
-          name: "init_step1_data_collection",
-          description: "执行Init步靄1：数据收集（项目结构+语言检测+文件分析）",
+          name: "generate_project_overview",
+          description: "生成项目概览包：语言分析+依赖分析+目录结构+README+核心文件内容，为AI提供完整项目上下文",
           inputSchema: {
             type: "object",
             properties: {
               projectPath: {
                 type: "string",
-                description: "要分析的项目路径"
+                description: "要分析的项目根目录路径（绝对路径）"
+              },
+              maxDepth: {
+                type: "number",
+                description: "目录扫描最大深度，默认3层",
+                default: 3
+              },
+              includeFiles: {
+                type: "array",
+                description: "额外要包含的文件模式列表",
+                items: { type: "string" },
+                default: []
+              },
+              maxKeyFileSize: {
+                type: "number",
+                description: "关键文件内容的最大字节数，默认50KB",
+                default: 51200
               }
             },
             required: ["projectPath"]
           }
         },
         {
-          name: "init_step2_architecture",
-          description: "执行Init步靄2：准备架构文档生成数据（需要Claude Code生成文档）",
+          name: "progressive_documentation",
+          description: "启动渐进式文档生成：AI协作流程，从项目概览到完整文档体系（文件文档→模块文档→集成文档→最终架构文档）",
           inputSchema: {
             type: "object",
-            properties: {},
-            required: []
-          }
-        },
-        {
-          name: "init_step3_deep_analysis",
-          description: "执行Init步靄3：深度分析（模块分析+提示词生成）",
-          inputSchema: {
-            type: "object",
-            properties: {},
-            required: []
-          }
-        },
-        {
-          name: "init_step4_module_docs",
-          description: "执行Init步靄4：准备模块文档生成数据（需要Claude Code生成文档）",
-          inputSchema: {
-            type: "object",
-            properties: {},
-            required: []
-          }
-        },
-        {
-          name: "init_step5_contracts",
-          description: "执行Init步靄5：准备集成契约生成数据（需要Claude Code生成文档）",
-          inputSchema: {
-            type: "object",
-            properties: {},
+            properties: {
+              batchSize: {
+                type: "string",
+                description: "每批次处理的数据大小，如'80KB'，默认'80KB'",
+                default: "80KB"
+              },
+              style: {
+                type: "string",
+                description: "文档风格：comprehensive(全面) | concise(简洁) | technical(技术导向)",
+                enum: ["comprehensive", "concise", "technical"],
+                default: "comprehensive"
+              },
+              focusAreas: {
+                type: "array",
+                description: "重点关注的领域列表",
+                items: { type: "string" },
+                default: []
+              },
+              includeTests: {
+                type: "boolean",
+                description: "是否包含测试文件分析，默认true",
+                default: true
+              }
+            },
             required: []
           }
         },
         {
           name: "get_init_status",
-          description: "获取当前Init流程的状态和进度",
+          description: "获取当前Init流程的状态、进度和健康信息",
           inputSchema: {
             type: "object",
             properties: {},
@@ -178,7 +195,7 @@ async function startServer() {
         },
         {
           name: "reset_init",
-          description: "重置Init流程状态",
+          description: "重置Init流程，清除所有缓存状态",
           inputSchema: {
             type: "object",
             properties: {},
@@ -189,151 +206,87 @@ async function startServer() {
     };
   });
 
-  // 处理工具调用
+  // 处理工具调用 - 精简版
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     const claudeCodeInit = serviceBus.get('claudeCodeInit');
 
     try {
       switch (name) {
-        case "init_step1_data_collection": {
-          const { projectPath } = args;
+        case "generate_project_overview": {
+          const { projectPath, maxDepth, includeFiles, maxKeyFileSize } = args;
+          
           if (!projectPath) {
             throw new Error("项目路径不能为空");
           }
           
-          console.log(`[MCP] 执行Init步靄1：数据收集 - ${projectPath}`);
-          claudeCodeInit.initialize(resolve(projectPath));
-          const results = await claudeCodeInit.executeStep1_DataCollection();
+          console.log(`[MCP-Simplified] 生成项目概览 - ${projectPath}`);
+          
+          const result = await claudeCodeInit.generateProjectOverview(
+            resolve(projectPath),
+            {
+              maxDepth: maxDepth || 3,
+              includeFiles: includeFiles || [],
+              maxKeyFileSize: maxKeyFileSize || 50 * 1024
+            }
+          );
           
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify({
-                  success: true,
-                  step: 1,
-                  message: "数据收集完成",
-                  results: {
-                    structureFiles: results.structureAnalysis?.layeredResults?.moduleAnalysis?.totalModules || 0,
-                    primaryLanguage: results.languageDetection?.detection?.primaryLanguage || 'unknown',
-                    totalFiles: results.fileAnalysis?.totalFiles || 0,
-                    qualityScore: results.fileAnalysis?.quality?.overallScore || 0
-                  },
-                  nextStep: "执行 init_step2_architecture 准备架构文档生成"
-                }, null, 2)
+                text: JSON.stringify(result, null, 2)
               }
             ]
           };
         }
         
-        case "init_step2_architecture": {
-          console.log(`[MCP] 执行Init步靄2：架构文档生成准备`);
-          const aiDataPackage = await claudeCodeInit.prepareStep2_ArchitectureGeneration();
+        case "progressive_documentation": {
+          console.log(`[MCP-Simplified] 启动渐进式文档生成`);
+          
+          const { batchSize, style, focusAreas, includeTests } = args;
+          
+          const result = await claudeCodeInit.progressiveDocumentation({
+            batchSize: batchSize || '80KB',
+            style: style || 'comprehensive',
+            focusAreas: focusAreas || [],
+            includeTests: includeTests !== false
+          });
           
           return {
             content: [
               {
                 type: "text",
-                text: JSON.stringify({
-                  success: true,
-                  step: 2,
-                  message: "架构文档生成数据已准备",
-                  aiDataPackage,
-                  instructions: "请使用aiDataPackage中的数据生成system-architecture.md文档，然后调用 init_step3_deep_analysis",
-                  targetFile: "mg_kiro/architecture/system-architecture.md"
-                }, null, 2)
-              }
-            ]
-          };
-        }
-        
-        case "init_step3_deep_analysis": {
-          console.log(`[MCP] 执行Init步靄3：深度分析`);
-          const results = await claudeCodeInit.executeStep3_DeepAnalysis();
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({
-                  success: true,
-                  step: 3,
-                  message: "深度分析完成",
-                  results: {
-                    totalModules: results.moduleAnalysis?.totalModules || 0,
-                    promptsGenerated: results.promptGeneration ? true : false
-                  },
-                  nextStep: "执行 init_step4_module_docs 准备模块文档生成"
-                }, null, 2)
-              }
-            ]
-          };
-        }
-        
-        case "init_step4_module_docs": {
-          console.log(`[MCP] 执行Init步靄4：模块文档生成准备`);
-          const aiDataPackage = await claudeCodeInit.prepareStep4_ModuleDocGeneration();
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({
-                  success: true,
-                  step: 4,
-                  message: "模块文档生成数据已准备",
-                  aiDataPackage,
-                  instructions: "请使用aiDataPackage中的数据为每个模块生成文档，然后调用 init_step5_contracts",
-                  targetDirectory: "mg_kiro/modules/",
-                  expectedFiles: aiDataPackage.metadata?.expectedFileCount || 0
-                }, null, 2)
-              }
-            ]
-          };
-        }
-        
-        case "init_step5_contracts": {
-          console.log(`[MCP] 执行Init步靄5：集成契约生成准备`);
-          const aiDataPackage = await claudeCodeInit.prepareStep5_IntegrationContracts();
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({
-                  success: true,
-                  step: 5,
-                  message: "集成契约生成数据已准备",
-                  aiDataPackage,
-                  instructions: "请使用aiDataPackage中的数据生成integration-contracts.md文档",
-                  targetFile: "mg_kiro/contracts/integration-contracts.md",
-                  finalStep: true,
-                  completion: "Init流程全部完成！"
-                }, null, 2)
+                text: JSON.stringify(result, null, 2)
               }
             ]
           };
         }
         
         case "get_init_status": {
-          const status = claudeCodeInit.getState();
+          console.log(`[MCP-Simplified] 获取状态信息`);
+          
+          const state = claudeCodeInit.getState();
           const progress = claudeCodeInit.getProgress();
+          const health = claudeCodeInit.healthCheck();
           
           return {
             content: [
               {
                 type: "text",
                 text: JSON.stringify({
-                  status,
+                  state,
                   progress,
-                  availableSteps: [
-                    "init_step1_data_collection",
-                    "init_step2_architecture", 
-                    "init_step3_deep_analysis",
-                    "init_step4_module_docs",
-                    "init_step5_contracts"
-                  ]
+                  health,
+                  availableTools: [
+                    "generate_project_overview",
+                    "progressive_documentation"
+                  ],
+                  simplifiedFlow: {
+                    currentVersion: "3.0-simplified",
+                    totalSteps: 2,
+                    description: "2步精简Init流程：项目概览 → 渐进式文档生成"
+                  }
                 }, null, 2)
               }
             ]
@@ -341,16 +294,19 @@ async function startServer() {
         }
         
         case "reset_init": {
-          claudeCodeInit.reset();
+          console.log(`[MCP-Simplified] 重置流程状态`);
+          
+          const result = claudeCodeInit.reset();
           
           return {
             content: [
               {
                 type: "text",
                 text: JSON.stringify({
-                  success: true,
-                  message: "Init流程已重置",
-                  nextStep: "调用 init_step1_data_collection 开始新的Init流程"
+                  ...result,
+                  nextStep: "调用 generate_project_overview 开始新的Init流程",
+                  simplifiedFlow: true,
+                  version: "3.0-simplified"
                 }, null, 2)
               }
             ]
@@ -358,10 +314,10 @@ async function startServer() {
         }
         
         default:
-          throw new Error(`未知的工具: ${name}`);
+          throw new Error(`未知的工具: ${name}. 可用工具: generate_project_overview, progressive_documentation, get_init_status, reset_init`);
       }
     } catch (error) {
-      console.error(`[MCP] 工具执行失败: ${name}`, error);
+      console.error(`[MCP-Simplified] 工具执行失败: ${name}`, error);
       return {
         content: [
           {
@@ -369,8 +325,16 @@ async function startServer() {
             text: JSON.stringify({
               error: true,
               message: error.message,
-              suggestion: "请检查步骤顺序和前置条件"
-            })
+              tool: name,
+              version: "3.0-simplified",
+              suggestion: "请检查工具名称和参数。可用工具: generate_project_overview, progressive_documentation",
+              availableTools: [
+                "generate_project_overview - 生成项目概览包",
+                "progressive_documentation - 渐进式文档生成",
+                "get_init_status - 获取状态信息", 
+                "reset_init - 重置流程"
+              ]
+            }, null, 2)
           }
         ]
       };
@@ -381,8 +345,10 @@ async function startServer() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   
-  console.log("\n✅ mg_kiro MCP服务器已启动 (stdio模式)");
-  console.log("📡 等待MCP客户端连接...\n");
+  console.log("\n✅ mg_kiro MCP服务器已启动 (stdio模式) - v3.0.0-simplified");
+  console.log("🚀 精简版2步Init流程已就绪");
+  console.log("🤖 支持工具: generate_project_overview, progressive_documentation");
+  console.log("📡 等待Claude Code客户端连接...\n");
 }
 
 // WebSocket消息处理
