@@ -17,13 +17,13 @@
 
 import { promises as fs } from 'fs';
 import { join, resolve, relative, extname, basename } from 'path';
-import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
+import LanguageDetector from '../language/detector.js';
 import MasterTemplateService from './unified/master-template-service.js';
 import TemplateConfigManager from './unified/template-config-manager.js';
 
 export class ProjectOverviewGenerator {
     constructor() {
-        this.languageDetector = new EnhancedLanguageDetector();
+        this.languageDetector = new LanguageDetector();
         
         // 初始化统一模板服务
         const configManager = new TemplateConfigManager();
@@ -202,17 +202,17 @@ export class ProjectOverviewGenerator {
         console.log('[ProjectOverview] 分析语言概况...');
         
         try {
-            const languageResults = await this.languageDetector.detectLanguageEnhanced(projectPath);
+            const languageResults = await this.languageDetector.detectLanguage(projectPath);
             
             return {
-                primary: languageResults.detection?.primaryLanguage || 'unknown',
-                secondary: languageResults.detection?.frameworks || [],
-                frameworks: languageResults.detection?.frameworks || [],
-                techStack: languageResults.techStack || {},
-                confidence: languageResults.detection?.confidence || 0,
-                detectionSources: languageResults.detection?.detectionSources || [],
-                languageStats: languageResults.stats || {},
-                ecosystem: this.identifyEcosystem(languageResults)
+                primary: languageResults.language || 'unknown',
+                secondary: languageResults.frameworks || [],
+                frameworks: languageResults.frameworks || [],
+                techStack: { primary: languageResults.language, frameworks: languageResults.frameworks },
+                confidence: languageResults.confidence || 0,
+                detectionSources: ['base-detection'],
+                languageStats: {},
+                ecosystem: languageResults.language || 'unknown'
             };
         } catch (error) {
             console.warn('[ProjectOverview] 语言检测失败, 使用基础检测:', error.message);

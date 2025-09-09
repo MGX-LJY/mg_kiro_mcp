@@ -8,7 +8,7 @@ import ConfigService from './config-service.js';
 import AITodoManager from './ai-todo-manager.js';
 import CompleteTaskMonitor from './complete-task-monitor.js';
 
-import { EnhancedLanguageDetector } from '../analyzers/enhanced-language-detector.js';
+import LanguageDetector from '../language/detector.js';
 import LanguageIntelligenceService from './language-intelligence-service.js';
 // 已删除: import InitStateService from './init-state-service.js';
 // 已删除: import { ClaudeCodeInitService } from './claude-code-init-service.js';
@@ -37,7 +37,7 @@ export function registerServices(configDir = './config') {
 
     // 核心服务层（依赖基础服务）
     serviceBus
-        .register('enhancedLanguageDetector', EnhancedLanguageDetector, {}, [])
+        .register('languageDetector', LanguageDetector, {}, [])
         
         .register('languageIntelligence', LanguageIntelligenceService, {}, [])
         .register('aiTodoManager', AITodoManager, {}, [])
@@ -117,7 +117,7 @@ export function getServices() {
         // 其他核心服务
         // 已删除: initState: serviceBus.get('initState'),
         // 已删除: claudeCodeInit: serviceBus.get('claudeCodeInit'),
-        languageDetector: serviceBus.get('enhancedLanguageDetector'),
+        languageDetector: serviceBus.get('languageDetector'),
         languageIntelligence: serviceBus.get('languageIntelligence'),
         configService: serviceBus.get('configService'),
         
