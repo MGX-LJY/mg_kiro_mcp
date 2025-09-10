@@ -1545,18 +1545,6 @@ async function startServer() {
             };
           }
 
-          if (!documentContent) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({ 
-                  error: true, 
-                  message: "文档内容不能为空。请提供documentContent或notes参数", 
-                  tool: name 
-                }, null, 2)
-              }]
-            };
-          }
           
           console.log(`[MCP-Init-Step3] 完成任务 - ${projectPath} 任务:${taskId}`);
           
