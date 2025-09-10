@@ -1297,80 +1297,30 @@ async function startServer() {
             }
             
             return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify({
-                    currentStep: 3,
-                    stepName: 'file-documentation',
-                    status: "content_ready",
-                    
-                    // 文件内容信息（智能处理）
-                    fileContent: {
-                      taskId: taskId,
-                      relativePath: relativePath,
-                      fileName: fileName,
-                      content: fileContent,
-                      language: fileExtension,
-                      size: fileStats.size,
-                      lines: fileContent.split('\n').length,
-                      estimatedTokens: processingInfo.estimatedTokens,
-                      
-                      // 智能处理状态
-                      processing: {
-                        wasTrimmed: processingInfo.wasTrimmed,
-                        wasChunked: processingInfo.wasChunked,
-                        originalLength: processingInfo.originalLength,
-                        strategy: processingInfo.processingStrategy,
-                        recommendation: processingInfo.wasTrimmed 
-                          ? "文件已智能裁切，保留关键代码结构" 
-                          : "文件大小适中，完整处理"
-                      }
-                    },
-                    
-                    // AI处理指导（智能处理感知）
-                    aiInstructions: {
-                      task: "为这个文件生成详细的技术文档",
-                      focus: processingInfo.wasTrimmed 
-                        ? "分析已裁切的关键代码结构、核心功能、重要逻辑。注意：内容已智能裁切，重点关注保留的重要部分"
-                        : "分析完整代码功能、架构设计、重要逻辑和使用方式", 
-                      format: "Markdown格式，包含代码示例和技术说明",
-                      outputFile: `mg_kiro/files/${fileName}.md`,
-                      saveToPath: join(filesDir, `${fileName}.md`),
-                      processingNotes: {
-                        contentStatus: processingInfo.wasTrimmed ? "智能裁切" : "完整内容",
-                        estimatedTokens: processingInfo.estimatedTokens,
-                        strategy: processingInfo.processingStrategy,
-                        guidance: processingInfo.wasTrimmed 
-                          ? "内容已经过智能裁切，保留了imports、exports、函数定义等关键结构，请重点分析这些核心部分"
-                          : "内容完整，可以进行全面分析"
-                      }
-                    },
-                    
-                    // 🔥 简化的工作流程 - 支持直接保存或继续下一任务
-                    workflow: {
-                      current_step: "3/6 - 文件文档生成（内容已准备）",
-                      status: "content_ready", 
-                      next_steps: [{
-                        description: "AI现在可以直接处理文件内容并继续下一个任务",
-                        actions: [
-                          `1. 生成文档并保存到: ${join(filesDir, `${fileName}.md`)}`,
-                          `2. 调用 init_step3_get_next_task 获取下一个任务（无需手动完成当前任务）`
-                        ],
-                        why: "文件内容已获取且上下文管理自动化，可以流畅进行下一步"
-                      }],
-                      progress: {
-                        completed: 3,
-                        total: 6,
-                        percentage: Math.round(3/6 * 100)
-                      }
-                    },
-                    
-                    success: true,
-                    message: `Step3: 文件 ${relativePath} 智能处理完成（${processingInfo.estimatedTokens} tokens，${processingInfo.wasTrimmed ? '已裁切' : '完整内容'}）`
-                  }, null, 2)
-                }
-              ]
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  currentStep: 3,
+                  stepName: 'file-documentation',
+                  status: "content_ready",
+                  fileContent: {
+                    taskId: taskId,
+                    relativePath: relativePath,
+                    fileName: fileName,
+                    content: fileContent,
+                    language: fileExtension,
+                    size: fileStats.size,
+                    lines: fileContent.split('\n').length
+                  },
+                  aiInstructions: {
+                    task: "为这个文件生成详细的技术文档",
+                    format: "Markdown格式",
+                    outputFile: `mg_kiro/files/${fileName}.md`
+                  },
+                  success: true,
+                  message: `Step3: 文件 ${relativePath} 处理完成`
+                }, null, 2)
+              }]
             };
           } catch (error) {
             console.error(`[Smart-Processing] 智能文件处理失败: ${error.message}`);
@@ -1395,7 +1345,6 @@ async function startServer() {
                     currentStep: 3,
                     stepName: 'file-documentation',
                     status: "content_ready_fallback",
-                    
                     fileContent: {
                       taskId: taskId,
                       relativePath: relativePath,
@@ -1410,18 +1359,11 @@ async function startServer() {
                         originalError: error.message
                       }
                     },
-                    
                     aiInstructions: {
                       task: "为这个文件生成详细的技术文档（基本模式）",
-                      focus: "分析代码功能、架构设计、重要逻辑和使用方式", 
-                      format: "Markdown格式，包含代码示例和技术说明",
-                      outputFile: `mg_kiro/files/${fileName}.md`,
-                      processingNotes: {
-                        contentStatus: "基本读取（智能处理失败）",
-                        guidance: "使用基本文件读取，请根据实际内容大小调整分析深度"
-                      }
+                      format: "Markdown格式",
+                      outputFile: `mg_kiro/files/${fileName}.md`
                     },
-                    
                     success: true,
                     message: `Step3: 文件 ${relativePath} 基本处理完成（智能处理失败后的备选方案）`,
                     warning: `智能处理失败: ${error.message}，已降级到基本处理模式`
@@ -1452,13 +1394,55 @@ async function startServer() {
         }
         
         case "init_step3_complete_task": {
-          const { projectPath, taskId, documentContent } = args;
+          // 🔥 修复：支持多种参数映射方式，支持从上下文自动获取taskId
+          let { projectPath, taskId, documentContent, notes } = args;
           
-          if (!projectPath || !taskId || !documentContent) {
+          if (!projectPath) {
             return {
               content: [{
                 type: "text",
-                text: JSON.stringify({ error: true, message: "项目路径、任务ID和文档内容不能为空", tool: name }, null, 2)
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
+          }
+
+          // 🔥 自动参数补全：从上下文获取taskId
+          const taskContext = getCurrentTaskContext(projectPath);
+          if (!taskId && taskContext) {
+            taskId = taskContext.taskId;
+            console.log(`[Auto-Param] 从上下文自动获取 taskId: ${taskId}`);
+          }
+
+          // 🔥 参数映射：支持notes -> documentContent
+          if (!documentContent && notes) {
+            documentContent = notes;
+            console.log(`[Param-Mapping] 将 notes 参数映射为 documentContent`);
+          }
+          
+          if (!taskId) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ 
+                  error: true, 
+                  message: "任务ID不能为空。请提供taskId参数或先调用get_next_task获取任务上下文", 
+                  contextAvailable: !!taskContext,
+                  contextInfo: taskContext ? { taskId: taskContext.taskId, fileName: taskContext.fileName } : null,
+                  tool: name 
+                }, null, 2)
+              }]
+            };
+          }
+
+          if (!documentContent) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ 
+                  error: true, 
+                  message: "文档内容不能为空。请提供documentContent或notes参数", 
+                  tool: name 
+                }, null, 2)
               }]
             };
           }

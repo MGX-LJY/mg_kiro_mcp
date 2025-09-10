@@ -8,16 +8,16 @@
   "stepResults": {
     "step1": {
       "projectOverview": {
-        "generatedAt": "2025-09-10T10:02:51.240Z",
-        "generationTime": "11ms",
+        "generatedAt": "2025-09-10T10:21:12.024Z",
+        "generationTime": "17ms",
         "projectMetadata": {
           "name": "mg_kiro_mcp",
           "path": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
-          "lastModified": "2025-09-10T10:02:18.000Z",
+          "lastModified": "2025-09-10T10:19:30.000Z",
           "createdAt": "2025-09-06T14:38:08.793Z",
           "totalFiles": 6,
-          "totalSize": "452.01 KB",
-          "totalSizeBytes": 462863,
+          "totalSize": "457.87 KB",
+          "totalSizeBytes": 468858,
           "fileTypeDistribution": {
             ".md": 2,
             ".js": 2,
@@ -204,7 +204,7 @@
               {
                 "name": "index.js",
                 "type": "file",
-                "size": 95110,
+                "size": 101105,
                 "ext": ".js"
               },
               {
@@ -217,6 +217,11 @@
                 "name": "mg_kiro",
                 "type": "directory",
                 "children": [
+                  {
+                    "name": "files",
+                    "type": "directory",
+                    "children": []
+                  },
                   {
                     "name": "init-state.json",
                     "type": "file",
@@ -350,7 +355,7 @@
                       {
                         "name": "file-query-service.js",
                         "type": "file",
-                        "size": 17626,
+                        "size": 36166,
                         "ext": ".js"
                       },
                       {
@@ -381,6 +386,12 @@
                         "name": "service-registry.js",
                         "type": "file",
                         "size": 5944,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "smart-content-trimmer.js",
+                        "type": "file",
+                        "size": 9415,
                         "ext": ".js"
                       },
                       {
@@ -436,9 +447,9 @@
           },
           "index.js": {
             "content": "#!/usr/bin/env node\n\n/* eslint-disable no-unreachable */\n/* eslint-disable no-throw-literal */\n\n/**\n * mg_kiro MCP Server\n * 统一入口点 - MCP协议服务器 + Express API + WebSocket\n * \n * 支持两种运行模式:\n * 1. MCP服务器模式: node index.js (MCP服务器运行在stdio)\n * 2. Express服务器模式: MCP_PORT=3000 node index.js (Web服务器运行在指定端口)\n */\n\nimport { Server } from \"@modelcontextprotocol/sdk/server/index.js\";\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\nimport {\n  CallToolRequestSchema,\n  ListToolsRequestSchema,\n} from \"@modelcontextprotocol/sdk/types.js\";\nimport express from 'express';\nimport http from 'http';\nimport { WebSocketServer } from 'ws';\nimport cors from 'cors';\nimport { fileURLToPath } from 'url';\nimport { dirname, join, resolve } from 'path';\nimport { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, unlinkSync } from 'fs';\nimport { createAppRoutes } from './server/routes/index.js';\nimport { initializeServices } from './server/services/service-registry.js';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst CONFIG_DIR = join(__dirname, 'config');\n\n// ========== 服务容器包装器 ==========\nfunction getServiceContainer(serviceBus) {\n  return {\n    // 新的统一模板系统\n    masterTemplateService: serviceBus.get('masterTemplateService'),\n    templateConfigManager: serviceBus.get('templateConfigManager'),\n    \n    // 其他核心服务\n    languageDetector: serviceBus.get('languageDetector'),\n    languageIntelligence: serviceBus.get('languageIntelligence'),\n    configService: serviceBus.get('configService'),\n    \n    // Create模式所需服务\n    aiTodoManager: serviceBus.get('aiTodoManager'),\n    completeTaskMonitor: serviceBus.get('completeTaskMonitor'),\n    \n    // 向后兼容的别名（指向新服务）\n    promptService: serviceBus.get('masterTemplateService'),\n    unifiedTemplateService: serviceBus.get('masterTemplateService'),\n    \n    // ServiceBus工具方法\n    getService: (name) => serviceBus.get(name),\n    getServiceStatus: (name) => serviceBus.getServiceStatus(name),\n    getStats: () => serviceBus.getStats(),\n    getAllServices: () => serviceBus.getAllServices()\n  };\n}\n\n// ========== 服务器模式 ==========\nstartServer().catch(console.error);\n\nasync function startServer() {\n  // 初始化服务系统\n  console.log('[Server] 初始化服务系统...');\n  const serviceBus = await initializeServices(CONFIG_DIR);\n\n  // ========== Express服务器设置 ==========\n  const PORT = process.env.MCP_PORT || process.env.PORT;\n  \n  if (PORT) {\n    // Express服务器模式\n    console.log('[Server] 启动Express服务器模式...');\n    \n    const app = express();\n    const httpServer = http.createServer(app);\n\n    // 中间件配置\n    app.use(cors());\n    app.use(express.json({ limit: '50mb' }));\n    app.use(express.urlencoded({ extended: true }));\n\n    // 请求日志\n    app.use((req, res, next) => {\n      console.log(`[HTTP] ${req.method} ${req.path}`);\n      next();\n    });\n\n    // 创建服务容器并生成路由\n    const serviceContainer = getServiceContainer(serviceBus);\n    const routes = createAppRoutes(serviceContainer, null);\n    app.use('/', routes);\n\n    // WebSocket服务器\n    const wss = new WebSocketServer({ server: httpServer });\n    \n    wss.on('connection', (ws) => {\n      console.log('[WebSocket] 新客户端连接');\n      \n      ws.on('message', (message) => {\n        try {\n          const data = JSON.parse(message);\n          console.log('[WebSocket] 收到消息:', data.type || 'unknown');\n          \n          // 处理WebSocket消息\n          handleWebSocketMessage(ws, data, serviceBus);\n        } catch (error) {\n          console.error('[WebSocket] 消息处理错误:', error);\n          ws.send(JSON.stringify({ error: error.message }));\n        }\n      });\n      \n      ws.on('close', () => {\n        console.log('[WebSocket] 客户端断开连接');\n      });\n    });\n\n    // 启动HTTP服务器\n    httpServer.listen(PORT, () => {\n      console.log(`\\n✅ mg_kiro Express服务器已启动`);\n      console.log(`📡 HTTP服务: http://localhost:${PORT}`);\n      console.log(`🔌 WebSocket服务: ws://localhost:${PORT}`);\n      console.log(`📚 API文档: http://localhost:${PORT}/api-docs`);\n      console.log(`\\n可用的端点 (精简版 3.0):`);\n      console.log(`  - GET  /health - 健康检查`);\n      console.log(`  - POST /init/project-overview - 生成项目概览包`);\n      console.log(`  - POST /init/progressive-documentation - 渐进式文档生成`);\n      console.log(`  - GET  /init/status - 获取Init状态`);\n      console.log(`  - GET  /init/help - API帮助信息`);\n      console.log(`\\nMCP工具:`);\n      console.log(`  - generate_project_overview - 生成项目概览`);\n      console.log(`  - progressive_documentation - 渐进式文档生成`);\n    });\n  }\n\n  // ========== MCP服务器设置 ==========\n  console.log('[Server] 启动MCP协议服务器...');\n\n... [内容已截断] ...\n\n  });\n\n  // 启动MCP服务器\n  const transport = new StdioServerTransport();\n  await server.connect(transport);\n  \n  console.log(\"\\n✅ mg_kiro MCP服务器已启动 (stdio模式) - v5.0.0-complete-6-steps-redesigned\");\n  console.log(\"🚀 重新设计的完整6步Init工作流已就绪\");\n  console.log(\"🤖 支持工具: workflow_guide, init_step1-6 (文件分析→模块整合→关联分析→架构文档)\");\n  console.log(\"📡 等待Claude Code客户端连接...\\n\");\n}\n\n// WebSocket消息处理\nfunction handleWebSocketMessage(ws, data, serviceBus) {\n  const { type, payload } = data;\n  \n  switch (type) {\n    case 'init':\n      // 处理Init请求 - 使用新的MCP协议服务\n      const { projectPath } = payload;\n      const claudeCodeInit = serviceBus.get('claudeCodeInit');\n      \n      try {\n        claudeCodeInit.initialize(resolve(projectPath));\n        ws.send(JSON.stringify({\n          type: 'init_started',\n          message: 'Init流程已启动，请使用MCP工具进行分步执行',\n          availableTools: [\n            'init_step1_data_collection',\n            'init_step2_architecture',\n            'init_step3_deep_analysis',\n            'init_step4_module_docs',\n            'init_step5_contracts'\n          ]\n        }));\n      } catch (error) {\n        ws.send(JSON.stringify({\n          type: 'error',\n          error: error.message\n        }));\n      }\n      break;\n      \n    case 'status':\n      // 获取状态\n      const initState = serviceBus.get('initState');\n      const status = initState ? initState.getProgress() : { status: 'idle' };\n      ws.send(JSON.stringify({\n        type: 'status',\n        status\n      }));\n      break;\n      \n    default:\n      ws.send(JSON.stringify({\n        type: 'error',\n        error: `未知的消息类型: ${type}`\n      }));\n  }\n}",
-            "size": 95110,
+            "size": 101105,
             "isTrimmed": true,
-            "lastModified": "2025-09-10T10:01:44.141Z",
+            "lastModified": "2025-09-10T10:16:30.479Z",
             "importance": 38,
             "type": "unknown"
           }
@@ -451,7 +462,7 @@
         },
         "architectureDocument": {
           "title": "mg_kiro_mcp - 系统架构文档",
-          "generatedAt": "2025-09-10T10:02:51.239Z",
+          "generatedAt": "2025-09-10T10:21:12.023Z",
           "version": "1.0-auto",
           "overview": {
             "name": "mg_kiro_mcp",
@@ -507,7 +518,7 @@
           "recommendations": []
         },
         "aiTaskContext": {
-          "generatedAt": "2025-09-10T10:02:51.239Z",
+          "generatedAt": "2025-09-10T10:21:12.023Z",
           "projectName": "mg_kiro_mcp",
           "fileProcessingGuide": {
             "totalFilesToProcess": 0,
@@ -666,7 +677,7 @@
           }
         }
       },
-      "completedAt": "2025-09-10T10:02:51.240Z",
+      "completedAt": "2025-09-10T10:21:12.024Z",
       "docsDirectory": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp/mg_kiro"
     },
     "step2": {
@@ -674,7 +685,7 @@
         "success": true,
         "todoList": {
           "projectPath": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
-          "totalTasks": 54,
+          "totalTasks": 55,
           "currentTask": {
             "id": "file_1_1",
             "type": "file_processing",
@@ -708,7 +719,7 @@
             "batchNumber": 1,
             "batchPosition": 1,
             "estimatedTime": "5-8分钟",
-            "createdAt": "2025-09-10T10:03:04.169Z",
+            "createdAt": "2025-09-10T10:21:22.959Z",
             "updatedAt": null,
             "completedAt": null
           },
@@ -762,7 +773,7 @@
                 "batchNumber": 1,
                 "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -799,7 +810,7 @@
                 "batchNumber": 1,
                 "batchPosition": 2,
                 "estimatedTime": "4-6分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -836,7 +847,7 @@
                 "batchNumber": 1,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -873,7 +884,7 @@
                 "batchNumber": 2,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -910,7 +921,7 @@
                 "batchNumber": 2,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -947,7 +958,7 @@
                 "batchNumber": 2,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -984,7 +995,7 @@
                 "batchNumber": 3,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1021,7 +1032,7 @@
                 "batchNumber": 3,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1058,7 +1069,7 @@
                 "batchNumber": 3,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1095,7 +1106,7 @@
                 "batchNumber": 4,
                 "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1132,7 +1143,7 @@
                 "batchNumber": 4,
                 "batchPosition": 2,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1169,7 +1180,7 @@
                 "batchNumber": 4,
                 "batchPosition": 3,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1206,7 +1217,7 @@
                 "batchNumber": 5,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1221,7 +1232,7 @@
                   "name": "file-query-service.js",
                   "category": "service",
                   "importance": 10,
-                  "needsTrimming": false
+                  "needsTrimming": true
                 },
                 "instructions": {
                   "action": "get_file_content",
@@ -1242,8 +1253,8 @@
                 "priority": 10,
                 "batchNumber": 5,
                 "batchPosition": 2,
-                "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1280,7 +1291,7 @@
                 "batchNumber": 5,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1317,7 +1328,7 @@
                 "batchNumber": 6,
                 "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1354,7 +1365,7 @@
                 "batchNumber": 6,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1391,7 +1402,7 @@
                 "batchNumber": 6,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1428,12 +1439,49 @@
                 "batchNumber": 7,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
                 "id": "file_7_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: smart-content-trimmer.js",
+                "description": "分析并生成 server/services/smart-content-trimmer.js 的文档",
+                "file": {
+                  "relativePath": "server/services/smart-content-trimmer.js",
+                  "name": "smart-content-trimmer.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/smart-content-trimmer.js",
+                  "expectedOutput": "smart-content-trimmer.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 7,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-10T10:21:22.959Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_7_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: init.md",
@@ -1463,14 +1511,14 @@
                 },
                 "priority": 10,
                 "batchNumber": 7,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_7_3",
+                "id": "file_8_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: jest.config.js",
@@ -1499,15 +1547,15 @@
                   ]
                 },
                 "priority": 10,
-                "batchNumber": 7,
-                "batchPosition": 3,
+                "batchNumber": 8,
+                "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_8_1",
+                "id": "file_8_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: package-lock.json",
@@ -1537,14 +1585,14 @@
                 },
                 "priority": 10,
                 "batchNumber": 8,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_8_2",
+                "id": "file_8_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: detector.js",
@@ -1574,14 +1622,14 @@
                 },
                 "priority": 10,
                 "batchNumber": 8,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_8_3",
+                "id": "file_9_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: language-prompt-generator.js",
@@ -1610,15 +1658,15 @@
                   ]
                 },
                 "priority": 10,
-                "batchNumber": 8,
-                "batchPosition": 3,
+                "batchNumber": 9,
+                "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_9_1",
+                "id": "file_9_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: prompt-intelligence.js",
@@ -1648,14 +1696,14 @@
                 },
                 "priority": 10,
                 "batchNumber": 9,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_9_2",
+                "id": "file_9_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: master-template-service.js",
@@ -1685,14 +1733,14 @@
                 },
                 "priority": 5,
                 "batchNumber": 9,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_9_3",
+                "id": "file_10_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: mode-template-service.js",
@@ -1721,15 +1769,15 @@
                   ]
                 },
                 "priority": 5,
-                "batchNumber": 9,
-                "batchPosition": 3,
+                "batchNumber": 10,
+                "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_10_1",
+                "id": "file_10_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: template-config-manager.js",
@@ -1759,14 +1807,14 @@
                 },
                 "priority": 5,
                 "batchNumber": 10,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_10_2",
+                "id": "file_10_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: mcp.config.json",
@@ -1796,14 +1844,14 @@
                 },
                 "priority": 5,
                 "batchNumber": 10,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.169Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_10_3",
+                "id": "file_11_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: system-architecture-generation.md",
@@ -1832,15 +1880,15 @@
                   ]
                 },
                 "priority": 5,
-                "batchNumber": 10,
-                "batchPosition": 3,
+                "batchNumber": 11,
+                "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_11_1",
+                "id": "file_11_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: default.md",
@@ -1870,14 +1918,14 @@
                 },
                 "priority": 5,
                 "batchNumber": 11,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_11_2",
+                "id": "file_11_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: common.json",
@@ -1907,14 +1955,14 @@
                 },
                 "priority": 5,
                 "batchNumber": 11,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_11_3",
+                "id": "file_12_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: module-overview.md",
@@ -1943,15 +1991,15 @@
                   ]
                 },
                 "priority": 1,
-                "batchNumber": 11,
-                "batchPosition": 3,
+                "batchNumber": 12,
+                "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_12_1",
+                "id": "file_12_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: relations-overview.md",
@@ -1981,14 +2029,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 12,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_12_2",
+                "id": "file_12_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: template.md",
@@ -2018,14 +2066,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 12,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_12_3",
+                "id": "file_13_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: template.md",
@@ -2054,15 +2102,15 @@
                   ]
                 },
                 "priority": 1,
-                "batchNumber": 12,
-                "batchPosition": 3,
+                "batchNumber": 13,
+                "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_13_1",
+                "id": "file_13_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: template.md",
@@ -2092,14 +2140,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 13,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_13_2",
+                "id": "file_13_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: template.md",
@@ -2129,14 +2177,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 13,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_13_3",
+                "id": "file_14_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: template.md",
@@ -2165,15 +2213,15 @@
                   ]
                 },
                 "priority": 1,
-                "batchNumber": 13,
-                "batchPosition": 3,
+                "batchNumber": 14,
+                "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_14_1",
+                "id": "file_14_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: template.md",
@@ -2203,14 +2251,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 14,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_14_2",
+                "id": "file_14_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: template.md",
@@ -2240,14 +2288,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 14,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_14_3",
+                "id": "file_15_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: architecture-docs.md",
@@ -2276,15 +2324,15 @@
                   ]
                 },
                 "priority": 1,
-                "batchNumber": 14,
-                "batchPosition": 3,
+                "batchNumber": 15,
+                "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_15_1",
+                "id": "file_15_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: file-analysis.md",
@@ -2314,14 +2362,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 15,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_15_2",
+                "id": "file_15_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: module-files.md",
@@ -2351,14 +2399,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 15,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_15_3",
+                "id": "file_16_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: module-integration.md",
@@ -2387,15 +2435,15 @@
                   ]
                 },
                 "priority": 1,
-                "batchNumber": 15,
-                "batchPosition": 3,
+                "batchNumber": 16,
+                "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_16_1",
+                "id": "file_16_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: project-analysis.md",
@@ -2425,14 +2473,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 16,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_16_2",
+                "id": "file_16_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: data-flows.md",
@@ -2462,14 +2510,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 16,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_16_3",
+                "id": "file_17_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: dependencies.md",
@@ -2498,15 +2546,15 @@
                   ]
                 },
                 "priority": 1,
-                "batchNumber": 16,
-                "batchPosition": 3,
+                "batchNumber": 17,
+                "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_17_1",
+                "id": "file_17_2",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: function-calls.md",
@@ -2536,14 +2584,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 17,
-                "batchPosition": 1,
+                "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_17_2",
+                "id": "file_17_3",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: relations-analysis.md",
@@ -2573,14 +2621,14 @@
                 },
                 "priority": 1,
                 "batchNumber": 17,
-                "batchPosition": 2,
+                "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               },
               {
-                "id": "file_17_3",
+                "id": "file_18_1",
                 "type": "file_processing",
                 "status": "pending",
                 "title": "处理文件: task-creation.md",
@@ -2609,10 +2657,10 @@
                   ]
                 },
                 "priority": 1,
-                "batchNumber": 17,
-                "batchPosition": 3,
+                "batchNumber": 18,
+                "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:03:04.170Z",
+                "createdAt": "2025-09-10T10:21:22.959Z",
                 "updatedAt": null,
                 "completedAt": null
               }
@@ -2675,38 +2723,59 @@
           }
         },
         "summary": {
-          "fileProcessingTasks": 51,
+          "fileProcessingTasks": 52,
           "analysisTasks": 2,
           "summaryTasks": 1,
-          "estimatedTotalTime": "162-270分钟"
+          "estimatedTotalTime": "165-275分钟"
         }
       },
       "processingPlan": {
         "projectPath": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
-        "planCreatedAt": "2025-09-10T10:03:04.169Z",
+        "planCreatedAt": "2025-09-10T10:21:22.959Z",
         "summary": {
-          "totalFiles": 51,
-          "totalBatches": 17,
+          "totalFiles": 52,
+          "totalBatches": 18,
           "averageBatchSize": 3,
-          "estimatedTotalTime": "34-68 分钟"
+          "estimatedTotalTime": "36-72 分钟",
+          "totalEstimatedTokens": 3504,
+          "averageTokensPerBatch": 195,
+          "largeFilesCount": 10,
+          "chunkedFilesCount": 0
         },
         "processingStrategy": {
           "batchSize": 3,
           "priorityOrder": true,
+          "tokenBasedBatching": false,
+          "maxTokensPerBatch": 100000,
           "processingMode": "sequential-ai-collaboration",
           "description": "AI将逐批处理文件，每批完成后再进行下一批"
+        },
+        "tokenAnalysis": {
+          "totalTokens": 3504,
+          "averageTokensPerFile": 67,
+          "recommendedModel": "gpt-4",
+          "chunkedFilesCount": 0,
+          "estimatedCost": {
+            "gpt-4": "$0.11",
+            "gpt-3.5": "$0.01",
+            "claude-3": "$0.05",
+            "note": "估算成本，实际费用可能有所不同"
+          }
         },
         "batches": [
           {
             "batchNumber": 1,
+            "estimatedTokens": 147,
             "files": [
               {
                 "relativePath": "index.js",
                 "name": "index.js",
                 "category": "entry",
                 "importance": 60,
-                "estimatedSize": 95110,
-                "needsTrimming": true
+                "estimatedSize": 101105,
+                "estimatedTokens": 48,
+                "needsTrimming": true,
+                "needsChunking": false
               },
               {
                 "relativePath": "package.json",
@@ -2714,7 +2783,9 @@
                 "category": "config",
                 "importance": 60,
                 "estimatedSize": 1634,
-                "needsTrimming": false
+                "estimatedTokens": 51,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "CLAUDE.md",
@@ -2722,12 +2793,15 @@
                 "category": "other",
                 "importance": 20,
                 "estimatedSize": 4319,
-                "needsTrimming": false
+                "estimatedTokens": 48,
+                "needsTrimming": false,
+                "needsChunking": false
               }
             ]
           },
           {
             "batchNumber": 2,
+            "estimatedTokens": 168,
             "files": [
               {
                 "relativePath": "README.md",
@@ -2735,7 +2809,9 @@
                 "category": "documentation",
                 "importance": 20,
                 "estimatedSize": 9586,
-                "needsTrimming": false
+                "estimatedTokens": 50,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": ".claude/settings.local.json",
@@ -2743,7 +2819,9 @@
                 "category": "other",
                 "importance": 15,
                 "estimatedSize": 2310,
-                "needsTrimming": false
+                "estimatedTokens": 60,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "config/modes.config.json",
@@ -2751,12 +2829,15 @@
                 "category": "other",
                 "importance": 15,
                 "estimatedSize": 2084,
-                "needsTrimming": false
+                "estimatedTokens": 58,
+                "needsTrimming": false,
+                "needsChunking": false
               }
             ]
           },
           {
             "batchNumber": 3,
+            "estimatedTokens": 184,
             "files": [
               {
                 "relativePath": "config/template-system.config.json",
@@ -2764,7 +2845,9 @@
                 "category": "other",
                 "importance": 15,
                 "estimatedSize": 2488,
-                "needsTrimming": false
+                "estimatedTokens": 64,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "config/templates.config.json",
@@ -2772,7 +2855,9 @@
                 "category": "other",
                 "importance": 15,
                 "estimatedSize": 9879,
-                "needsTrimming": false
+                "estimatedTokens": 60,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "config/workflows.config.json",
@@ -2780,20 +2865,25 @@
                 "category": "other",
                 "importance": 15,
                 "estimatedSize": 15039,
-                "needsTrimming": false
+                "estimatedTokens": 60,
+                "needsTrimming": false,
+                "needsChunking": false
               }
             ]
           },
           {
             "batchNumber": 4,
+            "estimatedTokens": 189,
             "files": [
               {
                 "relativePath": "mg_kiro/init-state.json",
                 "name": "init-state.json",
                 "category": "other",
                 "importance": 15,
-                "estimatedSize": 39953,
-                "needsTrimming": true
+                "estimatedSize": 40333,
+                "estimatedTokens": 57,
+                "needsTrimming": true,
+                "needsChunking": false
               },
               {
                 "relativePath": "server/services/ai-todo-manager.js",
@@ -2801,7 +2891,9 @@
                 "category": "service",
                 "importance": 10,
                 "estimatedSize": 36366,
-                "needsTrimming": true
+                "estimatedTokens": 64,
+                "needsTrimming": true,
+                "needsChunking": false
               },
               {
                 "relativePath": "server/services/complete-task-monitor.js",
@@ -2809,12 +2901,15 @@
                 "category": "service",
                 "importance": 10,
                 "estimatedSize": 27843,
-                "needsTrimming": true
+                "estimatedTokens": 68,
+                "needsTrimming": true,
+                "needsChunking": false
               }
             ]
           },
           {
             "batchNumber": 5,
+            "estimatedTokens": 202,
             "files": [
               {
                 "relativePath": "server/services/config-service.js",
@@ -2822,15 +2917,19 @@
                 "category": "service",
                 "importance": 10,
                 "estimatedSize": 9827,
-                "needsTrimming": false
+                "estimatedTokens": 64,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "server/services/file-query-service.js",
                 "name": "file-query-service.js",
                 "category": "service",
                 "importance": 10,
-                "estimatedSize": 17626,
-                "needsTrimming": false
+                "estimatedSize": 36166,
+                "estimatedTokens": 66,
+                "needsTrimming": true,
+                "needsChunking": false
               },
               {
                 "relativePath": "server/services/language-intelligence-service.js",
@@ -2838,12 +2937,15 @@
                 "category": "service",
                 "importance": 10,
                 "estimatedSize": 22062,
-                "needsTrimming": false
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
               }
             ]
           },
           {
             "batchNumber": 6,
+            "estimatedTokens": 196,
             "files": [
               {
                 "relativePath": "server/services/project-overview-generator.js",
@@ -2851,7 +2953,9 @@
                 "category": "service",
                 "importance": 10,
                 "estimatedSize": 39141,
-                "needsTrimming": true
+                "estimatedTokens": 71,
+                "needsTrimming": true,
+                "needsChunking": false
               },
               {
                 "relativePath": "server/services/response-service.js",
@@ -2859,7 +2963,9 @@
                 "category": "service",
                 "importance": 10,
                 "estimatedSize": 2668,
-                "needsTrimming": false
+                "estimatedTokens": 64,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "server/services/service-bus.js",
@@ -2867,12 +2973,15 @@
                 "category": "service",
                 "importance": 10,
                 "estimatedSize": 8689,
-                "needsTrimming": false
+                "estimatedTokens": 61,
+                "needsTrimming": false,
+                "needsChunking": false
               }
             ]
           },
           {
             "batchNumber": 7,
+            "estimatedTokens": 189,
             "files": [
               {
                 "relativePath": "server/services/service-registry.js",
@@ -2880,7 +2989,19 @@
                 "category": "service",
                 "importance": 10,
                 "estimatedSize": 5944,
-                "needsTrimming": false
+                "estimatedTokens": 64,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/smart-content-trimmer.js",
+                "name": "smart-content-trimmer.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 9415,
+                "estimatedTokens": 68,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": ".claude/commands/init.md",
@@ -2888,28 +3009,35 @@
                 "category": "other",
                 "importance": 10,
                 "estimatedSize": 8333,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 57,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 8,
+            "estimatedTokens": 166,
+            "files": [
               {
                 "relativePath": "jest.config.js",
                 "name": "jest.config.js",
                 "category": "other",
                 "importance": 10,
                 "estimatedSize": 826,
-                "needsTrimming": false
-              }
-            ]
-          },
-          {
-            "batchNumber": 8,
-            "files": [
+                "estimatedTokens": 52,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
               {
                 "relativePath": "package-lock.json",
                 "name": "package-lock.json",
                 "category": "other",
                 "importance": 10,
                 "estimatedSize": 351388,
-                "needsTrimming": true
+                "estimatedTokens": 54,
+                "needsTrimming": true,
+                "needsChunking": false
               },
               {
                 "relativePath": "server/language/detector.js",
@@ -2917,28 +3045,35 @@
                 "category": "other",
                 "importance": 10,
                 "estimatedSize": 14782,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 60,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 9,
+            "estimatedTokens": 209,
+            "files": [
               {
                 "relativePath": "server/language/language-prompt-generator.js",
                 "name": "language-prompt-generator.js",
                 "category": "other",
                 "importance": 10,
                 "estimatedSize": 31424,
-                "needsTrimming": true
-              }
-            ]
-          },
-          {
-            "batchNumber": 9,
-            "files": [
+                "estimatedTokens": 70,
+                "needsTrimming": true,
+                "needsChunking": false
+              },
               {
                 "relativePath": "server/language/prompt-intelligence.js",
                 "name": "prompt-intelligence.js",
                 "category": "other",
                 "importance": 10,
                 "estimatedSize": 19744,
-                "needsTrimming": false
+                "estimatedTokens": 66,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "server/services/unified/master-template-service.js",
@@ -2946,28 +3081,35 @@
                 "category": "service",
                 "importance": 5,
                 "estimatedSize": 38431,
-                "needsTrimming": true
-              },
+                "estimatedTokens": 73,
+                "needsTrimming": true,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 10,
+            "estimatedTokens": 201,
+            "files": [
               {
                 "relativePath": "server/services/unified/mode-template-service.js",
                 "name": "mode-template-service.js",
                 "category": "service",
                 "importance": 5,
                 "estimatedSize": 31840,
-                "needsTrimming": true
-              }
-            ]
-          },
-          {
-            "batchNumber": 10,
-            "files": [
+                "estimatedTokens": 72,
+                "needsTrimming": true,
+                "needsChunking": false
+              },
               {
                 "relativePath": "server/services/unified/template-config-manager.js",
                 "name": "template-config-manager.js",
                 "category": "service",
                 "importance": 5,
                 "estimatedSize": 19217,
-                "needsTrimming": false
+                "estimatedTokens": 73,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "config/mcp.config.json",
@@ -2975,28 +3117,35 @@
                 "category": "other",
                 "importance": 5,
                 "estimatedSize": 963,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 56,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 11,
+            "estimatedTokens": 210,
+            "files": [
               {
                 "relativePath": "prompts/generation/architecture/system-architecture-generation.md",
                 "name": "system-architecture-generation.md",
                 "category": "other",
                 "importance": 5,
                 "estimatedSize": 2566,
-                "needsTrimming": false
-              }
-            ]
-          },
-          {
-            "batchNumber": 11,
-            "files": [
+                "estimatedTokens": 82,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
               {
                 "relativePath": "prompts/shared/common/default.md",
                 "name": "default.md",
                 "category": "utility",
                 "importance": 5,
                 "estimatedSize": 3323,
-                "needsTrimming": false
+                "estimatedTokens": 63,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "prompts/shared/variables/common.json",
@@ -3004,28 +3153,35 @@
                 "category": "utility",
                 "importance": 5,
                 "estimatedSize": 1449,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 65,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 12,
+            "estimatedTokens": 241,
+            "files": [
               {
                 "relativePath": "prompts/modes/init/module-integration/module-overview.md",
                 "name": "module-overview.md",
                 "category": "component",
                 "importance": 1,
                 "estimatedSize": 4191,
-                "needsTrimming": false
-              }
-            ]
-          },
-          {
-            "batchNumber": 12,
-            "files": [
+                "estimatedTokens": 77,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
               {
                 "relativePath": "prompts/modes/init/relations-analysis/relations-overview.md",
                 "name": "relations-overview.md",
                 "category": "component",
                 "importance": 1,
                 "estimatedSize": 7515,
-                "needsTrimming": false
+                "estimatedTokens": 79,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "prompts/languages/javascript/init-variants/project-analysis/template.md",
@@ -3033,28 +3189,35 @@
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 4049,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 85,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 13,
+            "estimatedTokens": 224,
+            "files": [
               {
                 "relativePath": "prompts/modes/create/existing-project/template.md",
                 "name": "template.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 11649,
-                "needsTrimming": false
-              }
-            ]
-          },
-          {
-            "batchNumber": 13,
-            "files": [
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
               {
                 "relativePath": "prompts/modes/create/existing-project-requirement/template.md",
                 "name": "template.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 1223,
-                "needsTrimming": false
+                "estimatedTokens": 80,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "prompts/modes/create/feature-planning/template.md",
@@ -3062,28 +3225,35 @@
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 7033,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 14,
+            "estimatedTokens": 217,
+            "files": [
               {
                 "relativePath": "prompts/modes/create/module-creation/template.md",
                 "name": "template.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 12115,
-                "needsTrimming": false
-              }
-            ]
-          },
-          {
-            "batchNumber": 14,
-            "files": [
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
               {
                 "relativePath": "prompts/modes/create/new-project/template.md",
                 "name": "template.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 18483,
-                "needsTrimming": false
+                "estimatedTokens": 69,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "prompts/modes/create/new-project-requirement/template.md",
@@ -3091,28 +3261,35 @@
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 2574,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 15,
+            "estimatedTokens": 233,
+            "files": [
               {
                 "relativePath": "prompts/modes/init/architecture-generation/architecture-docs.md",
                 "name": "architecture-docs.md",
                 "category": "documentation",
                 "importance": 1,
                 "estimatedSize": 5936,
-                "needsTrimming": false
-              }
-            ]
-          },
-          {
-            "batchNumber": 15,
-            "files": [
+                "estimatedTokens": 82,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
               {
                 "relativePath": "prompts/modes/init/file-documentation/file-analysis.md",
                 "name": "file-analysis.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 1165,
-                "needsTrimming": false
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "prompts/modes/init/module-integration/module-files.md",
@@ -3120,28 +3297,35 @@
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 2986,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 75,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 16,
+            "estimatedTokens": 227,
+            "files": [
               {
                 "relativePath": "prompts/modes/init/module-integration/module-integration.md",
                 "name": "module-integration.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 2226,
-                "needsTrimming": false
-              }
-            ]
-          },
-          {
-            "batchNumber": 16,
-            "files": [
+                "estimatedTokens": 78,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
               {
                 "relativePath": "prompts/modes/init/project-analysis/project-analysis.md",
                 "name": "project-analysis.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 2037,
-                "needsTrimming": false
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "prompts/modes/init/relations-analysis/data-flows.md",
@@ -3149,28 +3333,35 @@
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 5500,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 73,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 17,
+            "estimatedTokens": 229,
+            "files": [
               {
                 "relativePath": "prompts/modes/init/relations-analysis/dependencies.md",
                 "name": "dependencies.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 5584,
-                "needsTrimming": false
-              }
-            ]
-          },
-          {
-            "batchNumber": 17,
-            "files": [
+                "estimatedTokens": 75,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
               {
                 "relativePath": "prompts/modes/init/relations-analysis/function-calls.md",
                 "name": "function-calls.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 3523,
-                "needsTrimming": false
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
               },
               {
                 "relativePath": "prompts/modes/init/relations-analysis/relations-analysis.md",
@@ -3178,15 +3369,25 @@
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 3260,
-                "needsTrimming": false
-              },
+                "estimatedTokens": 78,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 18,
+            "estimatedTokens": 72,
+            "files": [
               {
                 "relativePath": "prompts/modes/init/task-creation/task-creation.md",
                 "name": "task-creation.md",
                 "category": "other",
                 "importance": 1,
                 "estimatedSize": 3082,
-                "needsTrimming": false
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
               }
             ]
           }
@@ -3194,14 +3395,16 @@
         "recommendations": [
           "建议AI按批次顺序处理，每批完成后标记进度",
           "重要文件优先处理，确保核心功能文档完整",
-          "大文件会自动裁切，保留关键代码结构",
-          "建议为每批文件生成独立的文档文件"
+          "10个大文件会自动裁切",
+          "无需分片处理",
+          "使用固定批次大小",
+          "文件大小适中，可直接处理"
         ]
       },
-      "completedAt": "2025-09-10T10:03:04.171Z"
+      "completedAt": "2025-09-10T10:21:22.960Z"
     }
   },
-  "startedAt": "2025-09-10T10:02:51.226Z",
+  "startedAt": "2025-09-10T10:21:12.003Z",
   "error": null,
   "documentCount": 0,
   "generatedDocs": []
