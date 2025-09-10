@@ -1,0 +1,298 @@
+{
+  "version": "1.0.0",
+  "workflows": {
+    "init": {
+      "name": "项目初始化工作流",
+      "description": "2步精简化流程，快速生成完整的项目文档体系",
+      "type": "sequential",
+      "total_steps": 2,
+      "steps": [
+        {
+          "id": "project_overview",
+          "step": 1,
+          "name": "项目概览生成",
+          "tool": "generate_project_overview",
+          "description": "分析项目结构、识别编程语言、提取依赖关系、读取关键文件",
+          "required": true,
+          "prerequisites": [],
+          "params": {
+            "required": {
+              "projectPath": {
+                "type": "string",
+                "description": "项目根目录的绝对路径"
+              }
+            },
+            "optional": {
+              "maxDepth": {
+                "type": "number",
+                "description": "目录扫描深度",
+                "default": 3
+              },
+              "includeFiles": {
+                "type": "array",
+                "description": "额外要包含的文件模式",
+                "default": []
+              },
+              "maxKeyFileSize": {
+                "type": "number",
+                "description": "关键文件最大字节数",
+                "default": 51200
+              }
+            }
+          },
+          "expected_output": {
+            "type": "object",
+            "properties": [
+              "language",
+              "framework",
+              "dependencies",
+              "structure",
+              "readme_content",
+              "key_files"
+            ]
+          },
+          "success_indicators": [
+            "项目语言被成功识别",
+            "目录结构已生成",
+            "依赖关系已提取"
+          ],
+          "error_handling": {
+            "path_not_found": "请确保提供的项目路径存在且可访问",
+            "permission_denied": "请确保有读取项目文件的权限",
+            "large_project": "对于大型项目，考虑减小maxDepth参数"
+          },
+          "next_steps": {
+            "on_success": "progressive_documentation",
+            "on_error": "workflow_guide"
+          }
+        },
+        {
+          "id": "progressive_documentation",
+          "step": 2,
+          "name": "渐进式文档生成",
+          "tool": "progressive_documentation",
+          "description": "基于项目概览，逐步生成完整的文档体系",
+          "required": true,
+          "prerequisites": ["project_overview"],
+          "params": {
+            "optional": {
+              "batchSize": {
+                "type": "string",
+                "description": "每批处理大小",
+                "default": "80KB",
+                "recommendations": {
+                  "small_project": "40KB",
+                  "medium_project": "80KB",
+                  "large_project": "120KB"
+                }
+              },
+              "style": {
+                "type": "string",
+                "description": "文档风格",
+                "enum": ["comprehensive", "concise", "technical"],
+                "default": "comprehensive",
+                "recommendations": {
+                  "JavaScript": "technical",
+                  "Python": "comprehensive",
+                  "Java": "technical",
+                  "Go": "concise"
+                }
+              },
+              "focusAreas": {
+                "type": "array",
+                "description": "重点关注领域",
+                "default": []
+              },
+              "includeTests": {
+                "type": "boolean",
+                "description": "是否包含测试文件分析",
+                "default": true
+              }
+            }
+          },
+          "expected_output": {
+            "type": "object",
+            "properties": [
+              "ai_instructions",
+              "documentation_strategy",
+              "batch_plan",
+              "total_batches",
+              "estimated_time"
+            ]
+          },
+          "execution_type": "ai_collaboration",
+          "collaboration_instructions": {
+            "type": "iterative",
+            "description": "AI需要按照生成的指令，逐批处理文档生成任务",
+            "monitoring": "使用 get_init_status 工具监控进度"
+          },
+          "completion_criteria": [
+            "所有批次处理完成",
+            "文档体系构建完整",
+            "无错误发生"
+          ],
+          "outputs": [
+            "项目整体文档",
+            "模块文档",
+            "架构设计文档",
+            "API文档",
+            "使用指南"
+          ]
+        }
+      ],
+      "state_transitions": {
+        "not_started": {
+          "next": "project_overview",
+          "action": "调用 generate_project_overview 工具"
+        },
+        "project_overview_completed": {
+          "next": "progressive_documentation",
+          "action": "调用 progressive_documentation 工具"
+        },
+        "documentation_in_progress": {
+          "next": "monitor",
+          "action": "持续执行AI协作指令，使用 get_init_status 监控"
+        },
+        "completed": {
+          "next": null,
+          "action": "工作流完成，查看生成的文档"
+        }
+      },
+      "tips": [
+        "使用绝对路径作为 projectPath 参数",
+        "对于大型项目，适当调整 batchSize 以避免上下文溢出",
+        "根据项目语言选择合适的文档风格",
+        "定期使用 get_init_status 检查进度"
+      ]
+    },
+    "documentation": {
+      "name": "独立文档生成工作流",
+      "description": "直接启动文档生成，适用于已有项目概览的情况",
+      "type": "single",
+      "steps": [
+        {
+          "id": "documentation_only",
+          "tool": "progressive_documentation",
+          "description": "启动文档生成流程"
+        }
+      ]
+    },
+    "analysis": {
+      "name": "项目分析工作流",
+      "description": "仅进行项目分析，不生成文档",
+      "type": "single",
+      "steps": [
+        {
+          "id": "analysis_only",
+          "tool": "generate_project_overview",
+          "description": "分析项目结构和特征"
+        }
+      ]
+    },
+    "status": {
+      "name": "状态查询工作流",
+      "description": "查看和管理工作流状态",
+      "type": "utility",
+      "tools": [
+        {
+          "name": "get_init_status",
+          "description": "查看当前工作流状态和进度"
+        },
+        {
+          "name": "reset_init",
+          "description": "重置工作流，清除缓存状态"
+        },
+        {
+          "name": "workflow_guide",
+          "description": "获取工作流指引"
+        }
+      ]
+    }
+  },
+  "tool_dependencies": {
+    "generate_project_overview": {
+      "prerequisites": [],
+      "leads_to": ["progressive_documentation"],
+      "provides": ["project_context", "language_info", "dependency_info"]
+    },
+    "progressive_documentation": {
+      "prerequisites": ["generate_project_overview"],
+      "leads_to": [],
+      "requires": ["project_context"],
+      "provides": ["documentation", "ai_instructions"]
+    },
+    "get_init_status": {
+      "prerequisites": [],
+      "leads_to": [],
+      "provides": ["status", "progress", "health"]
+    },
+    "reset_init": {
+      "prerequisites": [],
+      "leads_to": ["generate_project_overview"],
+      "clears": ["all_state", "cache"]
+    },
+    "workflow_guide": {
+      "prerequisites": [],
+      "leads_to": ["any_tool"],
+      "provides": ["guidance", "next_steps", "recommendations"]
+    }
+  },
+  "intelligent_recommendations": {
+    "project_size_detection": {
+      "small": {
+        "files_count": "<100",
+        "recommended_batch_size": "40KB",
+        "recommended_style": "concise"
+      },
+      "medium": {
+        "files_count": "100-500",
+        "recommended_batch_size": "80KB",
+        "recommended_style": "comprehensive"
+      },
+      "large": {
+        "files_count": ">500",
+        "recommended_batch_size": "120KB",
+        "recommended_style": "technical"
+      }
+    },
+    "language_specific": {
+      "JavaScript": {
+        "focus_areas": ["components", "modules", "apis"],
+        "style": "technical",
+        "include_tests": true
+      },
+      "Python": {
+        "focus_areas": ["classes", "functions", "modules"],
+        "style": "comprehensive",
+        "include_tests": true
+      },
+      "Java": {
+        "focus_areas": ["interfaces", "classes", "packages"],
+        "style": "technical",
+        "include_tests": true
+      },
+      "Go": {
+        "focus_areas": ["packages", "interfaces", "structs"],
+        "style": "concise",
+        "include_tests": true
+      }
+    }
+  },
+  "error_recovery": {
+    "context_overflow": {
+      "detection": "上下文长度超过限制",
+      "action": "减小 batchSize 参数并重试",
+      "recommendation": "使用更小的批次大小，如 40KB"
+    },
+    "incomplete_overview": {
+      "detection": "项目概览信息不完整",
+      "action": "重新运行 generate_project_overview",
+      "recommendation": "检查项目路径和权限"
+    },
+    "documentation_stalled": {
+      "detection": "文档生成进度停滞",
+      "action": "使用 get_init_status 检查状态",
+      "recommendation": "可能需要 reset_init 并重新开始"
+    }
+  }
+}

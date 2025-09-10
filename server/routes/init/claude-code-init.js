@@ -794,6 +794,452 @@ export function createClaudeCodeInitRoutes(services) {
     });
 
     /**
+     * AI使用指导接口 - 为AI提供完整的使用流程指导
+     * GET /init/ai-guide
+     */
+    router.get('/ai-guide', async (req, res) => {
+        try {
+            return success(res, {
+                title: 'Claude Code Init API - AI完整使用指导',
+                version: '3.0',
+                description: 'AI如何使用6步Init流程完成项目初始化的完整指导',
+                
+                // 完整工作流程
+                completeWorkflow: {
+                    overview: '6步完整流程：项目分析 → 任务创建 → 文件文档生成 → 模块整合 → 总览生成 → 连接文档',
+                    totalSteps: 6,
+                    estimatedTime: '根据项目大小，通常需要30-120分钟',
+                    
+                    step1: {
+                        name: 'Step1: 项目分析',
+                        description: '分析项目结构，生成基础数据包和架构文档',
+                        endpoint: 'POST /init/step1-project-analysis',
+                        required: true,
+                        
+                        // 详细的API调用指导
+                        apiCall: {
+                            method: 'POST',
+                            url: '/init/step1-project-analysis',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: {
+                                projectPath: '/path/to/your/project',  // 必需：项目绝对路径
+                                maxDepth: 3,                           // 可选：扫描深度，默认3
+                                includeFiles: [],                      // 可选：额外包含文件
+                                maxKeyFileSize: 51200                  // 可选：文件大小限制
+                            }
+                        },
+                        
+                        successIndicators: [
+                            'currentStep: 1',
+                            'analysisResults 包含项目基本信息',
+                            'nextStep 指向 step2-create-todo'
+                        ],
+                        
+                        outputs: [
+                            '项目基础信息（语言、文件数量、复杂度）',
+                            'AI任务准备信息（预估任务数、建议批次大小）',
+                            'mg_kiro文档目录创建'
+                        ],
+                        
+                        errorHandling: {
+                            'projectPath不存在': '检查路径是否正确，使用绝对路径',
+                            '权限错误': '确保有读取项目目录的权限',
+                            '分析失败': '检查项目目录是否包含有效的代码文件'
+                        }
+                    },
+                    
+                    step2: {
+                        name: 'Step2: 创建AI任务列表',
+                        description: '基于项目分析创建详细的任务列表和处理策略',
+                        endpoint: 'POST /init/step2-create-todo',
+                        dependsOn: 'Step1',
+                        
+                        apiCall: {
+                            method: 'POST',
+                            url: '/init/step2-create-todo',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: {
+                                projectPath: '/path/to/your/project',  // 必需：与Step1相同的路径
+                                batchSize: 3,                          // 可选：批次大小
+                                includeAnalysisTasks: true,            // 可选：包含分析任务
+                                includeSummaryTasks: true              // 可选：包含总结任务
+                            }
+                        },
+                        
+                        successIndicators: [
+                            'currentStep: 2',
+                            'todoCreationResults 显示任务统计',
+                            'nextStep 指向 step3-file-documentation'
+                        ],
+                        
+                        outputs: [
+                            '完整的AI任务列表（通常40-60个任务）',
+                            '处理策略和批次配置',
+                            '时间估算信息'
+                        ],
+                        
+                        errorHandling: {
+                            'Step1未完成': '先完成Step1项目分析',
+                            '任务创建失败': '检查项目结构是否完整'
+                        }
+                    },
+                    
+                    step3: {
+                        name: 'Step3: 文件文档生成（循环处理）',
+                        description: 'AI逐个处理文件，生成详细文档到mg_kiro文件夹',
+                        endpoints: [
+                            'GET /init/step3-get-next-task',
+                            'GET /init/step3-get-file-content', 
+                            'POST /init/step3-complete-task'
+                        ],
+                        dependsOn: 'Step2',
+                        isLoop: true,
+                        
+                        // 循环处理流程
+                        loopWorkflow: {
+                            description: '重复执行直到所有文件处理完成',
+                            steps: [
+                                {
+                                    action: '获取下一个任务',
+                                    apiCall: {
+                                        method: 'GET',
+                                        url: '/init/step3-get-next-task',
+                                        params: { projectPath: '/path/to/your/project' }
+                                    },
+                                    expectedResponse: {
+                                        hasTask: true,
+                                        task: { id: 'file_X_Y', relativePath: 'path/to/file' }
+                                    },
+                                    completionCheck: 'hasTask: false 表示所有任务完成'
+                                },
+                                {
+                                    action: '获取文件内容并生成文档',
+                                    apiCall: {
+                                        method: 'GET',
+                                        url: '/init/step3-get-file-content',
+                                        params: {
+                                            projectPath: '/path/to/your/project',
+                                            relativePath: 'from_previous_response'
+                                        }
+                                    },
+                                    expectedResponse: {
+                                        fileDetails: '完整文件信息',
+                                        documentGenerated: '自动生成的markdown文档信息'
+                                    }
+                                },
+                                {
+                                    action: '标记任务完成',
+                                    apiCall: {
+                                        method: 'POST',
+                                        url: '/init/step3-complete-task',
+                                        body: {
+                                            projectPath: '/path/to/your/project',
+                                            taskId: 'from_task_response'
+                                        }
+                                    },
+                                    expectedResponse: {
+                                        taskCompleted: '任务完成信息',
+                                        hasNextTask: '是否还有更多任务'
+                                    }
+                                }
+                            ]
+                        },
+                        
+                        successIndicators: [
+                            '逐步增加的文档数量',
+                            'mg_kiro/目录下生成的.md文件',
+                            '最终 hasTask: false 或 completed: true'
+                        ],
+                        
+                        outputs: [
+                            '每个文件对应的分析文档（.md格式）',
+                            '保存在项目的mg_kiro/文件夹中',
+                            '完整的进度跟踪信息'
+                        ],
+                        
+                        errorHandling: {
+                            '获取任务失败': '检查Step2是否完成，项目路径是否正确',
+                            '文件读取失败': '确保文件存在且有读取权限',
+                            '任务标记失败': '检查taskId是否正确'
+                        }
+                    },
+                    
+                    step4: {
+                        name: 'Step4: 模块整合',
+                        description: '基于文件文档进行模块化整合',
+                        endpoint: 'POST /init/step4-module-integration',
+                        dependsOn: 'Step3完成',
+                        
+                        apiCall: {
+                            method: 'POST',
+                            url: '/init/step4-module-integration',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: {
+                                projectPath: '/path/to/your/project'
+                            }
+                        },
+                        
+                        workFlow: [
+                            '1. 调用API获取整合提示词',
+                            '2. AI分析mg_kiro/文件夹中的所有文档',
+                            '3. 按模块分类整合相关文档',
+                            '4. 生成模块级别的整合文档',
+                            '5. 调用complete-task标记完成'
+                        ],
+                        
+                        aiTasks: [
+                            '分析已生成的文件文档',
+                            '识别代码模块和功能分组',
+                            '创建模块总览文档(modules-overview.md)',
+                            '为每个模块创建详细文档(module-{name}.md)',
+                            '生成模块索引(modules-index.md)'
+                        ],
+                        
+                        completionCall: {
+                            method: 'POST',
+                            url: '/init/step3-complete-task',
+                            body: {
+                                projectPath: '/path/to/your/project',
+                                taskId: 'module-integration-task',
+                                step: 'module-integration'
+                            }
+                        }
+                    },
+                    
+                    step5: {
+                        name: 'Step5: 总览生成',
+                        description: '基于模块整合结果生成项目整体概览',
+                        endpoint: 'POST /init/step5-overview-generation',
+                        dependsOn: 'Step4完成',
+                        
+                        apiCall: {
+                            method: 'POST',
+                            url: '/init/step5-overview-generation',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: {
+                                projectPath: '/path/to/your/project'
+                            }
+                        },
+                        
+                        aiTasks: [
+                            '分析模块整合结果',
+                            '创建项目总体概览文档(PROJECT-OVERVIEW.md)',
+                            '生成文档导航和索引(DOCUMENTATION-INDEX.md)',
+                            '创建快速开始指南(QUICK-START.md)',
+                            '总结项目特点和架构'
+                        ],
+                        
+                        completionCall: {
+                            method: 'POST',
+                            url: '/init/step3-complete-task',
+                            body: {
+                                projectPath: '/path/to/your/project',
+                                taskId: 'overview-generation-task',
+                                step: 'overview-generation'
+                            }
+                        }
+                    },
+                    
+                    step6: {
+                        name: 'Step6: 连接文档（最终步骤）',
+                        description: '分析模块连接关系，完成最终架构文档',
+                        endpoint: 'POST /init/step6-module-connections',
+                        dependsOn: 'Step5完成',
+                        isFinal: true,
+                        
+                        apiCall: {
+                            method: 'POST',
+                            url: '/init/step6-module-connections',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: {
+                                projectPath: '/path/to/your/project'
+                            }
+                        },
+                        
+                        aiTasks: [
+                            '分析模块间的依赖和连接关系',
+                            '生成连接关系文档(MODULE-CONNECTIONS.md)',
+                            '创建最终架构文档(ARCHITECTURE-FINAL.md)',
+                            '生成依赖关系图(DEPENDENCIES-GRAPH.md)',
+                            '完善和更新系统架构文档'
+                        ],
+                        
+                        completionCall: {
+                            method: 'POST',
+                            url: '/init/step3-complete-task',
+                            body: {
+                                projectPath: '/path/to/your/project',
+                                taskId: 'connection-analysis-task',
+                                step: 'module-connections'
+                            }
+                        },
+                        
+                        finalResult: '🎉 Init流程完成！所有文档生成在mg_kiro/文件夹中'
+                    }
+                },
+                
+                // 实践建议
+                bestPractices: {
+                    planning: [
+                        '在开始前确保有足够时间完成整个流程',
+                        '使用绝对路径避免路径相关错误',
+                        '确保项目目录有适当的读写权限'
+                    ],
+                    execution: [
+                        'Step1-2可以快速执行，Step3需要循环处理',
+                        'Step3的循环中要检查 hasTask 状态',
+                        'Step4-6主要是AI分析和文档生成工作',
+                        '每完成一步都要调用complete-task'
+                    ],
+                    monitoring: [
+                        '定期调用GET /init/status检查进度',
+                        '关注mg_kiro/文件夹中生成的文档数量',
+                        '如有错误及时调用POST /init/reset重置'
+                    ]
+                },
+                
+                // 状态监控
+                statusMonitoring: {
+                    statusEndpoint: 'GET /init/status',
+                    params: { projectPath: '/path/to/your/project' },
+                    keyFields: [
+                        'currentStep - 当前所在步骤',
+                        'progressInfo.percentage - 完成百分比',
+                        'generatedDocuments.total - 已生成文档数量',
+                        'availableEndpoints - 当前可用的API端点'
+                    ]
+                },
+                
+                // 错误恢复策略
+                errorRecovery: {
+                    commonIssues: {
+                        'Step依赖错误': {
+                            description: '尝试跳过步骤或步骤未完成',
+                            solution: '按顺序完成每个步骤，检查currentStep状态'
+                        },
+                        '路径错误': {
+                            description: '项目路径不存在或无权限',
+                            solution: '使用绝对路径，确保目录存在且有权限'
+                        },
+                        '任务循环卡住': {
+                            description: 'Step3循环处理中出现问题',
+                            solution: '检查taskId是否正确，调用complete-task标记完成'
+                        },
+                        '文档生成失败': {
+                            description: 'mg_kiro目录无法写入',
+                            solution: '确保项目目录有写入权限'
+                        }
+                    },
+                    
+                    resetFlow: {
+                        endpoint: 'POST /init/reset',
+                        body: { projectPath: '/path/to/your/project' },
+                        description: '重置特定项目的Init流程状态'
+                    },
+                    
+                    resetAll: {
+                        endpoint: 'POST /init/reset',
+                        body: {},
+                        description: '重置所有项目的Init流程状态'
+                    }
+                },
+                
+                // 完整示例工作流
+                completeExample: {
+                    description: '一个完整的AI执行示例',
+                    projectPath: '/Users/username/my-project',
+                    
+                    executionSequence: [
+                        {
+                            step: 1,
+                            action: 'curl -X POST -H "Content-Type: application/json" -d \'{"projectPath":"/Users/username/my-project"}\' http://localhost:3001/init/step1-project-analysis',
+                            expectedResult: 'currentStep: 1, analysisResults with project info'
+                        },
+                        {
+                            step: 2,
+                            action: 'curl -X POST -H "Content-Type: application/json" -d \'{"projectPath":"/Users/username/my-project"}\' http://localhost:3001/init/step2-create-todo',
+                            expectedResult: 'currentStep: 2, todoCreationResults with task count'
+                        },
+                        {
+                            step: '3a',
+                            action: 'curl -X GET "http://localhost:3001/init/step3-get-next-task?projectPath=/Users/username/my-project"',
+                            expectedResult: 'hasTask: true, task object with file info'
+                        },
+                        {
+                            step: '3b',
+                            action: 'curl -X GET "http://localhost:3001/init/step3-get-file-content?projectPath=/Users/username/my-project&relativePath=index.js"',
+                            expectedResult: 'fileDetails and documentGenerated info'
+                        },
+                        {
+                            step: '3c',
+                            action: 'curl -X POST -H "Content-Type: application/json" -d \'{"projectPath":"/Users/username/my-project","taskId":"file_1_1"}\' http://localhost:3001/init/step3-complete-task',
+                            expectedResult: 'taskCompleted: true, hasNextTask status'
+                        },
+                        {
+                            step: '3循环',
+                            action: '重复3a-3c直到hasTask: false',
+                            expectedResult: 'completed: true, 所有文件文档生成完成'
+                        },
+                        {
+                            step: 4,
+                            action: 'curl -X POST -H "Content-Type: application/json" -d \'{"projectPath":"/Users/username/my-project"}\' http://localhost:3001/init/step4-module-integration',
+                            expectedResult: 'prompt for module integration, AI instructions'
+                        },
+                        {
+                            step: '4完成',
+                            action: 'AI根据提示词完成模块整合后调用complete-task',
+                            expectedResult: 'step4标记完成'
+                        },
+                        {
+                            step: 5,
+                            action: 'curl -X POST -H "Content-Type: application/json" -d \'{"projectPath":"/Users/username/my-project"}\' http://localhost:3001/init/step5-overview-generation',
+                            expectedResult: 'prompt for overview generation'
+                        },
+                        {
+                            step: '5完成',
+                            action: 'AI完成总览生成后调用complete-task',
+                            expectedResult: 'step5标记完成'
+                        },
+                        {
+                            step: 6,
+                            action: 'curl -X POST -H "Content-Type: application/json" -d \'{"projectPath":"/Users/username/my-project"}\' http://localhost:3001/init/step6-module-connections',
+                            expectedResult: 'prompt for connection analysis (final step)'
+                        },
+                        {
+                            step: '6完成',
+                            action: 'AI完成连接分析后调用complete-task',
+                            expectedResult: '🎉 Init流程完成！'
+                        }
+                    ]
+                },
+                
+                // 输出总结
+                finalOutputs: {
+                    location: 'mg_kiro/ 文件夹',
+                    documentTypes: [
+                        '文件分析文档 - 每个源文件对应的详细分析',
+                        '模块整合文档 - 按功能模块分类的整合文档',
+                        '项目总览文档 - 整体项目概览和导航',
+                        '架构文档 - 最终的系统架构和连接关系'
+                    ],
+                    
+                    keyFiles: [
+                        'PROJECT-OVERVIEW.md - 项目总体概览',
+                        'DOCUMENTATION-INDEX.md - 文档导航索引',
+                        'ARCHITECTURE-FINAL.md - 最终架构文档',
+                        'MODULE-CONNECTIONS.md - 模块连接关系',
+                        'modules-*.md - 各个模块的详细文档'
+                    ]
+                }
+            }, 'AI完整使用指导 - mg_kiro Init流程');
+
+        } catch (err) {
+            console.error('[Init-AI-Guide] 获取AI指导失败:', err);
+            return error(res, err.message, 500);
+        }
+    });
+
+    /**
      * API帮助信息
      * GET /init/help
      */
