@@ -1649,7 +1649,6 @@ ${docsDir}/
 请创建以下最终架构文档：
 
 #### 1. 项目README - \`${docsDir}/README.md\`
-```markdown
 # [项目名称]
 
 ## 📖 项目概述
@@ -1673,10 +1672,8 @@ ${docsDir}/
 - [模块总览](./modules/module-overview.md)
 - [关联分析](./relations/overview.md)
 - [完整文档索引](./docs-index.md)
-```
 
 #### 2. 架构设计文档 - \`${docsDir}/architecture.md\`
-```markdown
 # 架构设计文档
 
 ## 🏗️ 整体架构
@@ -1698,10 +1695,8 @@ ${docsDir}/
 - 性能关键点
 - 扩展性设计
 - 监控和优化策略
-```
 
 #### 3. 开发指南 - \`${docsDir}/development.md\`
-```markdown
 # 开发指南
 
 ## 🛠️ 开发环境
@@ -1723,10 +1718,8 @@ ${docsDir}/
 - 如何贡献代码
 - Issue报告规范
 - Pull Request流程
-```
 
 #### 4. 完整文档索引 - \`${docsDir}/docs-index.md\`
-```markdown
 # 文档索引
 
 ## 🏠 主要文档
@@ -1742,7 +1735,6 @@ ${docsDir}/
 
 ## 🔗 关联文档
 [自动生成关联文档列表]
-```
 
 ### 生成策略
 1. 整合所有前面步骤的分析结果
