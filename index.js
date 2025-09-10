@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+/* eslint-disable no-unreachable */
+/* eslint-disable no-throw-literal */
+
 /**
  * mg_kiro MCP Server
  * 统一入口点 - MCP协议服务器 + Express API + WebSocket
@@ -21,10 +24,9 @@ import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { basename, extname } from 'path';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync } from 'fs';
 import { createAppRoutes } from './server/routes/index.js';
-import { initializeServices, getServices } from './server/services/service-registry.js';
+import { initializeServices } from './server/services/service-registry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -140,7 +142,7 @@ async function startServer() {
   const server = new Server(
     {
       name: "mg_kiro",
-      version: "3.0.0-simplified",
+      version: "4.0.0-complete-6-steps",
     },
     {
       capabilities: {
@@ -418,10 +420,16 @@ async function startServer() {
         },
         {
           name: "reset_init",
-          description: "重置Init流程，清除所有缓存状态",
+          description: "重置Init流程，清除所有缓存状态和临时文件",
           inputSchema: {
             type: "object",
-            properties: {},
+            properties: {
+              projectPath: {
+                type: "string",
+                description: "项目路径（可选），指定则只清理该项目的状态和临时文件，不指定则清理所有",
+                default: null
+              }
+            },
             required: []
           }
         }
@@ -438,25 +446,75 @@ async function startServer() {
     const { AITodoManager } = await import('./server/services/ai-todo-manager.js');
     const { FileQueryService } = await import('./server/services/file-query-service.js');
     
-    // 全局状态管理
+    // eslint-disable-next-line no-unused-vars - 全局错误处理
+    
+    // 全局状态管理 - 持久化到文件系统
     const projectStates = new Map();
     
-    // 获取或创建项目状态
-    function getProjectState(projectPath) {
-      const normalizedPath = resolve(projectPath);
-      if (!projectStates.has(normalizedPath)) {
-        projectStates.set(normalizedPath, {
-          currentStep: 0,
-          projectPath: normalizedPath,
-          stepsCompleted: [],
-          stepResults: {},
-          startedAt: null,
-          error: null,
-          documentCount: 0,
-          generatedDocs: []
-        });
+    // 状态文件路径
+    function getStateFilePath(projectPath) {
+      const docsDir = join(projectPath, 'mg_kiro');
+      if (!existsSync(docsDir)) {
+        mkdirSync(docsDir, { recursive: true });
       }
-      return projectStates.get(normalizedPath);
+      return join(docsDir, 'init-state.json');
+    }
+    
+    // 加载项目状态
+    function loadProjectState(projectPath) {
+      const normalizedPath = resolve(projectPath);
+      const stateFile = getStateFilePath(normalizedPath);
+      
+      if (existsSync(stateFile)) {
+        try {
+          const stateData = readFileSync(stateFile, 'utf8');
+          return JSON.parse(stateData);
+        } catch (error) {
+          console.log(`[State] 状态文件损坏，创建新状态: ${error.message}`);
+        }
+      }
+      
+      return {
+        currentStep: 0,
+        projectPath: normalizedPath,
+        stepsCompleted: [],
+        stepResults: {},
+        startedAt: null,
+        error: null,
+        documentCount: 0,
+        generatedDocs: []
+      };
+    }
+    
+    // 保存项目状态
+    function saveProjectState(projectPath, state) {
+      const normalizedPath = resolve(projectPath);
+      const stateFile = getStateFilePath(normalizedPath);
+      
+      try {
+        writeFileSync(stateFile, JSON.stringify(state, null, 2));
+        console.log(`[State] 状态已保存: ${stateFile}`);
+      } catch (error) {
+        console.error(`[State] 保存状态失败: ${error.message}`);
+      }
+    }
+    
+    // 获取或创建项目状态（保留原函数用于向后兼容）
+    function getProjectState(projectPath) {
+      // 现在使用增强版本，总是从文件加载最新状态
+      return getProjectStateEnhanced(projectPath);
+    }
+    
+    // 更新并保存项目状态
+    function updateProjectState(projectPath, updates) {
+      const normalizedPath = resolve(projectPath);
+      const state = getProjectState(normalizedPath);
+      
+      Object.assign(state, updates);
+      projectStates.set(normalizedPath, state);
+      saveProjectState(normalizedPath, state);
+      
+      return state;
     }
     
     // 确保mg_kiro文档目录存在
@@ -466,6 +524,163 @@ async function startServer() {
         mkdirSync(docsDir, { recursive: true });
       }
       return docsDir;
+    }
+    
+    // ========== 增强的临时文件管理系统 ==========
+    
+    // 获取临时文件目录
+    function getTempDirectory(projectPath) {
+      const docsDir = ensureDocsDirectory(projectPath);
+      const tempDir = join(docsDir, '.tmp');
+      if (!existsSync(tempDir)) {
+        mkdirSync(tempDir, { recursive: true });
+      }
+      return tempDir;
+    }
+    
+    // 保存步骤结果到临时文件
+    function saveStepResult(projectPath, stepName, data) {
+      const tempDir = getTempDirectory(projectPath);
+      const stepFile = join(tempDir, `${stepName}-result.json`);
+      
+      try {
+        const stepData = {
+          stepName,
+          completedAt: new Date().toISOString(),
+          data
+        };
+        writeFileSync(stepFile, JSON.stringify(stepData, null, 2));
+        console.log(`[TempFile] Step结果已保存: ${stepFile}`);
+        return stepFile;
+      } catch (error) {
+        console.error(`[TempFile] 保存Step结果失败: ${error.message}`);
+        return null;
+      }
+    }
+    
+    // 加载步骤结果从临时文件 (保留以备未来使用)
+    // function loadStepResult(projectPath, stepName) {
+    //   const tempDir = getTempDirectory(projectPath);
+    //   const stepFile = join(tempDir, `${stepName}-result.json`);
+    //   
+    //   if (existsSync(stepFile)) {
+    //     try {
+    //       const stepData = JSON.parse(readFileSync(stepFile, 'utf8'));
+    //       return stepData.data;
+    //     } catch (error) {
+    //       console.warn(`[TempFile] 加载Step结果失败: ${error.message}`);
+    //       return null;
+    //     }
+    //   }
+    //   return null;
+    // }
+    
+    // 检查步骤是否已完成（通过临时文件验证）
+    function isStepCompleted(projectPath, stepName) {
+      const tempDir = getTempDirectory(projectPath);
+      const stepFile = join(tempDir, `${stepName}-result.json`);
+      return existsSync(stepFile);
+    }
+    
+    // 增强的状态验证函数
+    function validateStepPrerequisites(projectPath, targetStep) {
+      console.log(`[State] 验证Step${targetStep}的前置条件`);
+      
+      // 定义步骤依赖关系
+      const stepDependencies = {
+        1: [], // Step1无依赖
+        2: ['step1'], // Step2依赖Step1
+        3: ['step1', 'step2'], // Step3依赖Step1和Step2
+        4: ['step1', 'step2', 'step3'], // Step4依赖前面所有步骤
+        5: ['step1', 'step2', 'step3', 'step4'],
+        6: ['step1', 'step2', 'step3', 'step4', 'step5']
+      };
+      
+      const requiredSteps = stepDependencies[targetStep] || [];
+      
+      for (const requiredStep of requiredSteps) {
+        // 首先检查临时文件
+        if (isStepCompleted(projectPath, requiredStep)) {
+          console.log(`[State] ✅ ${requiredStep} 通过临时文件验证`);
+          continue;
+        }
+        
+        // 然后检查主状态文件
+        const state = loadProjectState(projectPath);
+        if (state.stepsCompleted && state.stepsCompleted.includes(requiredStep)) {
+          console.log(`[State] ✅ ${requiredStep} 通过主状态文件验证`);
+          continue;
+        }
+        
+        // 如果都没有找到，则前置条件不满足
+        console.log(`[State] ❌ ${requiredStep} 前置条件不满足`);
+        return {
+          valid: false,
+          missingStep: requiredStep,
+          error: `Step${targetStep}需要先完成${requiredStep.toUpperCase()}，请先执行相应的步骤`
+        };
+      }
+      
+      return { valid: true };
+    }
+    
+    // 清理临时文件
+    function cleanupTempFiles(projectPath, options = {}) {
+      const tempDir = getTempDirectory(projectPath);
+      const { keepRecent = 0, stepPattern = null } = options;
+      
+      try {
+        if (!existsSync(tempDir)) {
+          console.log(`[Cleanup] 临时目录不存在: ${tempDir}`);
+          return { cleaned: 0, kept: 0 };
+        }
+        
+        const files = readdirSync(tempDir).filter(file => {
+          return file.endsWith('-result.json') && 
+                 (!stepPattern || file.includes(stepPattern));
+        });
+        
+        let cleaned = 0;
+        let kept = 0;
+        
+        if (keepRecent > 0) {
+          // 保留最近的文件
+          const filesToKeep = files.slice(-keepRecent);
+          const filesToDelete = files.slice(0, -keepRecent);
+          
+          for (const file of filesToDelete) {
+            rmSync(join(tempDir, file));
+            cleaned++;
+          }
+          kept = filesToKeep.length;
+        } else {
+          // 删除所有匹配的文件
+          for (const file of files) {
+            rmSync(join(tempDir, file));
+            cleaned++;
+          }
+        }
+        
+        console.log(`[Cleanup] 清理完成: 删除${cleaned}个文件，保留${kept}个文件`);
+        return { cleaned, kept };
+        
+      } catch (error) {
+        console.error(`[Cleanup] 清理临时文件失败: ${error.message}`);
+        return { cleaned: 0, kept: 0, error: error.message };
+      }
+    }
+    
+    // 增强的getProjectState - 优先从文件系统加载
+    function getProjectStateEnhanced(projectPath) {
+      const normalizedPath = resolve(projectPath);
+      
+      // 总是从文件重新加载最新状态，而不是依赖内存缓存
+      const fileState = loadProjectState(normalizedPath);
+      
+      // 更新内存缓存
+      projectStates.set(normalizedPath, fileState);
+      
+      return fileState;
     }
     
     // 创建服务实例
@@ -478,7 +693,7 @@ async function startServer() {
       generateProjectOverview: async (projectPath, options) => {
         return await projectOverviewGenerator.generateOverview(projectPath, options);
       },
-      progressiveDocumentation: async (options) => {
+      progressiveDocumentation: async (_options) => {
         // 模拟渐进式文档生成响应
         return {
           success: true,
@@ -490,9 +705,8 @@ async function startServer() {
           estimatedTime: "约10分钟"
         };
       },
-      getState: () => ({ status: 'ready', currentStep: null }),
+      // 保留向后兼容的方法
       getProgress: () => ({ percentage: 0, message: 'Ready' }),
-      healthCheck: () => ({ healthy: true, services: 'all operational' }),
       reset: () => ({ success: true, message: 'State reset successfully' })
     };
 
@@ -502,22 +716,26 @@ async function startServer() {
           const { projectPath, maxDepth, includeFiles, maxKeyFileSize } = args;
           
           if (!projectPath) {
-            throw new Error("项目路径不能为空");
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
           }
           
           console.log(`[MCP-Init-Step1] 项目分析 - ${projectPath}`);
           
-          // 获取项目状态
-          const initState = getProjectState(projectPath);
-          
-          // 重置状态
-          initState.currentStep = 1;
-          initState.startedAt = new Date().toISOString();
-          initState.stepsCompleted = [];
-          initState.stepResults = {};
-          initState.error = null;
-          initState.documentCount = 0;
-          initState.generatedDocs = [];
+          // 重置并初始化状态
+          updateProjectState(projectPath, {
+            currentStep: 1,
+            startedAt: new Date().toISOString(),
+            stepsCompleted: [],
+            stepResults: {},
+            error: null,
+            documentCount: 0,
+            generatedDocs: []
+          });
           
           // 确保文档目录存在
           const docsDir = ensureDocsDirectory(resolve(projectPath));
@@ -532,13 +750,24 @@ async function startServer() {
             }
           );
           
-          // 存储Step1结果
-          initState.stepResults.step1 = {
+          // 存储Step1结果到临时文件（新增）
+          saveStepResult(projectPath, 'step1', {
             projectOverview: overviewResult,
             completedAt: new Date().toISOString(),
             docsDirectory: docsDir
-          };
-          initState.stepsCompleted.push('step1');
+          });
+          
+          // 存储Step1结果到主状态文件（保持兼容）
+          updateProjectState(projectPath, {
+            stepResults: {
+              step1: {
+                projectOverview: overviewResult,
+                completedAt: new Date().toISOString(),
+                docsDirectory: docsDir
+              }
+            },
+            stepsCompleted: ['step1']
+          });
           
           return {
             content: [
@@ -592,18 +821,31 @@ async function startServer() {
           const { projectPath, batchSize, includeAnalysisTasks, includeSummaryTasks } = args;
           
           if (!projectPath) {
-            throw new Error("项目路径不能为空");
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
           }
           
           console.log(`[MCP-Init-Step2] 创建AI任务列表 - ${projectPath}`);
           
-          const initState = getProjectState(projectPath);
-          
-          if (initState.currentStep < 1 || !initState.stepResults.step1) {
-            throw new Error('Step2需要先完成Step1项目分析');
+          // 使用增强的验证逻辑（新增）
+          const validation = validateStepPrerequisites(projectPath, 2);
+          if (!validation.valid) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: validation.error, tool: name, step: 2 }, null, 2)
+              }]
+            };
           }
           
-          initState.currentStep = 2;
+          const initState = getProjectStateEnhanced(projectPath);
+          
+          // 更新当前步骤
+          updateProjectState(projectPath, { currentStep: 2 });
           
           // 获取Step1的结果
           const step1Results = initState.stepResults.step1.projectOverview;
@@ -628,13 +870,25 @@ async function startServer() {
             }
           );
           
-          // 存储Step2结果
-          initState.stepResults.step2 = {
+          // 存储Step2结果到临时文件（新增）
+          saveStepResult(projectPath, 'step2', {
             todoList: todoResult,
             processingPlan: processingPlan,
             completedAt: new Date().toISOString()
-          };
-          initState.stepsCompleted.push('step2');
+          });
+          
+          // 存储Step2结果到主状态文件（保持兼容）
+          updateProjectState(projectPath, {
+            stepResults: {
+              ...initState.stepResults,
+              step2: {
+                todoList: todoResult,
+                processingPlan: processingPlan,
+                completedAt: new Date().toISOString()
+              }
+            },
+            stepsCompleted: [...initState.stepsCompleted, 'step2']
+          });
           
           return {
             content: [
@@ -684,16 +938,28 @@ async function startServer() {
           const { projectPath } = args;
           
           if (!projectPath) {
-            throw new Error("项目路径不能为空");
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
           }
           
           console.log(`[MCP-Init-Step3] 获取下一个文件任务 - ${projectPath}`);
           
-          const initState = getProjectState(projectPath);
-          
-          if (initState.currentStep < 2 || !initState.stepResults.step2) {
-            throw new Error('Step3需要先完成Step2任务创建');
+          // 使用增强的验证逻辑（新增）
+          const validation = validateStepPrerequisites(projectPath, 3);
+          if (!validation.valid) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
+              }]
+            };
           }
+          
+          const initState = getProjectStateEnhanced(projectPath);
           
           initState.currentStep = 3;
           
@@ -807,7 +1073,12 @@ async function startServer() {
           const { projectPath, taskId } = args;
           
           if (!projectPath || !taskId) {
-            throw new Error("项目路径和任务ID不能为空");
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径和任务ID不能为空", tool: name }, null, 2)
+              }]
+            };
           }
           
           console.log(`[MCP-Init-Step3] 获取文件内容 - ${projectPath} 任务:${taskId}`);
@@ -815,14 +1086,24 @@ async function startServer() {
           const initState = getProjectState(projectPath);
           
           if (initState.currentStep < 3) {
-            throw new Error('需要先调用init_step3_get_next_task获取任务');
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "需要先调用init_step3_get_next_task获取任务", tool: name }, null, 2)
+              }]
+            };
           }
           
           // 获取文件内容
           const fileContent = await fileQueryService.getFileContent(resolve(projectPath), taskId);
           
           if (!fileContent) {
-            throw new Error(`无法获取任务 ${taskId} 的文件内容`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: `无法获取任务 ${taskId} 的文件内容`, tool: name }, null, 2)
+              }]
+            };
           }
           
           return {
@@ -886,7 +1167,12 @@ async function startServer() {
           const { projectPath, taskId, documentContent } = args;
           
           if (!projectPath || !taskId || !documentContent) {
-            throw new Error("项目路径、任务ID和文档内容不能为空");
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径、任务ID和文档内容不能为空", tool: name }, null, 2)
+              }]
+            };
           }
           
           console.log(`[MCP-Init-Step3] 完成任务 - ${projectPath} 任务:${taskId}`);
@@ -894,7 +1180,12 @@ async function startServer() {
           const initState = getProjectState(projectPath);
           
           if (initState.currentStep < 3) {
-            throw new Error('需要先通过step3工具获取任务内容');
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "需要先通过step3工具获取任务内容", tool: name }, null, 2)
+              }]
+            };
           }
           
           // 完成任务并保存文档
@@ -972,16 +1263,28 @@ async function startServer() {
           const { projectPath } = args;
           
           if (!projectPath) {
-            throw new Error("项目路径不能为空");
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
           }
           
           console.log(`[MCP-Init-Step4] 模块整合 - ${projectPath}`);
           
-          const initState = getProjectState(projectPath);
-          
-          if (initState.currentStep < 3 || !initState.stepsCompleted.includes('step3')) {
-            throw new Error('Step4需要先完成Step3文件文档生成');
+          // 使用增强的验证逻辑（新增）
+          const validation = validateStepPrerequisites(projectPath, 4);
+          if (!validation.valid) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
+              }]
+            };
           }
+          
+          const initState = getProjectStateEnhanced(projectPath);
           
           initState.currentStep = 4;
           const docsDir = join(resolve(projectPath), 'mg_kiro');
@@ -1077,16 +1380,28 @@ async function startServer() {
           const { projectPath } = args;
           
           if (!projectPath) {
-            throw new Error("项目路径不能为空");
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
           }
           
           console.log(`[MCP-Init-Step5] 总览生成 - ${projectPath}`);
           
-          const initState = getProjectState(projectPath);
-          
-          if (initState.currentStep < 4 || !initState.stepsCompleted.includes('step4')) {
-            throw new Error('Step5需要先完成Step4模块整合');
+          // 使用增强的验证逻辑（新增）
+          const validation = validateStepPrerequisites(projectPath, 5);
+          if (!validation.valid) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
+              }]
+            };
           }
+          
+          const initState = getProjectStateEnhanced(projectPath);
           
           initState.currentStep = 5;
           const docsDir = join(resolve(projectPath), 'mg_kiro');
@@ -1204,16 +1519,28 @@ async function startServer() {
           const { projectPath } = args;
           
           if (!projectPath) {
-            throw new Error("项目路径不能为空");
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
           }
           
           console.log(`[MCP-Init-Step6] 连接文档 - ${projectPath}`);
           
-          const initState = getProjectState(projectPath);
-          
-          if (initState.currentStep < 5 || !initState.stepsCompleted.includes('step5')) {
-            throw new Error('Step6需要先完成Step5总览生成');
+          // 使用增强的验证逻辑（新增）
+          const validation = validateStepPrerequisites(projectPath, 6);
+          if (!validation.valid) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
+              }]
+            };
           }
+          
+          const initState = getProjectStateEnhanced(projectPath);
           
           initState.currentStep = 6;
           const docsDir = join(resolve(projectPath), 'mg_kiro');
@@ -1299,6 +1626,22 @@ ${docsDir}/
           initState.currentStep = 6;
           initState.completed = true;
           initState.completedAt = new Date().toISOString();
+          
+          // Step6完成后，清理所有临时文件（最终步骤）
+          try {
+            const cleanupResult = cleanupTempFiles(projectPath);
+            console.log(`[Step6-Cleanup] 初始化完成，清理临时文件: 删除${cleanupResult.cleaned}个临时文件，保留${cleanupResult.kept}个`);
+            
+            // 保存清理信息到状态中
+            initState.stepResults.step6.cleanupInfo = {
+              tempFilesDeleted: cleanupResult.cleaned,
+              tempFilesKept: cleanupResult.kept,
+              cleanupCompletedAt: new Date().toISOString()
+            };
+          } catch (cleanupError) {
+            console.warn(`[Step6-Cleanup] 清理临时文件时出现警告: ${cleanupError.message}`);
+            initState.stepResults.step6.cleanupWarning = cleanupError.message;
+          }
           
           return {
             content: [
@@ -1531,7 +1874,12 @@ ${docsDir}/
           const { projectPath, maxDepth, includeFiles, maxKeyFileSize } = args;
           
           if (!projectPath) {
-            throw new Error("项目路径不能为空");
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
           }
           
           console.log(`[MCP-Simplified] 生成项目概览 - ${projectPath}`);
@@ -1653,37 +2001,103 @@ ${docsDir}/
         }
         
         case "get_init_status": {
-          console.log(`[MCP-Simplified] 获取状态信息`);
+          const { projectPath } = args;
           
-          const state = claudeCodeInit.getState();
-          const progress = claudeCodeInit.getProgress();
-          const health = claudeCodeInit.healthCheck();
+          console.log(`[MCP-InitStatus] 获取完整的6步工作流状态`);
           
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({
-                  state,
-                  progress,
-                  health,
-                  availableTools: [
-                    "generate_project_overview",
-                    "progressive_documentation"
-                  ],
-                  simplifiedFlow: {
-                    currentVersion: "3.0-simplified",
-                    totalSteps: 2,
-                    description: "2步精简Init流程：项目概览 → 渐进式文档生成"
-                  }
-                }, null, 2)
-              }
-            ]
-          };
+          if (projectPath) {
+            // 获取特定项目的状态
+            const projectState = getProjectState(projectPath);
+            
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    projectPath: resolve(projectPath),
+                    currentStep: projectState.currentStep,
+                    stepsCompleted: projectState.stepsCompleted,
+                    totalSteps: 6,
+                    progress: {
+                      percentage: Math.round((projectState.stepsCompleted.length / 6) * 100),
+                      completed: projectState.stepsCompleted.length,
+                      remaining: 6 - projectState.stepsCompleted.length
+                    },
+                    status: projectState.currentStep === 0 ? 'not_started' : 
+                           projectState.completed ? 'completed' : 'in_progress',
+                    startedAt: projectState.startedAt,
+                    completedAt: projectState.completedAt,
+                    documentCount: projectState.documentCount || 0,
+                    generatedDocs: projectState.generatedDocs || [],
+                    nextStep: projectState.currentStep < 6 ? {
+                      step: projectState.currentStep + 1,
+                      tool: `init_step${projectState.currentStep + 1}_${
+                        ['project_analysis', 'create_todos', 'get_next_task', 
+                         'module_integration', 'overview_generation', 'connect_docs'][projectState.currentStep]
+                      }`
+                    } : null,
+                    workflowVersion: "4.0-complete-6-steps"
+                  }, null, 2)
+                }
+              ]
+            };
+          } else {
+            // 返回系统整体状态
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    systemStatus: "ready",
+                    availableTools: [
+                      "workflow_guide - 获取完整工作流指引",
+                      "init_step1_project_analysis - 项目分析",
+                      "init_step2_create_todos - 创建AI任务列表",
+                      "init_step3_get_next_task - 获取下一个文件任务",
+                      "init_step3_get_file_content - 获取文件内容",
+                      "init_step3_complete_task - 完成文件处理任务",
+                      "init_step4_module_integration - 模块整合",
+                      "init_step5_overview_generation - 总览生成",
+                      "init_step6_connect_docs - 文档连接",
+                      "get_init_status - 获取状态信息",
+                      "reset_init - 重置流程"
+                    ],
+                    workflowVersion: "4.0-complete-6-steps",
+                    totalSteps: 6,
+                    description: "完整的6步文档生成流程，提供从分析到最终文档的全程指导",
+                    usage: "使用 workflow_guide 工具获取完整的使用指引"
+                  }, null, 2)
+                }
+              ]
+            };
+          }
         }
         
         case "reset_init": {
           console.log(`[MCP-Simplified] 重置流程状态`);
+          
+          // 新增：支持可选的项目路径参数
+          const { projectPath } = args || {};
+          
+          let cleanupResults = {};
+          if (projectPath) {
+            try {
+              // 清理指定项目的临时文件
+              cleanupResults = cleanupTempFiles(projectPath);
+              console.log(`[Reset] 清理项目 ${projectPath}: 删除${cleanupResults.cleaned}个临时文件`);
+              
+              // 清除内存状态
+              const normalizedPath = resolve(projectPath);
+              projectStates.delete(normalizedPath);
+              
+            } catch (error) {
+              console.warn(`[Reset] 清理项目 ${projectPath} 时出现错误: ${error.message}`);
+            }
+          } else {
+            // 全局重置：清理所有内存状态
+            projectStates.clear();
+            console.log(`[Reset] 已清除所有内存项目状态`);
+          }
           
           const result = claudeCodeInit.reset();
           
@@ -1695,7 +2109,8 @@ ${docsDir}/
                   ...result,
                   nextStep: "调用 generate_project_overview 开始新的Init流程",
                   simplifiedFlow: true,
-                  version: "3.0-simplified"
+                  version: "4.0-complete-6-steps",
+                  cleanupResults: cleanupResults // 新增：清理结果信息
                 }, null, 2)
               }
             ]
@@ -1703,10 +2118,15 @@ ${docsDir}/
         }
         
         default:
-          throw new Error(`未知的工具: ${name}. 可用工具: generate_project_overview, progressive_documentation, get_init_status, reset_init`);
+          return {
+            content: [{
+              type: "text",
+              text: JSON.stringify({ error: true, message: `未知的工具: ${name}. 可用工具: workflow_guide, init_step1_project_analysis, init_step2_create_todos, init_step3_get_next_task, init_step3_get_file_content, init_step3_complete_task, init_step4_module_integration, init_step5_overview_generation, init_step6_connect_docs, generate_project_overview, progressive_documentation, get_init_status, reset_init`, tool: name }, null, 2)
+            }]
+          };
       }
     } catch (error) {
-      console.error(`[MCP-Simplified] 工具执行失败: ${name}`, error);
+      console.error(`[MCP-6Steps] 工具执行失败: ${name}`, error);
       return {
         content: [
           {
@@ -1715,8 +2135,8 @@ ${docsDir}/
               error: true,
               message: error.message,
               tool: name,
-              version: "3.0-simplified",
-              suggestion: "请检查工具名称和参数。可用工具: generate_project_overview, progressive_documentation",
+              version: "4.0-complete-6-steps",
+              suggestion: "请检查工具名称和参数。主要工具: workflow_guide(获取工作流指引), init_step1_project_analysis(开始6步流程)",
               availableTools: [
                 "generate_project_overview - 生成项目概览包",
                 "progressive_documentation - 渐进式文档生成",
@@ -1734,9 +2154,9 @@ ${docsDir}/
   const transport = new StdioServerTransport();
   await server.connect(transport);
   
-  console.log("\n✅ mg_kiro MCP服务器已启动 (stdio模式) - v3.0.0-simplified");
-  console.log("🚀 精简版2步Init流程已就绪");
-  console.log("🤖 支持工具: generate_project_overview, progressive_documentation");
+  console.log("\n✅ mg_kiro MCP服务器已启动 (stdio模式) - v4.0.0-complete-6-steps");
+  console.log("🚀 完整6步Init工作流已就绪");
+  console.log("🤖 支持工具: workflow_guide, init_step1-6, generate_project_overview, progressive_documentation");
   console.log("📡 等待Claude Code客户端连接...\n");
 }
 
