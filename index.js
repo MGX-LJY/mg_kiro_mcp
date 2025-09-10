@@ -1226,35 +1226,59 @@ async function startServer() {
           console.log(`[MCP-Init-Step3] 获取文件内容 - ${projectPath} 任务:${taskId} 文件:${relativePath}`);
           
           try {
-            // 🔥 新增：直接文件读取 + 原有服务兼容
-            const fs = await import('fs');
-            const fullFilePath = resolve(projectPath, relativePath);
+            // 🔥 修复：使用fileQueryService的智能分片功能替代直接文件读取
+            const fileQueryService = serviceBus.get('fileQueryService');
             
-            if (!fs.existsSync(fullFilePath)) {
-              return {
-                content: [{
-                  type: "text",
-                  text: JSON.stringify({ error: true, message: `文件不存在: ${relativePath}`, tool: name }, null, 2)
-                }]
-              };
+            // 智能文件处理选项
+            const processingOptions = {
+              maxContentLength: maxContentLength || 50000,
+              includeTrimming: true,
+              includeAnalysis: true,
+              enableChunking: false, // 默认关闭分片，保持兼容性
+              maxTokensPerChunk: 60000
+            };
+            
+            // 如果文件可能很大，启用智能处理
+            try {
+              const fs = await import('fs');
+              const fullFilePath = resolve(projectPath, relativePath);
+              const fileStats = fs.statSync(fullFilePath);
+              
+              // 大文件启用智能分片和裁切
+              if (fileStats.size > 100000) { // 100KB以上启用智能处理
+                processingOptions.enableChunking = false; // 保持单一内容，但启用智能裁切
+                processingOptions.includeTrimming = true;
+                processingOptions.maxContentLength = 80000; // 提高限制
+                console.log(`[Smart-Processing] 大文件检测 ${relativePath} (${fileStats.size}字节), 启用智能处理`);
+              }
+            } catch (statsError) {
+              console.log(`[Smart-Processing] 无法获取文件统计信息，使用默认处理: ${statsError.message}`);
             }
             
-            const fileStats = fs.statSync(fullFilePath);
-            const maxSize = maxContentLength || 50000;
+            // 使用fileQueryService获取文件详情
+            const fileDetails = await fileQueryService.getFileDetails(
+              resolve(projectPath), 
+              relativePath, 
+              processingOptions
+            );
             
-            let fileContent = '';
-            if (fileStats.size > maxSize) {
-              const fd = fs.openSync(fullFilePath, 'r');
-              const buffer = Buffer.alloc(maxSize);
-              fs.readSync(fd, buffer, 0, maxSize, 0);
-              fs.closeSync(fd);
-              fileContent = buffer.toString('utf8') + `\n\n... (文件太大，已截断。完整大小: ${fileStats.size} 字节)`;
-            } else {
-              fileContent = fs.readFileSync(fullFilePath, 'utf8');
-            }
+            const fileName = fileDetails.file.name;
+            const fileExtension = fileDetails.file.extension.replace('.', '');
+            const fileContent = fileDetails.content;
+            const fileSize = fileDetails.file.size;
             
-            const fileName = relativePath.split('/').pop();
-            const fileExtension = fileName.includes('.') ? fileName.split('.').pop() : '';
+            // 获取智能处理信息
+            const processingInfo = {
+              wasTrimmed: fileDetails.trimming?.wasTrimmed || false,
+              wasChunked: fileDetails.chunking?.totalChunks > 1 || false,
+              originalLength: fileDetails.metadata?.originalLength || fileContent.length,
+              estimatedTokens: fileDetails.tokenInfo?.estimatedTokens || 0,
+              processingStrategy: fileDetails.trimming?.trimmingStrategy || '无需处理'
+            };
+            
+            console.log(`[Smart-Processing] 处理完成: ${fileName}, tokens=${processingInfo.estimatedTokens}, 裁切=${processingInfo.wasTrimmed}`);
+            
+            const fileStats = { size: fileSize };
             
             // 生成保存路径
             const docsDir = ensureDocsDirectory(resolve(projectPath));
@@ -1281,7 +1305,7 @@ async function startServer() {
                     stepName: 'file-documentation',
                     status: "content_ready",
                     
-                    // 文件内容信息
+                    // 文件内容信息（智能处理）
                     fileContent: {
                       taskId: taskId,
                       relativePath: relativePath,
@@ -1290,16 +1314,37 @@ async function startServer() {
                       language: fileExtension,
                       size: fileStats.size,
                       lines: fileContent.split('\n').length,
-                      truncated: fileStats.size > maxSize
+                      estimatedTokens: processingInfo.estimatedTokens,
+                      
+                      // 智能处理状态
+                      processing: {
+                        wasTrimmed: processingInfo.wasTrimmed,
+                        wasChunked: processingInfo.wasChunked,
+                        originalLength: processingInfo.originalLength,
+                        strategy: processingInfo.processingStrategy,
+                        recommendation: processingInfo.wasTrimmed 
+                          ? "文件已智能裁切，保留关键代码结构" 
+                          : "文件大小适中，完整处理"
+                      }
                     },
                     
-                    // AI处理指导
+                    // AI处理指导（智能处理感知）
                     aiInstructions: {
                       task: "为这个文件生成详细的技术文档",
-                      focus: "分析代码功能、架构设计、重要逻辑和使用方式", 
+                      focus: processingInfo.wasTrimmed 
+                        ? "分析已裁切的关键代码结构、核心功能、重要逻辑。注意：内容已智能裁切，重点关注保留的重要部分"
+                        : "分析完整代码功能、架构设计、重要逻辑和使用方式", 
                       format: "Markdown格式，包含代码示例和技术说明",
                       outputFile: `mg_kiro/files/${fileName}.md`,
-                      saveToPath: join(filesDir, `${fileName}.md`)
+                      saveToPath: join(filesDir, `${fileName}.md`),
+                      processingNotes: {
+                        contentStatus: processingInfo.wasTrimmed ? "智能裁切" : "完整内容",
+                        estimatedTokens: processingInfo.estimatedTokens,
+                        strategy: processingInfo.processingStrategy,
+                        guidance: processingInfo.wasTrimmed 
+                          ? "内容已经过智能裁切，保留了imports、exports、函数定义等关键结构，请重点分析这些核心部分"
+                          : "内容完整，可以进行全面分析"
+                      }
                     },
                     
                     // 🔥 简化的工作流程 - 支持直接保存或继续下一任务
@@ -1322,27 +1367,87 @@ async function startServer() {
                     },
                     
                     success: true,
-                    message: `Step3: 文件 ${relativePath} 内容已准备就绪（自动化上下文管理）`
+                    message: `Step3: 文件 ${relativePath} 智能处理完成（${processingInfo.estimatedTokens} tokens，${processingInfo.wasTrimmed ? '已裁切' : '完整内容'}）`
                   }, null, 2)
                 }
               ]
             };
           } catch (error) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({ 
-                  error: true, 
-                  message: `读取文件失败: ${error.message}`, 
-                  tool: name,
-                  autoRecovery: {
-                    suggestion: "请检查文件路径是否正确，或尝试重新获取任务",
-                    file: relativePath,
-                    projectPath: projectPath
-                  }
-                }, null, 2)
-              }]
-            };
+            console.error(`[Smart-Processing] 智能文件处理失败: ${error.message}`);
+            
+            // 如果智能处理失败，尝试降级到基本处理
+            try {
+              console.log(`[Smart-Processing] 尝试基本文件读取作为备选方案...`);
+              const fs = await import('fs');
+              const fullFilePath = resolve(projectPath, relativePath);
+              
+              if (!fs.existsSync(fullFilePath)) {
+                throw new Error(`文件不存在: ${relativePath}`);
+              }
+              
+              const basicContent = fs.readFileSync(fullFilePath, 'utf8');
+              const fileName = relativePath.split('/').pop();
+              
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({
+                    currentStep: 3,
+                    stepName: 'file-documentation',
+                    status: "content_ready_fallback",
+                    
+                    fileContent: {
+                      taskId: taskId,
+                      relativePath: relativePath,
+                      fileName: fileName,
+                      content: basicContent,
+                      language: fileName.includes('.') ? fileName.split('.').pop() : '',
+                      size: fs.statSync(fullFilePath).size,
+                      lines: basicContent.split('\n').length,
+                      processing: {
+                        fallbackMode: true,
+                        reason: "智能处理失败，使用基本读取",
+                        originalError: error.message
+                      }
+                    },
+                    
+                    aiInstructions: {
+                      task: "为这个文件生成详细的技术文档（基本模式）",
+                      focus: "分析代码功能、架构设计、重要逻辑和使用方式", 
+                      format: "Markdown格式，包含代码示例和技术说明",
+                      outputFile: `mg_kiro/files/${fileName}.md`,
+                      processingNotes: {
+                        contentStatus: "基本读取（智能处理失败）",
+                        guidance: "使用基本文件读取，请根据实际内容大小调整分析深度"
+                      }
+                    },
+                    
+                    success: true,
+                    message: `Step3: 文件 ${relativePath} 基本处理完成（智能处理失败后的备选方案）`,
+                    warning: `智能处理失败: ${error.message}，已降级到基本处理模式`
+                  }, null, 2)
+                }]
+              };
+              
+            } catch (fallbackError) {
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({ 
+                    error: true, 
+                    message: `文件处理完全失败: 智能处理错误 - ${error.message}; 基本处理错误 - ${fallbackError.message}`, 
+                    tool: name,
+                    autoRecovery: {
+                      suggestion: "请检查文件路径是否正确，文件是否可读，或尝试重新获取任务",
+                      file: relativePath,
+                      projectPath: projectPath,
+                      smartProcessingError: error.message,
+                      basicProcessingError: fallbackError.message
+                    }
+                  }, null, 2)
+                }]
+              };
+            }
           }
         }
         
