@@ -8,16 +8,16 @@
   "stepResults": {
     "step1": {
       "projectOverview": {
-        "generatedAt": "2025-09-10T10:21:12.024Z",
-        "generationTime": "17ms",
+        "generatedAt": "2025-09-10T10:43:22.939Z",
+        "generationTime": "10ms",
         "projectMetadata": {
           "name": "mg_kiro_mcp",
           "path": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
-          "lastModified": "2025-09-10T10:19:30.000Z",
+          "lastModified": "2025-09-10T10:43:09.000Z",
           "createdAt": "2025-09-06T14:38:08.793Z",
           "totalFiles": 6,
-          "totalSize": "457.87 KB",
-          "totalSizeBytes": 468858,
+          "totalSize": "457.16 KB",
+          "totalSizeBytes": 468134,
           "fileTypeDistribution": {
             ".md": 2,
             ".js": 2,
@@ -204,7 +204,7 @@
               {
                 "name": "index.js",
                 "type": "file",
-                "size": 101105,
+                "size": 100381,
                 "ext": ".js"
               },
               {
@@ -447,9 +447,9 @@
           },
           "index.js": {
             "content": "#!/usr/bin/env node\n\n/* eslint-disable no-unreachable */\n/* eslint-disable no-throw-literal */\n\n/**\n * mg_kiro MCP Server\n * 统一入口点 - MCP协议服务器 + Express API + WebSocket\n * \n * 支持两种运行模式:\n * 1. MCP服务器模式: node index.js (MCP服务器运行在stdio)\n * 2. Express服务器模式: MCP_PORT=3000 node index.js (Web服务器运行在指定端口)\n */\n\nimport { Server } from \"@modelcontextprotocol/sdk/server/index.js\";\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\nimport {\n  CallToolRequestSchema,\n  ListToolsRequestSchema,\n} from \"@modelcontextprotocol/sdk/types.js\";\nimport express from 'express';\nimport http from 'http';\nimport { WebSocketServer } from 'ws';\nimport cors from 'cors';\nimport { fileURLToPath } from 'url';\nimport { dirname, join, resolve } from 'path';\nimport { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, unlinkSync } from 'fs';\nimport { createAppRoutes } from './server/routes/index.js';\nimport { initializeServices } from './server/services/service-registry.js';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst CONFIG_DIR = join(__dirname, 'config');\n\n// ========== 服务容器包装器 ==========\nfunction getServiceContainer(serviceBus) {\n  return {\n    // 新的统一模板系统\n    masterTemplateService: serviceBus.get('masterTemplateService'),\n    templateConfigManager: serviceBus.get('templateConfigManager'),\n    \n    // 其他核心服务\n    languageDetector: serviceBus.get('languageDetector'),\n    languageIntelligence: serviceBus.get('languageIntelligence'),\n    configService: serviceBus.get('configService'),\n    \n    // Create模式所需服务\n    aiTodoManager: serviceBus.get('aiTodoManager'),\n    completeTaskMonitor: serviceBus.get('completeTaskMonitor'),\n    \n    // 向后兼容的别名（指向新服务）\n    promptService: serviceBus.get('masterTemplateService'),\n    unifiedTemplateService: serviceBus.get('masterTemplateService'),\n    \n    // ServiceBus工具方法\n    getService: (name) => serviceBus.get(name),\n    getServiceStatus: (name) => serviceBus.getServiceStatus(name),\n    getStats: () => serviceBus.getStats(),\n    getAllServices: () => serviceBus.getAllServices()\n  };\n}\n\n// ========== 服务器模式 ==========\nstartServer().catch(console.error);\n\nasync function startServer() {\n  // 初始化服务系统\n  console.log('[Server] 初始化服务系统...');\n  const serviceBus = await initializeServices(CONFIG_DIR);\n\n  // ========== Express服务器设置 ==========\n  const PORT = process.env.MCP_PORT || process.env.PORT;\n  \n  if (PORT) {\n    // Express服务器模式\n    console.log('[Server] 启动Express服务器模式...');\n    \n    const app = express();\n    const httpServer = http.createServer(app);\n\n    // 中间件配置\n    app.use(cors());\n    app.use(express.json({ limit: '50mb' }));\n    app.use(express.urlencoded({ extended: true }));\n\n    // 请求日志\n    app.use((req, res, next) => {\n      console.log(`[HTTP] ${req.method} ${req.path}`);\n      next();\n    });\n\n    // 创建服务容器并生成路由\n    const serviceContainer = getServiceContainer(serviceBus);\n    const routes = createAppRoutes(serviceContainer, null);\n    app.use('/', routes);\n\n    // WebSocket服务器\n    const wss = new WebSocketServer({ server: httpServer });\n    \n    wss.on('connection', (ws) => {\n      console.log('[WebSocket] 新客户端连接');\n      \n      ws.on('message', (message) => {\n        try {\n          const data = JSON.parse(message);\n          console.log('[WebSocket] 收到消息:', data.type || 'unknown');\n          \n          // 处理WebSocket消息\n          handleWebSocketMessage(ws, data, serviceBus);\n        } catch (error) {\n          console.error('[WebSocket] 消息处理错误:', error);\n          ws.send(JSON.stringify({ error: error.message }));\n        }\n      });\n      \n      ws.on('close', () => {\n        console.log('[WebSocket] 客户端断开连接');\n      });\n    });\n\n    // 启动HTTP服务器\n    httpServer.listen(PORT, () => {\n      console.log(`\\n✅ mg_kiro Express服务器已启动`);\n      console.log(`📡 HTTP服务: http://localhost:${PORT}`);\n      console.log(`🔌 WebSocket服务: ws://localhost:${PORT}`);\n      console.log(`📚 API文档: http://localhost:${PORT}/api-docs`);\n      console.log(`\\n可用的端点 (精简版 3.0):`);\n      console.log(`  - GET  /health - 健康检查`);\n      console.log(`  - POST /init/project-overview - 生成项目概览包`);\n      console.log(`  - POST /init/progressive-documentation - 渐进式文档生成`);\n      console.log(`  - GET  /init/status - 获取Init状态`);\n      console.log(`  - GET  /init/help - API帮助信息`);\n      console.log(`\\nMCP工具:`);\n      console.log(`  - generate_project_overview - 生成项目概览`);\n      console.log(`  - progressive_documentation - 渐进式文档生成`);\n    });\n  }\n\n  // ========== MCP服务器设置 ==========\n  console.log('[Server] 启动MCP协议服务器...');\n\n... [内容已截断] ...\n\n  });\n\n  // 启动MCP服务器\n  const transport = new StdioServerTransport();\n  await server.connect(transport);\n  \n  console.log(\"\\n✅ mg_kiro MCP服务器已启动 (stdio模式) - v5.0.0-complete-6-steps-redesigned\");\n  console.log(\"🚀 重新设计的完整6步Init工作流已就绪\");\n  console.log(\"🤖 支持工具: workflow_guide, init_step1-6 (文件分析→模块整合→关联分析→架构文档)\");\n  console.log(\"📡 等待Claude Code客户端连接...\\n\");\n}\n\n// WebSocket消息处理\nfunction handleWebSocketMessage(ws, data, serviceBus) {\n  const { type, payload } = data;\n  \n  switch (type) {\n    case 'init':\n      // 处理Init请求 - 使用新的MCP协议服务\n      const { projectPath } = payload;\n      const claudeCodeInit = serviceBus.get('claudeCodeInit');\n      \n      try {\n        claudeCodeInit.initialize(resolve(projectPath));\n        ws.send(JSON.stringify({\n          type: 'init_started',\n          message: 'Init流程已启动，请使用MCP工具进行分步执行',\n          availableTools: [\n            'init_step1_data_collection',\n            'init_step2_architecture',\n            'init_step3_deep_analysis',\n            'init_step4_module_docs',\n            'init_step5_contracts'\n          ]\n        }));\n      } catch (error) {\n        ws.send(JSON.stringify({\n          type: 'error',\n          error: error.message\n        }));\n      }\n      break;\n      \n    case 'status':\n      // 获取状态\n      const initState = serviceBus.get('initState');\n      const status = initState ? initState.getProgress() : { status: 'idle' };\n      ws.send(JSON.stringify({\n        type: 'status',\n        status\n      }));\n      break;\n      \n    default:\n      ws.send(JSON.stringify({\n        type: 'error',\n        error: `未知的消息类型: ${type}`\n      }));\n  }\n}",
-            "size": 101105,
+            "size": 100381,
             "isTrimmed": true,
-            "lastModified": "2025-09-10T10:16:30.479Z",
+            "lastModified": "2025-09-10T10:43:05.441Z",
             "importance": 38,
             "type": "unknown"
           }
@@ -462,7 +462,7 @@
         },
         "architectureDocument": {
           "title": "mg_kiro_mcp - 系统架构文档",
-          "generatedAt": "2025-09-10T10:21:12.023Z",
+          "generatedAt": "2025-09-10T10:43:22.939Z",
           "version": "1.0-auto",
           "overview": {
             "name": "mg_kiro_mcp",
@@ -518,7 +518,7 @@
           "recommendations": []
         },
         "aiTaskContext": {
-          "generatedAt": "2025-09-10T10:21:12.023Z",
+          "generatedAt": "2025-09-10T10:43:22.939Z",
           "projectName": "mg_kiro_mcp",
           "fileProcessingGuide": {
             "totalFilesToProcess": 0,
@@ -677,7 +677,7 @@
           }
         }
       },
-      "completedAt": "2025-09-10T10:21:12.024Z",
+      "completedAt": "2025-09-10T10:43:22.939Z",
       "docsDirectory": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp/mg_kiro"
     },
     "step2": {
@@ -719,7 +719,7 @@
             "batchNumber": 1,
             "batchPosition": 1,
             "estimatedTime": "5-8分钟",
-            "createdAt": "2025-09-10T10:21:22.959Z",
+            "createdAt": "2025-09-10T10:43:28.004Z",
             "updatedAt": null,
             "completedAt": null
           },
@@ -773,7 +773,7 @@
                 "batchNumber": 1,
                 "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -810,7 +810,7 @@
                 "batchNumber": 1,
                 "batchPosition": 2,
                 "estimatedTime": "4-6分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -847,7 +847,7 @@
                 "batchNumber": 1,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -884,7 +884,7 @@
                 "batchNumber": 2,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -921,7 +921,7 @@
                 "batchNumber": 2,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -958,7 +958,7 @@
                 "batchNumber": 2,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -995,7 +995,7 @@
                 "batchNumber": 3,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1032,7 +1032,7 @@
                 "batchNumber": 3,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1069,7 +1069,7 @@
                 "batchNumber": 3,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1106,7 +1106,7 @@
                 "batchNumber": 4,
                 "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1143,7 +1143,7 @@
                 "batchNumber": 4,
                 "batchPosition": 2,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1180,7 +1180,7 @@
                 "batchNumber": 4,
                 "batchPosition": 3,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1217,7 +1217,7 @@
                 "batchNumber": 5,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1254,7 +1254,7 @@
                 "batchNumber": 5,
                 "batchPosition": 2,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1291,7 +1291,7 @@
                 "batchNumber": 5,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1328,7 +1328,7 @@
                 "batchNumber": 6,
                 "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1365,7 +1365,7 @@
                 "batchNumber": 6,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1402,7 +1402,7 @@
                 "batchNumber": 6,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1439,7 +1439,7 @@
                 "batchNumber": 7,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1476,7 +1476,7 @@
                 "batchNumber": 7,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1513,7 +1513,7 @@
                 "batchNumber": 7,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1550,7 +1550,7 @@
                 "batchNumber": 8,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1587,7 +1587,7 @@
                 "batchNumber": 8,
                 "batchPosition": 2,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1624,7 +1624,7 @@
                 "batchNumber": 8,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1661,7 +1661,7 @@
                 "batchNumber": 9,
                 "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1698,7 +1698,7 @@
                 "batchNumber": 9,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1735,7 +1735,7 @@
                 "batchNumber": 9,
                 "batchPosition": 3,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1772,7 +1772,7 @@
                 "batchNumber": 10,
                 "batchPosition": 1,
                 "estimatedTime": "5-8分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1809,7 +1809,7 @@
                 "batchNumber": 10,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1846,7 +1846,7 @@
                 "batchNumber": 10,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1883,7 +1883,7 @@
                 "batchNumber": 11,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1920,7 +1920,7 @@
                 "batchNumber": 11,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1957,7 +1957,7 @@
                 "batchNumber": 11,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -1994,7 +1994,7 @@
                 "batchNumber": 12,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2031,7 +2031,7 @@
                 "batchNumber": 12,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2068,7 +2068,7 @@
                 "batchNumber": 12,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2105,7 +2105,7 @@
                 "batchNumber": 13,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2142,7 +2142,7 @@
                 "batchNumber": 13,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2179,7 +2179,7 @@
                 "batchNumber": 13,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2216,7 +2216,7 @@
                 "batchNumber": 14,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2253,7 +2253,7 @@
                 "batchNumber": 14,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2290,7 +2290,7 @@
                 "batchNumber": 14,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2327,7 +2327,7 @@
                 "batchNumber": 15,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2364,7 +2364,7 @@
                 "batchNumber": 15,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2401,7 +2401,7 @@
                 "batchNumber": 15,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2438,7 +2438,7 @@
                 "batchNumber": 16,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2475,7 +2475,7 @@
                 "batchNumber": 16,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2512,7 +2512,7 @@
                 "batchNumber": 16,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2549,7 +2549,7 @@
                 "batchNumber": 17,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2586,7 +2586,7 @@
                 "batchNumber": 17,
                 "batchPosition": 2,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2623,7 +2623,7 @@
                 "batchNumber": 17,
                 "batchPosition": 3,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               },
@@ -2660,7 +2660,7 @@
                 "batchNumber": 18,
                 "batchPosition": 1,
                 "estimatedTime": "2-4分钟",
-                "createdAt": "2025-09-10T10:21:22.959Z",
+                "createdAt": "2025-09-10T10:43:28.004Z",
                 "updatedAt": null,
                 "completedAt": null
               }
@@ -2731,7 +2731,7 @@
       },
       "processingPlan": {
         "projectPath": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
-        "planCreatedAt": "2025-09-10T10:21:22.959Z",
+        "planCreatedAt": "2025-09-10T10:43:28.004Z",
         "summary": {
           "totalFiles": 52,
           "totalBatches": 18,
@@ -2772,7 +2772,7 @@
                 "name": "index.js",
                 "category": "entry",
                 "importance": 60,
-                "estimatedSize": 101105,
+                "estimatedSize": 100381,
                 "estimatedTokens": 48,
                 "needsTrimming": true,
                 "needsChunking": false
@@ -3401,10 +3401,10 @@
           "文件大小适中，可直接处理"
         ]
       },
-      "completedAt": "2025-09-10T10:21:22.960Z"
+      "completedAt": "2025-09-10T10:43:28.005Z"
     }
   },
-  "startedAt": "2025-09-10T10:21:12.003Z",
+  "startedAt": "2025-09-10T10:43:22.928Z",
   "error": null,
   "documentCount": 0,
   "generatedDocs": []

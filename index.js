@@ -1229,27 +1229,25 @@ async function startServer() {
             // 🔥 修复：使用fileQueryService的智能分片功能替代直接文件读取
             const fileQueryService = serviceBus.get('fileQueryService');
             
-            // 智能文件处理选项
+            // 智能文件处理选项 - 🔥 启用分片解决MCP token限制
             const processingOptions = {
-              maxContentLength: maxContentLength || 50000,
+              maxContentLength: maxContentLength || 15000,
               includeTrimming: true,
-              includeAnalysis: true,
-              enableChunking: false, // 默认关闭分片，保持兼容性
-              maxTokensPerChunk: 60000
+              includeAnalysis: false, // 🔥 关闭分析减少token
+              enableChunking: true, // 🔥 启用分片功能
+              maxTokensPerChunk: 10000 // 🔥 合理的分片token限制
             };
             
-            // 如果文件可能很大，启用智能处理
+            // 如果文件可能很大，进一步优化处理选项
             try {
               const fs = await import('fs');
               const fullFilePath = resolve(projectPath, relativePath);
               const fileStats = fs.statSync(fullFilePath);
               
-              // 大文件启用智能分片和裁切
-              if (fileStats.size > 100000) { // 100KB以上启用智能处理
-                processingOptions.enableChunking = false; // 保持单一内容，但启用智能裁切
-                processingOptions.includeTrimming = true;
-                processingOptions.maxContentLength = 80000; // 提高限制
-                console.log(`[Smart-Processing] 大文件检测 ${relativePath} (${fileStats.size}字节), 启用智能处理`);
+              if (fileStats.size > 50000) { // 50KB以上启用更小分片
+                processingOptions.maxTokensPerChunk = 8000;
+                processingOptions.maxContentLength = 12000;
+                console.log(`[Smart-Processing] 大文件检测 ${relativePath} (${fileStats.size}字节), 启用小分片处理`);
               }
             } catch (statsError) {
               console.log(`[Smart-Processing] 无法获取文件统计信息，使用默认处理: ${statsError.message}`);
@@ -1266,18 +1264,6 @@ async function startServer() {
             const fileExtension = fileDetails.file.extension.replace('.', '');
             const fileContent = fileDetails.content;
             const fileSize = fileDetails.file.size;
-            
-            // 获取智能处理信息
-            const processingInfo = {
-              wasTrimmed: fileDetails.trimming?.wasTrimmed || false,
-              wasChunked: fileDetails.chunking?.totalChunks > 1 || false,
-              originalLength: fileDetails.metadata?.originalLength || fileContent.length,
-              estimatedTokens: fileDetails.tokenInfo?.estimatedTokens || 0,
-              processingStrategy: fileDetails.trimming?.trimmingStrategy || '无需处理'
-            };
-            
-            console.log(`[Smart-Processing] 处理完成: ${fileName}, tokens=${processingInfo.estimatedTokens}, 裁切=${processingInfo.wasTrimmed}`);
-            
             const fileStats = { size: fileSize };
             
             // 生成保存路径
@@ -1296,30 +1282,39 @@ async function startServer() {
               });
             }
             
+            // 🔥 智能响应结构 - 根据分片情况返回适当内容
+            const responseData = {
+              currentStep: 3,
+              stepName: 'file-documentation',
+              status: "content_ready",
+              fileContent: {
+                taskId: taskId,
+                relativePath: relativePath,
+                fileName: fileName,
+                content: fileContent,
+                language: fileExtension,
+                size: fileStats.size
+              },
+              success: true
+            };
+
+            // 如果启用了分片且内容被分片了
+            if (fileDetails.chunking && fileDetails.chunking.totalChunks > 1) {
+              responseData.status = "chunked_content_ready";
+              responseData.chunking = {
+                currentChunk: fileDetails.chunking.currentChunk,
+                totalChunks: fileDetails.chunking.totalChunks,
+                note: "内容已分片处理，使用chunkIndex参数获取其他分片"
+              };
+              responseData.message = `Step3: 文件 ${relativePath} 已分片处理 (第${fileDetails.chunking.currentChunk}/${fileDetails.chunking.totalChunks}片)`;
+            } else {
+              responseData.message = `Step3: 文件 ${relativePath} 处理完成`;
+            }
+
             return {
               content: [{
                 type: "text",
-                text: JSON.stringify({
-                  currentStep: 3,
-                  stepName: 'file-documentation',
-                  status: "content_ready",
-                  fileContent: {
-                    taskId: taskId,
-                    relativePath: relativePath,
-                    fileName: fileName,
-                    content: fileContent,
-                    language: fileExtension,
-                    size: fileStats.size,
-                    lines: fileContent.split('\n').length
-                  },
-                  aiInstructions: {
-                    task: "为这个文件生成详细的技术文档",
-                    format: "Markdown格式",
-                    outputFile: `mg_kiro/files/${fileName}.md`
-                  },
-                  success: true,
-                  message: `Step3: 文件 ${relativePath} 处理完成`
-                }, null, 2)
+                text: JSON.stringify(responseData, null, 2)
               }]
             };
           } catch (error) {

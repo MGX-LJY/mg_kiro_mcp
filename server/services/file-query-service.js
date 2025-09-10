@@ -390,8 +390,9 @@ export class FileQueryService {
             const originalLength = content.length;
             const estimatedTokens = this.tokenCalculator.estimateCodeTokens(content, this.detectLanguage(extname(filePath)));
             
-            // 检查是否需要分片
-            if (enableChunking && this.tokenCalculator.exceedsLimit(estimatedTokens)) {
+            // 检查是否需要分片 (🔥 修复：降低分片阈值解决MCP token限制)
+            const mcpTokenLimit = 20000; // MCP响应token限制
+            if (enableChunking && (this.tokenCalculator.exceedsLimit(estimatedTokens) || estimatedTokens > mcpTokenLimit)) {
                 const chunks = await this.smartChunker.chunkFileContent(content, basename(filePath), maxTokensPerChunk);
                 
                 chunking = {
