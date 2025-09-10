@@ -88,12 +88,13 @@ class SmartChunker {
     }
 
     /**
-     * 智能分片文件内容（优化内存使用）
+     * 🔥 超小分片处理 - 确保每个分片都在安全token范围内
      */
-    async chunkFileContent(content, fileName, maxTokens = 60000) {
+    async chunkFileContent(content, fileName, maxTokens = 1500) {
         const totalTokens = this.tokenCalculator.estimateCodeTokens(content);
         
-        if (totalTokens <= maxTokens) {
+        // 🔥 即使是小文件也要检查，确保在MCP限制内
+        if (totalTokens <= maxTokens && content.length <= 6000) {
             return [{
                 chunkIndex: 1,
                 totalChunks: 1,
@@ -105,40 +106,62 @@ class SmartChunker {
             }];
         }
 
-        // 优化：避免创建大数组，使用流式处理
+        // 🔥 更保守的分片策略 - 基于字符数而非token估算
         const lines = content.split('\n');
         const totalLines = lines.length;
-        const estimatedChunks = Math.ceil(totalTokens / maxTokens);
-        const linesPerChunk = Math.ceil(totalLines / estimatedChunks);
         
+        // 🔥 每个分片最多1200个token，约4800字符
+        const maxCharsPerChunk = Math.min(4800, maxTokens * 4);
         const chunks = [];
         
-        for (let i = 0; i < totalLines; i += linesPerChunk) {
-            const endIndex = Math.min(i + linesPerChunk, totalLines);
-            const chunkLines = lines.slice(i, endIndex);
-            const chunkContent = chunkLines.join('\n');
-            const chunkTokens = this.tokenCalculator.estimateCodeTokens(chunkContent);
+        let currentChunk = '';
+        let currentStartLine = 1;
+        let currentLineIndex = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i] + '\n';
             
+            // 检查添加这一行是否会超出分片大小
+            if (currentChunk.length + line.length > maxCharsPerChunk && currentChunk.length > 0) {
+                // 创建当前分片
+                chunks.push({
+                    chunkIndex: chunks.length + 1,
+                    totalChunks: 0, // 稍后更新
+                    content: currentChunk.trimEnd(), // 移除末尾空白
+                    tokens: this.tokenCalculator.estimateCodeTokens(currentChunk),
+                    startLine: currentStartLine,
+                    endLine: i,
+                    summary: `${fileName} 片段 ${chunks.length + 1}`
+                });
+                
+                // 开始新分片
+                currentChunk = line;
+                currentStartLine = i + 1;
+            } else {
+                currentChunk += line;
+            }
+        }
+        
+        // 添加最后一个分片
+        if (currentChunk.length > 0) {
             chunks.push({
                 chunkIndex: chunks.length + 1,
-                totalChunks: estimatedChunks,
-                content: chunkContent,
-                tokens: chunkTokens,
-                startLine: i + 1,
-                endLine: endIndex,
-                summary: `${fileName} (第${chunks.length + 1}部分: 行${i + 1}-${endIndex})`
+                totalChunks: 0, // 稍后更新
+                content: currentChunk.trimEnd(),
+                tokens: this.tokenCalculator.estimateCodeTokens(currentChunk),
+                startLine: currentStartLine,
+                endLine: lines.length,
+                summary: `${fileName} 片段 ${chunks.length + 1}`
             });
-            
-            // 释放内存
-            chunkLines.length = 0;
         }
 
-        // 更新实际总分片数
-        const actualChunks = chunks.length;
+        // 更新总分片数
+        const totalChunks = chunks.length;
         chunks.forEach(chunk => {
-            chunk.totalChunks = actualChunks;
+            chunk.totalChunks = totalChunks;
         });
 
+        console.log(`[SuperChunk] ${fileName} 分片完成: ${totalChunks}片，平均${Math.round(content.length/totalChunks)}字符/片`);
         return chunks;
     }
 
@@ -390,46 +413,46 @@ export class FileQueryService {
             const originalLength = content.length;
             const estimatedTokens = this.tokenCalculator.estimateCodeTokens(content, this.detectLanguage(extname(filePath)));
             
-            // 检查是否需要分片 (🔥 修复：降低分片阈值解决MCP token限制)
-            const mcpTokenLimit = 20000; // MCP响应token限制
-            if (enableChunking && (this.tokenCalculator.exceedsLimit(estimatedTokens) || estimatedTokens > mcpTokenLimit)) {
+            // 🔥 强制分片检查 - 确保MCP响应在安全token范围内
+            const mcpSafeLimit = 8000; // 🔥 大幅降低安全限制，为响应结构预留空间
+            const shouldForceChunk = enableChunking && (
+                estimatedTokens > mcpSafeLimit || 
+                originalLength > 20000 || // 20KB以上强制分片
+                this.tokenCalculator.exceedsLimit(estimatedTokens)
+            );
+            
+            if (shouldForceChunk) {
                 const chunks = await this.smartChunker.chunkFileContent(content, basename(filePath), maxTokensPerChunk);
                 
+                // 🔥 优化分片响应结构 - 减少元数据占用token
                 chunking = {
                     totalChunks: chunks.length,
-                    totalTokens: estimatedTokens,
                     currentChunk: chunkIndex || 1,
-                    chunksAvailable: chunks.map((chunk, index) => ({
-                        chunkIndex: index + 1,
-                        tokens: chunk.tokens,
-                        lineRange: `${chunk.startLine}-${chunk.endLine}`,
-                        summary: chunk.summary
-                    }))
+                    // 🔥 简化chunksAvailable，只保留必要信息
+                    navigation: {
+                        hasPrevious: (chunkIndex || 1) > 1,
+                        hasNext: (chunkIndex || 1) < chunks.length,
+                        totalLines: content.split('\n').length
+                    }
                 };
                 
-                // 如果请求特定分片
-                if (chunkIndex && chunkIndex <= chunks.length) {
-                    const selectedChunk = chunks[chunkIndex - 1];
-                    content = selectedChunk.content;
-                    chunking.selectedChunk = {
-                        index: selectedChunk.chunkIndex,
-                        tokens: selectedChunk.tokens,
-                        startLine: selectedChunk.startLine,
-                        endLine: selectedChunk.endLine,
-                        summary: selectedChunk.summary
-                    };
-                } else {
-                    // 默认返回第一个分片
-                    const firstChunk = chunks[0];
-                    content = firstChunk.content;
-                    chunking.selectedChunk = {
-                        index: 1,
-                        tokens: firstChunk.tokens,
-                        startLine: firstChunk.startLine,
-                        endLine: firstChunk.endLine,
-                        summary: firstChunk.summary,
-                        note: '自动返回第一个分片，使用chunkIndex参数获取其他分片'
-                    };
+                // 🔥 选择并优化分片内容
+                const targetChunk = (chunkIndex && chunkIndex <= chunks.length) 
+                    ? chunks[chunkIndex - 1] 
+                    : chunks[0];
+                
+                content = targetChunk.content;
+                
+                // 🔥 精简分片信息，减少token消耗
+                chunking.selectedChunk = {
+                    index: targetChunk.chunkIndex,
+                    lines: `${targetChunk.startLine}-${targetChunk.endLine}`,
+                    size: targetChunk.content.length
+                };
+                
+                // 🔥 添加导航提示（仅在需要时）
+                if (!chunkIndex && chunks.length > 1) {
+                    chunking.note = `已分片处理，使用chunkIndex=2,3...获取其他分片`;
                 }
             }
             // 检查是否需要裁切（当未启用分片时）
@@ -453,8 +476,10 @@ export class FileQueryService {
                 };
             }
 
+            // 🔥 为分片模式禁用详细分析，减少token消耗
             let analysis = null;
-            if (includeAnalysis) {
+            if (includeAnalysis && !chunking) {
+                // 只在非分片模式下进行分析，减少响应大小
                 analysis = await this.analyzeIndividualFile({
                     fullPath: filePath,
                     relativePath,
@@ -464,32 +489,41 @@ export class FileQueryService {
                 });
             }
 
-            return {
+            // 🔥 优化返回结构 - 分片模式下只返回必要信息
+            const response = {
                 file: {
                     relativePath,
                     name: basename(filePath),
-                    fullPath: filePath,
-                    size: stats.size,
-                    lastModified: stats.mtime.toISOString(),
-                    extension: extname(filePath),
-                    directory: relative(projectPath, dirname(filePath))
+                    size: originalLength, // 原始文件大小
+                    extension: extname(filePath)
                 },
-                content,
-                trimming,
-                chunking,
-                analysis,
-                tokenInfo: {
-                    estimatedTokens: this.tokenCalculator.estimateCodeTokens(content, this.detectLanguage(extname(filePath))),
-                    exceedsLimit: this.tokenCalculator.exceedsLimit(estimatedTokens),
-                    recommendedChunks: this.tokenCalculator.calculateChunks(estimatedTokens)
-                },
-                metadata: {
-                    requestedAt: new Date().toISOString(),
-                    contentLength: content.length,
-                    originalLength: originalLength,
-                    encoding: 'utf8'
-                }
+                content
             };
+            
+            // 只在有分片时添加分片信息
+            if (chunking) {
+                response.chunking = chunking;
+            }
+            
+            // 只在有裁切时添加裁切信息
+            if (trimming) {
+                response.trimming = trimming;
+            }
+            
+            // 只在非分片模式下添加详细分析
+            if (analysis) {
+                response.analysis = analysis;
+            }
+            
+            // 🔥 精简的token信息
+            if (!chunking) {
+                response.tokenInfo = {
+                    estimatedTokens: this.tokenCalculator.estimateCodeTokens(content, this.detectLanguage(extname(filePath))),
+                    contentLength: content.length
+                };
+            }
+            
+            return response;
 
         } catch (error) {
             throw new Error(`无法获取文件 ${relativePath}: ${error.message}`);

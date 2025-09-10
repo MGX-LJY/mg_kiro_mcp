@@ -242,7 +242,7 @@ async function startServer() {
         },
         {
           name: "init_step3_get_next_task",
-          description: "Step3a: 获取下一个文件处理任务 - 在文件文档生成循环中使用",
+          description: "🚀 [工作流入口] 启动文件处理流程 - ⚠️ 只能在完成step1+step2后调用！调用后系统进入step3状态，返回第一个文件任务(如file_1_1)。✅ 必须严格按照：此工具→get_file_content→complete_task 的顺序执行，不可跳过！",
           inputSchema: {
             type: "object",
             properties: {
@@ -256,7 +256,7 @@ async function startServer() {
         },
         {
           name: "init_step3_get_file_content",
-          description: "Step3b: 获取文件内容并自动生成markdown文档 - 保存到mg_kiro/文件夹",
+          description: "📄 [必须第二步] 处理当前任务的文件内容 - ⚠️ 前置条件：必须先调用get_next_task获得任务ID！✅ 严格用法：get_next_task→[此工具]→complete_task。🚫 不能跳过顺序，否则失败！",
           inputSchema: {
             type: "object",
             properties: {
@@ -279,7 +279,7 @@ async function startServer() {
         },
         {
           name: "init_step3_complete_task",
-          description: "Step3c: 标记任务完成 - 统一进度管理，支持所有步骤的任务完成",
+          description: "✅ [必须第三步] 完成当前任务并处理下一个 - ⚠️ 前置条件：必须先调用get_next_task+get_file_content！✅ 严格调用顺序：get_next_task→get_file_content→[此工具]。🚫 直接调用此工具会失败！AI请按顺序执行！",
           inputSchema: {
             type: "object",
             properties: {
@@ -1152,6 +1152,20 @@ async function startServer() {
                     }
                   },
                   
+                  // 🎯 AI状态可视化 - 明确告诉AI当前可以做什么
+                  workflow_status: {
+                    current_step: 3,
+                    step_name: "文件处理循环", 
+                    progress: `处理${task?.id || 'unknown'} (${(nextTaskResult.progress?.completed || 0) + 1}/${nextTaskResult.progress?.total || 0})`,
+                    allowed_next_tools: ["init_step3_get_file_content"],
+                    forbidden_tools: ["init_step3_complete_task", "init_step4_module_integration"],
+                    
+                    // 🧠 AI认知提示
+                    ai_context: "✅ 系统已进入step3，任务上下文已设置，现在只能调用get_file_content处理当前任务",
+                    ai_instruction: "🎯 下一步：调用 init_step3_get_file_content (无需传递taskId和relativePath，会自动获取)",
+                    current_task_ready: true
+                  },
+                  
                   success: true,
                   message: "Step3: 获取到下一个文件处理任务，上下文已自动设置"
                 }, null, 2)
@@ -1225,32 +1239,65 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step3] 获取文件内容 - ${projectPath} 任务:${taskId} 文件:${relativePath}`);
           
+          // 🔥 调试：检查文件大小，确保分片逻辑会被触发
+          try {
+            const fs = await import('fs');
+            const fullFilePath = resolve(projectPath, relativePath);
+            const quickStats = fs.statSync(fullFilePath);
+            console.log(`[Debug] 文件 ${relativePath} 大小: ${quickStats.size} 字节`);
+            
+            if (quickStats.size > 25000) {
+              console.log(`[Debug] 大文件检测，强制启用超小分片模式`);
+            }
+          } catch (debugError) {
+            console.log(`[Debug] 无法获取文件统计信息: ${debugError.message}`);
+          }
+          
           try {
             // 🔥 修复：使用fileQueryService的智能分片功能替代直接文件读取
             const fileQueryService = serviceBus.get('fileQueryService');
             
-            // 智能文件处理选项 - 🔥 启用分片解决MCP token限制
-            const processingOptions = {
-              maxContentLength: maxContentLength || 15000,
+            // 🔥 强制小分片处理 - 确保每个响应都在MCP token限制内
+            let processingOptions = {
+              maxContentLength: 6000,  // 大幅降低，确保安全
               includeTrimming: true,
-              includeAnalysis: false, // 🔥 关闭分析减少token
-              enableChunking: true, // 🔥 启用分片功能
-              maxTokensPerChunk: 10000 // 🔥 合理的分片token限制
+              includeAnalysis: false, // 关闭分析减少token
+              enableChunking: true,   // 强制启用分片
+              maxTokensPerChunk: 1500 // 🔥 保守的分片token限制(约6000字符)
             };
             
-            // 如果文件可能很大，进一步优化处理选项
+            // 🔥 根据文件大小动态调整分片策略
             try {
               const fs = await import('fs');
               const fullFilePath = resolve(projectPath, relativePath);
               const fileStats = fs.statSync(fullFilePath);
               
-              if (fileStats.size > 50000) { // 50KB以上启用更小分片
-                processingOptions.maxTokensPerChunk = 8000;
-                processingOptions.maxContentLength = 12000;
-                console.log(`[Smart-Processing] 大文件检测 ${relativePath} (${fileStats.size}字节), 启用小分片处理`);
+              console.log(`[Auto-Chunk] 检测文件 ${relativePath} 大小: ${fileStats.size}字节`);
+              
+              // 任何超过20KB的文件都强制使用超小分片
+              if (fileStats.size > 20000) {
+                processingOptions.maxTokensPerChunk = 1200; // 约4800字符
+                processingOptions.maxContentLength = 4800;
+                console.log(`[Auto-Chunk] 大文件强制超小分片: ${processingOptions.maxTokensPerChunk} tokens/片`);
               }
+              // 超过10KB的文件使用小分片
+              else if (fileStats.size > 10000) {
+                processingOptions.maxTokensPerChunk = 1500; // 约6000字符
+                processingOptions.maxContentLength = 6000;
+                console.log(`[Auto-Chunk] 中等文件使用小分片: ${processingOptions.maxTokensPerChunk} tokens/片`);
+              }
+              // 小文件也限制大小，避免响应结构开销
+              else {
+                processingOptions.maxContentLength = 8000;
+                processingOptions.enableChunking = false; // 小文件可以不分片
+                console.log(`[Auto-Chunk] 小文件直接处理，限制8000字符`);
+              }
+              
             } catch (statsError) {
-              console.log(`[Smart-Processing] 无法获取文件统计信息，使用默认处理: ${statsError.message}`);
+              // 无法获取文件信息时使用最保守设置
+              processingOptions.maxTokensPerChunk = 1200;
+              processingOptions.maxContentLength = 4800;
+              console.log(`[Auto-Chunk] 无法检测文件，使用最保守分片: ${statsError.message}`);
             }
             
             // 使用fileQueryService获取文件详情
@@ -1282,33 +1329,79 @@ async function startServer() {
               });
             }
             
-            // 🔥 智能响应结构 - 根据分片情况返回适当内容
-            const responseData = {
+            // 🔥 超精简响应结构 - 只返回核心内容，减少token消耗
+            let responseData = {
               currentStep: 3,
               stepName: 'file-documentation',
-              status: "content_ready",
+              status: fileDetails.chunking ? "chunked_content_ready" : "content_ready",
               fileContent: {
                 taskId: taskId,
-                relativePath: relativePath,
                 fileName: fileName,
                 content: fileContent,
-                language: fileExtension,
-                size: fileStats.size
+                language: fileExtension
               },
-              success: true
+              success: true,
+              
+              // 🎯 AI状态可视化 - 文件内容已获取，现在可以完成任务
+              workflow_status: {
+                current_step: 3,
+                step_name: "文件处理循环", 
+                progress: `已获取${fileName}内容，准备完成任务`,
+                allowed_next_tools: ["init_step3_complete_task"],
+                forbidden_tools: ["init_step3_get_next_task", "init_step4_module_integration"],
+                
+                // 🧠 AI认知提示
+                ai_context: "✅ 文件内容已获取，任务上下文已更新，现在必须调用complete_task完成当前任务",
+                ai_instruction: `🎯 下一步：调用 init_step3_complete_task 完成任务${taskId}`,
+                content_ready: true
+              }
             };
 
-            // 如果启用了分片且内容被分片了
-            if (fileDetails.chunking && fileDetails.chunking.totalChunks > 1) {
-              responseData.status = "chunked_content_ready";
+            // 🔥 只在分片模式下添加必要的分片信息
+            if (fileDetails.chunking) {
               responseData.chunking = {
-                currentChunk: fileDetails.chunking.currentChunk,
-                totalChunks: fileDetails.chunking.totalChunks,
-                note: "内容已分片处理，使用chunkIndex参数获取其他分片"
+                currentChunk: fileDetails.chunking.currentChunk || 1,
+                totalChunks: fileDetails.chunking.totalChunks
               };
-              responseData.message = `Step3: 文件 ${relativePath} 已分片处理 (第${fileDetails.chunking.currentChunk}/${fileDetails.chunking.totalChunks}片)`;
-            } else {
-              responseData.message = `Step3: 文件 ${relativePath} 处理完成`;
+              
+              // 只在多分片时添加导航提示
+              if (fileDetails.chunking.totalChunks > 1) {
+                responseData.chunking.hasMore = true;
+              }
+            }
+
+            // 🔥 激进截断策略 - 确保绝对不会超过MCP限制
+            const contentSize = fileContent.length;
+            const maxSafeContentSize = 10000; // 10KB绝对安全限制
+            
+            console.log(`[MCP-SafeCheck] 内容大小: ${contentSize}字符`);
+            
+            if (contentSize > maxSafeContentSize) {
+              console.log(`[MCP-SafeCheck] 内容超过安全限制，强制截断到${maxSafeContentSize}字符`);
+              
+              responseData.fileContent.content = fileContent.slice(0, maxSafeContentSize);
+              responseData.fileContent.truncated = {
+                original: contentSize,
+                shown: maxSafeContentSize,
+                reason: 'MCP安全限制',
+                note: '使用chunkIndex参数获取其他部分'
+              };
+              responseData.status = 'content_safe_truncated';
+            }
+            
+            // 🔥 最终安全检查 - 确保整个响应结构也不会过大
+            const finalCheckJson = JSON.stringify(responseData);
+            const finalTokens = finalCheckJson.length * 0.25;
+            console.log(`[MCP-FinalCheck] 最终响应大小: ${finalCheckJson.length}字符, ~${Math.round(finalTokens)} tokens`);
+            
+            if (finalTokens > 20000) {
+              console.log(`[MCP-FinalCheck] 最终响应仍然过大，进行二次截断`);
+              const currentContent = responseData.fileContent.content;
+              const emergencyLimit = Math.max(5000, 15000 - (finalCheckJson.length - currentContent.length));
+              
+              responseData.fileContent.content = currentContent.slice(0, emergencyLimit);
+              responseData.fileContent.emergencyTruncation = true;
+              responseData.status = 'emergency_truncated';
             }
 
             return {
@@ -1330,39 +1423,65 @@ async function startServer() {
                 throw new Error(`文件不存在: ${relativePath}`);
               }
               
-              const basicContent = fs.readFileSync(fullFilePath, 'utf8');
+              let basicContent = fs.readFileSync(fullFilePath, 'utf8');
               const fileName = relativePath.split('/').pop();
+              const originalLength = basicContent.length;
+              
+              // 🔥 修复：Fallback模式也需要MCP token限制检查
+              let fallbackData = {
+                currentStep: 3,
+                stepName: 'file-documentation',
+                status: "content_ready_fallback",
+                fileContent: {
+                  taskId: taskId,
+                  relativePath: relativePath,
+                  fileName: fileName,
+                  content: basicContent,
+                  language: fileName.includes('.') ? fileName.split('.').pop() : '',
+                  size: fs.statSync(fullFilePath).size,
+                  lines: basicContent.split('\n').length,
+                  processing: {
+                    fallbackMode: true,
+                    reason: "智能处理失败，使用基本读取",
+                    originalError: error.message
+                  }
+                },
+                aiInstructions: {
+                  task: "为这个文件生成详细的技术文档（基本模式）",
+                  format: "Markdown格式",
+                  outputFile: `mg_kiro/files/${fileName}.md`
+                },
+                success: true,
+                message: `Step3: 文件 ${relativePath} 基本处理完成（智能处理失败后的备选方案）`,
+                warning: `智能处理失败: ${error.message}，已降级到基本处理模式`
+              };
+
+              // 检查fallback模式的token限制
+              const fallbackJson = JSON.stringify(fallbackData, null, 2);
+              const fallbackTokens = fallbackJson.length * 0.25;
+              
+              if (fallbackTokens > 22000) {
+                console.log(`[MCP-Fix-Fallback] 基本处理响应过大(${Math.round(fallbackTokens)} tokens)，进行内容截断`);
+                
+                const maxContentLength = Math.max(8000, 15000 - (fallbackJson.length - basicContent.length) * 0.25);
+                const truncatedContent = basicContent.slice(0, maxContentLength);
+                
+                fallbackData.fileContent.content = truncatedContent;
+                fallbackData.fileContent.contentTruncated = {
+                  originalLength: originalLength,
+                  truncatedLength: truncatedContent.length,
+                  compressionRatio: Math.round((truncatedContent.length / originalLength) * 100) + '%',
+                  reason: 'MCP token限制，基本模式内容已截断'
+                };
+                
+                fallbackData.status = "content_ready_fallback_truncated";
+                fallbackData.message = fallbackData.message + '（内容已截断避免MCP限制）';
+              }
               
               return {
                 content: [{
                   type: "text",
-                  text: JSON.stringify({
-                    currentStep: 3,
-                    stepName: 'file-documentation',
-                    status: "content_ready_fallback",
-                    fileContent: {
-                      taskId: taskId,
-                      relativePath: relativePath,
-                      fileName: fileName,
-                      content: basicContent,
-                      language: fileName.includes('.') ? fileName.split('.').pop() : '',
-                      size: fs.statSync(fullFilePath).size,
-                      lines: basicContent.split('\n').length,
-                      processing: {
-                        fallbackMode: true,
-                        reason: "智能处理失败，使用基本读取",
-                        originalError: error.message
-                      }
-                    },
-                    aiInstructions: {
-                      task: "为这个文件生成详细的技术文档（基本模式）",
-                      format: "Markdown格式",
-                      outputFile: `mg_kiro/files/${fileName}.md`
-                    },
-                    success: true,
-                    message: `Step3: 文件 ${relativePath} 基本处理完成（智能处理失败后的备选方案）`,
-                    warning: `智能处理失败: ${error.message}，已降级到基本处理模式`
-                  }, null, 2)
+                  text: JSON.stringify(fallbackData, null, 2)
                 }]
               };
               
@@ -1450,7 +1569,33 @@ async function startServer() {
             return {
               content: [{
                 type: "text",
-                text: JSON.stringify({ error: true, message: "需要先通过step3工具获取任务内容", tool: name }, null, 2)
+                text: JSON.stringify({ 
+                  error: true,
+                  message: "🚫 工作流顺序错误：尝试跳过必需步骤",
+                  tool: name,
+                  details: {
+                    current_state: `系统当前状态: step${initState.currentStep}`,
+                    attempted_action: `调用 ${name}`,
+                    why_failed: "此工具要求系统必须先进入step3状态",
+                    
+                    required_action: {
+                      step: "1️⃣ 首先调用",
+                      tool: "init_step3_get_next_task", 
+                      reason: "启动文件处理流程，系统进入step3状态",
+                      expected_result: "获得第一个任务ID(如file_1_1)",
+                      params_needed: { projectPath: projectPath }
+                    },
+                    
+                    correct_workflow: [
+                      "1️⃣ init_step3_get_next_task  (获取任务，进入step3) ← 🎯 你应该先调用这个",
+                      "2️⃣ init_step3_get_file_content (处理文件内容)", 
+                      "3️⃣ init_step3_complete_task   (完成任务) ← 你想调用的工具"
+                    ],
+                    
+                    ai_hint: "❌ 不要直接调用complete_task！必须按1→2→3顺序执行。AI请按工作流执行！",
+                    fix_instruction: "请立即调用 init_step3_get_next_task 工具开始正确的工作流程"
+                  }
+                }, null, 2)
               }]
             };
           }
@@ -1515,6 +1660,31 @@ async function startServer() {
                       total: 6,
                       percentage: Math.round(((completionResult?.remainingTasks || 0) > 0 ? 3 : 4)/6 * 100)
                     }
+                  },
+                  
+                  // 🎯 AI状态可视化 - 任务完成后的状态指导
+                  workflow_status: {
+                    current_step: 3,
+                    step_name: "文件处理循环", 
+                    progress: `任务${taskId}已完成 (${initState.documentCount}个文件已处理)`,
+                    task_completed: true,
+                    remaining_tasks: completionResult?.remainingTasks || 0,
+                    
+                    // 根据剩余任务数量决定下一步
+                    allowed_next_tools: (completionResult?.remainingTasks || 0) > 0 ? 
+                      ["init_step3_get_next_task"] : 
+                      ["init_step4_module_integration"],
+                    forbidden_tools: (completionResult?.remainingTasks || 0) > 0 ? 
+                      ["init_step4_module_integration", "init_step3_get_file_content", "init_step3_complete_task"] :
+                      ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_complete_task"],
+                    
+                    // 🧠 AI认知提示
+                    ai_context: (completionResult?.remainingTasks || 0) > 0 ? 
+                      `✅ 任务${taskId}已完成，还有${completionResult?.remainingTasks}个文件待处理，需要继续循环` :
+                      "✅ 所有文件处理完成，可以进入模块整合阶段",
+                    ai_instruction: (completionResult?.remainingTasks || 0) > 0 ? 
+                      "🎯 下一步：调用 init_step3_get_next_task 处理下一个文件" :
+                      "🎯 下一步：调用 init_step4_module_integration 开始模块整合"
                   },
                   
                   success: true,
