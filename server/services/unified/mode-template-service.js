@@ -62,10 +62,16 @@ class ModeTemplateService {
         this.modeDefinitions = {
             init: {
                 name: 'Init模式',
-                description: '项目初始化和文档生成',
-                steps: ['project-analysis', 'task-creation', 'file-documentation', 'module-integration', 'overview-generation', 'connection-analysis'],
+                description: '项目初始化和文档生成 - 6步完整流程',
+                steps: ['project-analysis', 'task-creation', 'file-documentation', 'module-integration', 'relations-analysis', 'architecture-generation'],
                 templatePrefix: 'init',
-                priority: 100
+                priority: 100,
+                multiDocumentSteps: {
+                    'file-documentation': ['file-analysis-template.md'],
+                    'module-integration': ['template.md', 'files-list-template.md', 'overview-template.md'], 
+                    'relations-analysis': ['function-calls-template.md', 'dependencies-template.md', 'data-flows-template.md', 'overview-template.md', 'relations-template.md'],
+                    'architecture-generation': ['template.md']
+                }
             },
             create: {
                 name: 'Create模式',
@@ -353,13 +359,21 @@ class ModeTemplateService {
     }
 
     /**
-     * 获取模式+步骤的模板
+     * 获取模式+步骤的模板（支持多文档）
      * @private
      */
     async _getModeStepTemplate(request) {
         const { mode, step } = request;
         
-        // 模式步骤路径
+        // 检查是否为多文档步骤
+        const modeDefinition = this.modeDefinitions[mode];
+        const isMultiDocStep = modeDefinition?.multiDocumentSteps?.[step];
+        
+        if (isMultiDocStep) {
+            return await this._getMultiDocumentTemplate(request, isMultiDocStep);
+        }
+        
+        // 单文档步骤处理（原有逻辑）
         const modeStepPath = path.join(
             this.paths.modes,
             mode,
@@ -415,6 +429,67 @@ class ModeTemplateService {
 
         // 回退到仅模式
         return await this._getModeTemplate(request);
+    }
+
+    /**
+     * 获取多文档模板
+     * @private
+     */
+    async _getMultiDocumentTemplate(request, templateFiles) {
+        const { mode, step } = request;
+        const stepDir = path.join(this.paths.modes, mode, step);
+        
+        if (!fs.existsSync(stepDir)) {
+            throw new Error(`多文档步骤目录不存在: ${stepDir}`);
+        }
+        
+        const documents = [];
+        const errors = [];
+        
+        // 读取所有指定的模板文件
+        for (const templateFile of templateFiles) {
+            const templatePath = path.join(stepDir, templateFile);
+            
+            try {
+                if (fs.existsSync(templatePath)) {
+                    const content = await this._readTemplateFile(templatePath);
+                    const processedContent = this._processVariables(content, request.variables);
+                    
+                    documents.push({
+                        filename: templateFile,
+                        name: templateFile.replace(/[-_]template\.md$/, '').replace(/\.md$/, ''),
+                        content: processedContent,
+                        path: templatePath,
+                        size: content.length
+                    });
+                } else {
+                    errors.push(`模板文件不存在: ${templateFile}`);
+                }
+            } catch (error) {
+                errors.push(`读取模板文件失败 ${templateFile}: ${error.message}`);
+            }
+        }
+        
+        if (documents.length === 0) {
+            throw new Error(`无法读取任何模板文件: ${errors.join('; ')}`);
+        }
+        
+        return {
+            success: true,
+            type: 'multi-document',
+            documents: documents,
+            documentCount: documents.length,
+            metadata: {
+                mode,
+                step,
+                type: 'multi-document',
+                source: 'mode-step-multi',
+                stepDirectory: stepDir,
+                totalTemplates: templateFiles.length,
+                successfulTemplates: documents.length,
+                errors: errors.length > 0 ? errors : undefined
+            }
+        };
     }
 
     /**
@@ -712,7 +787,7 @@ class ModeTemplateService {
      */
 
     /**
-     * 获取Init模式模板
+     * 获取Init模式模板（支持多文档）
      */
     async getInitTemplate(step, language = 'general', variables = {}) {
         return await this.getTemplateByMode({
@@ -721,6 +796,82 @@ class ModeTemplateService {
             language,
             variables
         });
+    }
+
+    /**
+     * 获取特定Init步骤的所有文档模板
+     */
+    async getInitStepDocuments(step, language = 'general', variables = {}) {
+        const result = await this.getTemplateByMode({
+            mode: 'init',
+            step,
+            language,
+            variables
+        });
+        
+        if (result.success && result.type === 'multi-document') {
+            return {
+                success: true,
+                step: step,
+                documents: result.documents,
+                metadata: result.metadata
+            };
+        }
+        
+        // 对于单文档步骤，包装为文档数组
+        if (result.success) {
+            return {
+                success: true,
+                step: step,
+                documents: [{
+                    filename: 'template.md',
+                    name: step,
+                    content: result.content,
+                    path: result.metadata?.path,
+                    size: result.content?.length || 0
+                }],
+                metadata: result.metadata
+            };
+        }
+        
+        return result;
+    }
+
+    /**
+     * 获取Init工作流的所有步骤文档
+     */
+    async getInitWorkflowDocuments(language = 'general', variables = {}) {
+        const initDefinition = this.modeDefinitions.init;
+        const workflowDocuments = {};
+        const errors = [];
+        
+        for (const step of initDefinition.steps) {
+            try {
+                const stepResult = await this.getInitStepDocuments(step, language, variables);
+                if (stepResult.success) {
+                    workflowDocuments[step] = stepResult;
+                } else {
+                    errors.push(`步骤 ${step}: ${stepResult.error}`);
+                }
+            } catch (error) {
+                errors.push(`步骤 ${step}: ${error.message}`);
+            }
+        }
+        
+        const totalDocuments = Object.values(workflowDocuments)
+            .reduce((total, stepData) => total + (stepData.documents?.length || 0), 0);
+        
+        return {
+            success: Object.keys(workflowDocuments).length > 0,
+            workflow: 'init',
+            steps: workflowDocuments,
+            summary: {
+                totalSteps: initDefinition.steps.length,
+                successfulSteps: Object.keys(workflowDocuments).length,
+                totalDocuments: totalDocuments,
+                errors: errors.length > 0 ? errors : undefined
+            }
+        };
     }
 
     /**
@@ -815,7 +966,10 @@ class ModeTemplateService {
             capabilities: {
                 modes: Object.keys(this.modeDefinitions),
                 languages: this.supportedLanguages,
-                totalSteps: Object.values(this.modeDefinitions).reduce((sum, def) => sum + def.steps.length, 0)
+                totalSteps: Object.values(this.modeDefinitions).reduce((sum, def) => sum + def.steps.length, 0),
+                multiDocumentSupport: true,
+                initWorkflowSteps: this.modeDefinitions.init.steps,
+                multiDocumentSteps: Object.keys(this.modeDefinitions.init.multiDocumentSteps || {})
             },
 
             // 缓存状态

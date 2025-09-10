@@ -1,152 +1,142 @@
-# Init Step4: 模块整合指导模板
+# {{moduleName}} 模块整合文档
 
-## 🎯 整合目标
-基于Step3生成的{{document_count}}个文件文档，进行模块化分析和整合，生成模块级别的架构文档。
+## 📦 模块概述
 
-## 📂 数据源分析
+**模块名称**: {{moduleName}}  
+**模块类型**: {{moduleType}}  
+**文件数量**: {{fileCount}}  
+**代码行数**: {{totalLines}}  
+**主要语言**: {{primaryLanguage}}  
 
-### 已生成文档位置
-- **文档目录**: {{docs_directory}}/mg_kiro/
-- **文档数量**: {{document_count}}个
-- **涵盖文件类型**: {{covered_file_types}}
-- **主要编程语言**: {{primary_language}}
+## 🎯 模块职责
 
-### 项目特征回顾
-- **架构类型**: {{architecture_type}}
-- **复杂度等级**: {{complexity_level}}
-- **核心模块数**: {{estimated_modules}}
+### 核心功能
+{{coreFunction}}
 
-## 🏗️ 模块识别与分类
+### 业务价值
+{{businessValue}}
 
-### 1. 按功能模块分组
-请将已分析的文件按以下维度进行模块化分组：
+### 在系统中的角色
+{{systemRole}}
 
-#### 核心业务模块
-- **用户管理模块**: 用户相关的文件和功能
-- **数据处理模块**: 数据操作和业务逻辑文件  
-- **API服务模块**: 路由、控制器、接口文件
-- **工具库模块**: 通用工具和辅助函数
-
-#### 基础设施模块
-- **配置管理模块**: 配置文件和环境设置
-- **数据库模块**: 数据库连接、模型、迁移
-- **认证授权模块**: 安全相关功能
-- **日志监控模块**: 日志记录和监控功能
-
-### 2. 模块间关系分析
-识别和分析以下关系类型：
-- **依赖关系**: A模块依赖B模块的功能
-- **调用关系**: A模块调用B模块的接口
-- **数据流关系**: A模块向B模块传递数据
-- **事件关系**: A模块触发B模块的事件响应
-
-## 📋 整合文档生成要求
-
-### 1. 模块总览文档 (modules-overview.md)
-```markdown
-# 项目模块总览
-
-## 模块架构图
-[绘制或描述模块之间的关系]
-
-## 核心模块列表
-| 模块名称 | 主要职责 | 关键文件 | 依赖模块 |
-|---------|---------|---------|---------|
-| 用户管理 | 用户CRUD | user.js, auth.js | 数据库模块 |
-
-## 模块统计
-- 总模块数: {{total_modules}}
-- 核心模块: {{core_modules}}  
-- 支持模块: {{support_modules}}
-```
-
-### 2. 单个模块详细文档 (module-{name}.md)
-为每个识别的模块生成详细文档：
-```markdown
-# {{module_name}}模块文档
-
-## 模块概述
-- **主要职责**: {{module_responsibility}}
-- **模块类型**: {{module_type}}
-- **复杂度**: {{module_complexity}}
-
-## 包含文件
-{{module_files_list}}
-
-## 对外接口
-{{module_interfaces}}
-
-## 依赖关系
-{{module_dependencies}}
-
-## 关键流程
-{{module_key_processes}}
-```
-
-### 3. 模块索引文档 (modules-index.md)
-```markdown  
-# 模块索引与导航
-
-## 快速导航
-- [核心业务模块](#core-modules)
-- [基础设施模块](#infrastructure-modules)  
-- [工具库模块](#utility-modules)
-
-## 模块地图
-{{module_navigation_map}}
-```
-
-## 💡 整合分析指导
-
-### 1. 模块划分原则
-- **单一职责**: 每个模块有明确的单一职责
-- **高内聚**: 模块内部功能紧密相关
-- **低耦合**: 模块间依赖关系简单清晰
-- **可重用**: 模块设计便于复用和扩展
-
-### 2. 关系分析重点
-- **循环依赖检测**: 识别并标记可能的循环依赖
-- **过度耦合警告**: 标记耦合度过高的模块对
-- **孤立模块识别**: 找出缺乏连接的孤立模块
-- **关键路径分析**: 识别系统的关键依赖路径
-
-### 3. 文档质量要求
-- **结构清晰**: 使用标准化的markdown格式
-- **信息完整**: 包含所有必要的模块信息
-- **关系明确**: 清楚展示模块间的各种关系
-- **易于维护**: 支持后续更新和扩展
-
-## 🎯 预期成果
-
-### 整合后的文档体系
-1. **modules-overview.md** - 项目模块总览
-2. **module-{name}.md** - 各模块详细文档  
-3. **modules-index.md** - 模块索引导航
-4. **module-relationships.md** - 模块关系图
-
-### 质量验证清单
-- [ ] 所有重要文件都被归类到对应模块
-- [ ] 模块职责划分清晰无重叠
-- [ ] 模块间依赖关系准确标注
-- [ ] 文档格式统一规范
-- [ ] 导航链接正确有效
-
-## 📞 完成后操作
-
-完成模块整合后，请调用以下接口标记任务完成：
+## 📂 模块文件结构
 
 ```
-POST /init/step3-complete-task
-{
-  "projectPath": "{{project_path}}",
-  "step": "module-integration", 
-  "taskId": "module-integration-task",
-  "notes": "已完成{{total_modules}}个模块的整合文档"
-}
+{{moduleStructure}}
 ```
+
+## 🔧 模块组成
+
+### 入口文件
+{{entryFiles}}
+
+### 核心文件
+{{coreFiles}}
+
+### 工具文件
+{{utilityFiles}}
+
+### 配置文件
+{{configFiles}}
+
+## 🔗 模块接口
+
+### 对外提供的接口
+{{publicInterfaces}}
+
+### 对外提供的服务
+{{publicServices}}
+
+### 事件和回调
+{{eventsAndCallbacks}}
+
+## 🏗️ 内部架构
+
+### 数据流向
+```mermaid
+{{dataFlowDiagram}}
+```
+
+### 组件关系
+{{componentRelations}}
+
+### 核心算法
+{{coreAlgorithms}}
+
+## 📊 模块指标
+
+| 指标 | 数值 | 说明 |
+|------|------|------|
+| 文件数量 | {{fileCount}} | 模块包含的文件总数 |
+| 代码行数 | {{totalLines}} | 有效代码行数 |
+| 函数数量 | {{functionCount}} | 函数/方法总数 |
+| 类数量 | {{classCount}} | 类/接口数量 |
+| 复杂度 | {{complexity}} | 平均圈复杂度 |
+| 测试覆盖率 | {{testCoverage}} | 测试覆盖百分比 |
+
+## 🔍 依赖分析
+
+### 内部依赖
+{{internalDependencies}}
+
+### 外部依赖
+{{externalDependencies}}
+
+### 被其他模块依赖
+{{dependedByModules}}
+
+## 🎨 设计模式
+
+{{designPatterns}}
+
+## 📈 扩展性分析
+
+### 扩展点
+{{extensionPoints}}
+
+### 扩展建议
+{{extensibilityRecommendations}}
+
+## ⚡ 性能考量
+
+### 性能瓶颈
+{{performanceBottlenecks}}
+
+### 优化建议
+{{performanceOptimizations}}
+
+## 🧪 测试策略
+
+### 单元测试
+{{unitTests}}
+
+### 集成测试
+{{integrationTests}}
+
+### 测试建议
+{{testingRecommendations}}
+
+## ⚠️ 风险评估
+
+### 潜在风险
+{{potentialRisks}}
+
+### 缓解措施
+{{mitigationStrategies}}
+
+## 🔧 维护指南
+
+### 常见问题
+{{commonIssues}}
+
+### 调试技巧
+{{debuggingTips}}
+
+### 更新策略
+{{updateStrategy}}
 
 ---
-*模板版本*: v4.0  
-*适用模式*: Init  
-*步骤*: Step4 - 模块整合  
-*生成时间*: {{timestamp}}
+
+**生成时间**: {{generatedAt}}  
+**分析工具**: mg_kiro v5.0.0  
+**模块版本**: {{moduleVersion}}

@@ -1,18 +1,18 @@
 {
-  "version": "1.0.0",
+  "version": "5.0.0",
   "workflows": {
     "init": {
       "name": "项目初始化工作流",
-      "description": "2步精简化流程，快速生成完整的项目文档体系",
+      "description": "重新设计的6步完整流程，深度生成项目文档体系",
       "type": "sequential",
-      "total_steps": 2,
+      "total_steps": 6,
       "steps": [
         {
-          "id": "project_overview",
+          "id": "project_analysis",
           "step": 1,
-          "name": "项目概览生成",
-          "tool": "generate_project_overview",
-          "description": "分析项目结构、识别编程语言、提取依赖关系、读取关键文件",
+          "name": "项目分析",
+          "tool": "init_step1_project_analysis",
+          "description": "深度分析项目结构、语言特征、依赖关系，生成基础数据包",
           "required": true,
           "prerequisites": [],
           "params": {
@@ -43,69 +43,48 @@
           "expected_output": {
             "type": "object",
             "properties": [
-              "language",
-              "framework",
-              "dependencies",
-              "structure",
-              "readme_content",
-              "key_files"
+              "project_overview",
+              "language_profile",
+              "dependency_analysis",
+              "directory_structure",
+              "key_files_content"
             ]
           },
           "success_indicators": [
             "项目语言被成功识别",
             "目录结构已生成",
-            "依赖关系已提取"
+            "依赖关系已提取",
+            "基础数据包已创建"
           ],
-          "error_handling": {
-            "path_not_found": "请确保提供的项目路径存在且可访问",
-            "permission_denied": "请确保有读取项目文件的权限",
-            "large_project": "对于大型项目，考虑减小maxDepth参数"
-          },
           "next_steps": {
-            "on_success": "progressive_documentation",
+            "on_success": "init_step2_create_todos",
             "on_error": "workflow_guide"
           }
         },
         {
-          "id": "progressive_documentation",
+          "id": "create_todos",
           "step": 2,
-          "name": "渐进式文档生成",
-          "tool": "progressive_documentation",
-          "description": "基于项目概览，逐步生成完整的文档体系",
+          "name": "创建AI任务列表",
+          "tool": "init_step2_create_todos",
+          "description": "基于项目分析结果，创建详细的AI处理任务列表和策略",
           "required": true,
-          "prerequisites": ["project_overview"],
+          "prerequisites": ["project_analysis"],
           "params": {
+            "required": {
+              "projectPath": {
+                "type": "string",
+                "description": "项目根目录的绝对路径"
+              }
+            },
             "optional": {
               "batchSize": {
-                "type": "string",
-                "description": "每批处理大小",
-                "default": "80KB",
-                "recommendations": {
-                  "small_project": "40KB",
-                  "medium_project": "80KB",
-                  "large_project": "120KB"
-                }
+                "type": "number",
+                "description": "批次大小",
+                "default": null
               },
-              "style": {
-                "type": "string",
-                "description": "文档风格",
-                "enum": ["comprehensive", "concise", "technical"],
-                "default": "comprehensive",
-                "recommendations": {
-                  "JavaScript": "technical",
-                  "Python": "comprehensive",
-                  "Java": "technical",
-                  "Go": "concise"
-                }
-              },
-              "focusAreas": {
-                "type": "array",
-                "description": "重点关注领域",
-                "default": []
-              },
-              "includeTests": {
+              "includeAnalysisTasks": {
                 "type": "boolean",
-                "description": "是否包含测试文件分析",
+                "description": "是否包含分析任务",
                 "default": true
               }
             }
@@ -113,80 +92,184 @@
           "expected_output": {
             "type": "object",
             "properties": [
-              "ai_instructions",
-              "documentation_strategy",
-              "batch_plan",
-              "total_batches",
+              "todo_creation_results",
+              "file_processing_plan",
+              "batch_strategy",
               "estimated_time"
             ]
           },
-          "execution_type": "ai_collaboration",
-          "collaboration_instructions": {
-            "type": "iterative",
-            "description": "AI需要按照生成的指令，逐批处理文档生成任务",
-            "monitoring": "使用 get_init_status 工具监控进度"
+          "next_steps": {
+            "on_success": "init_step3_get_next_task",
+            "on_error": "workflow_guide"
+          }
+        },
+        {
+          "id": "file_processing",
+          "step": 3,
+          "name": "文件文档生成",
+          "tools": ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_complete_task"],
+          "description": "循环处理所有文件，AI生成每个文件的详细markdown文档",
+          "required": true,
+          "prerequisites": ["create_todos"],
+          "execution_type": "loop",
+          "loop_description": "重复执行获取任务→获取内容→AI生成文档→完成任务，直到所有文件处理完成",
+          "expected_output": {
+            "type": "directory",
+            "path": "mg_kiro/files/",
+            "description": "包含所有文件的详细分析文档"
           },
           "completion_criteria": [
-            "所有批次处理完成",
-            "文档体系构建完整",
-            "无错误发生"
+            "所有文件任务已完成",
+            "文件文档已生成到mg_kiro/files/目录",
+            "无处理错误"
           ],
-          "outputs": [
-            "项目整体文档",
-            "模块文档",
-            "架构设计文档",
-            "API文档",
-            "使用指南"
+          "next_steps": {
+            "on_success": "init_step4_module_integration",
+            "on_error": "workflow_guide"
+          }
+        },
+        {
+          "id": "module_integration",
+          "step": 4,
+          "name": "模块整合",
+          "tool": "init_step4_module_integration",
+          "description": "将模块内的多个文件整合在一起，添加模块相关功能，生成模块总览",
+          "required": true,
+          "prerequisites": ["file_processing"],
+          "params": {
+            "required": {
+              "projectPath": {
+                "type": "string",
+                "description": "项目根目录的绝对路径"
+              }
+            }
+          },
+          "expected_output": {
+            "type": "directory",
+            "path": "mg_kiro/modules/",
+            "description": "模块整合文档和模块总览"
+          },
+          "ai_collaboration": {
+            "type": "guided",
+            "description": "AI按照提供的指导完成模块整合分析"
+          },
+          "next_steps": {
+            "on_success": "init_step5_module_relations",
+            "on_error": "workflow_guide"
+          }
+        },
+        {
+          "id": "module_relations",
+          "step": 5,
+          "name": "模块关联分析",
+          "tool": "init_step5_module_relations",
+          "description": "详细阐述每个文件之间的关联，分析函数调用关系，生成依赖关系图",
+          "required": true,
+          "prerequisites": ["module_integration"],
+          "params": {
+            "required": {
+              "projectPath": {
+                "type": "string",
+                "description": "项目根目录的绝对路径"
+              }
+            }
+          },
+          "expected_output": {
+            "type": "directory",
+            "path": "mg_kiro/relations/",
+            "description": "函数调用关系、模块依赖分析、数据流向图"
+          },
+          "analysis_dimensions": [
+            "函数调用关系",
+            "数据依赖关系",
+            "模块间依赖",
+            "接口和服务调用"
+          ],
+          "ai_collaboration": {
+            "type": "guided",
+            "description": "AI按照提供的指导完成关联关系分析"
+          },
+          "next_steps": {
+            "on_success": "init_step6_architecture_docs",
+            "on_error": "workflow_guide"
+          }
+        },
+        {
+          "id": "architecture_docs",
+          "step": 6,
+          "name": "架构文档生成",
+          "tool": "init_step6_architecture_docs",
+          "description": "生成README、架构图、项目总览等最终文档（最终步骤）",
+          "required": true,
+          "prerequisites": ["module_relations"],
+          "params": {
+            "required": {
+              "projectPath": {
+                "type": "string",
+                "description": "项目根目录的绝对路径"
+              }
+            }
+          },
+          "expected_output": {
+            "type": "files",
+            "files": [
+              "mg_kiro/README.md",
+              "mg_kiro/architecture.md",
+              "mg_kiro/development.md",
+              "mg_kiro/docs-index.md"
+            ],
+            "description": "完整的项目架构文档和总览文件"
+          },
+          "final_step": true,
+          "ai_collaboration": {
+            "type": "guided",
+            "description": "AI按照提供的指导生成最终架构文档"
+          },
+          "completion_indicators": [
+            "README.md已生成",
+            "architecture.md已生成",
+            "development.md已生成",
+            "docs-index.md已生成",
+            "整个6步流程完成"
           ]
         }
       ],
       "state_transitions": {
         "not_started": {
-          "next": "project_overview",
-          "action": "调用 generate_project_overview 工具"
+          "next": "project_analysis",
+          "action": "调用 init_step1_project_analysis 工具"
         },
-        "project_overview_completed": {
-          "next": "progressive_documentation",
-          "action": "调用 progressive_documentation 工具"
+        "step1_completed": {
+          "next": "create_todos",
+          "action": "调用 init_step2_create_todos 工具"
         },
-        "documentation_in_progress": {
-          "next": "monitor",
-          "action": "持续执行AI协作指令，使用 get_init_status 监控"
+        "step2_completed": {
+          "next": "file_processing",
+          "action": "开始循环文件处理，调用 init_step3_get_next_task"
+        },
+        "step3_completed": {
+          "next": "module_integration",
+          "action": "调用 init_step4_module_integration 工具"
+        },
+        "step4_completed": {
+          "next": "module_relations",
+          "action": "调用 init_step5_module_relations 工具"
+        },
+        "step5_completed": {
+          "next": "architecture_docs",
+          "action": "调用 init_step6_architecture_docs 工具"
         },
         "completed": {
           "next": null,
-          "action": "工作流完成，查看生成的文档"
+          "action": "6步工作流完成，查看生成的完整文档体系"
         }
       },
       "tips": [
         "使用绝对路径作为 projectPath 参数",
-        "对于大型项目，适当调整 batchSize 以避免上下文溢出",
-        "根据项目语言选择合适的文档风格",
-        "定期使用 get_init_status 检查进度"
-      ]
-    },
-    "documentation": {
-      "name": "独立文档生成工作流",
-      "description": "直接启动文档生成，适用于已有项目概览的情况",
-      "type": "single",
-      "steps": [
-        {
-          "id": "documentation_only",
-          "tool": "progressive_documentation",
-          "description": "启动文档生成流程"
-        }
-      ]
-    },
-    "analysis": {
-      "name": "项目分析工作流",
-      "description": "仅进行项目分析，不生成文档",
-      "type": "single",
-      "steps": [
-        {
-          "id": "analysis_only",
-          "tool": "generate_project_overview",
-          "description": "分析项目结构和特征"
-        }
+        "每个步骤都有详细的AI协作指导",
+        "使用 get_init_status 随时检查进度",
+        "Step3的文件处理循环是AI协作的重点",
+        "最终会生成完整的文档体系在mg_kiro/目录下"
       ]
     },
     "status": {
@@ -210,16 +293,52 @@
     }
   },
   "tool_dependencies": {
-    "generate_project_overview": {
+    "init_step1_project_analysis": {
       "prerequisites": [],
-      "leads_to": ["progressive_documentation"],
-      "provides": ["project_context", "language_info", "dependency_info"]
+      "leads_to": ["init_step2_create_todos"],
+      "provides": ["project_context", "language_info", "dependency_info", "base_data_package"]
     },
-    "progressive_documentation": {
-      "prerequisites": ["generate_project_overview"],
-      "leads_to": [],
+    "init_step2_create_todos": {
+      "prerequisites": ["init_step1_project_analysis"],
+      "leads_to": ["init_step3_get_next_task"],
       "requires": ["project_context"],
-      "provides": ["documentation", "ai_instructions"]
+      "provides": ["task_list", "processing_strategy"]
+    },
+    "init_step3_get_next_task": {
+      "prerequisites": ["init_step2_create_todos"],
+      "leads_to": ["init_step3_get_file_content"],
+      "requires": ["task_list"],
+      "provides": ["next_task"]
+    },
+    "init_step3_get_file_content": {
+      "prerequisites": ["init_step3_get_next_task"],
+      "leads_to": ["init_step3_complete_task"],
+      "requires": ["next_task"],
+      "provides": ["file_content", "ai_guidance"]
+    },
+    "init_step3_complete_task": {
+      "prerequisites": ["init_step3_get_file_content"],
+      "leads_to": ["init_step3_get_next_task", "init_step4_module_integration"],
+      "requires": ["file_content"],
+      "provides": ["file_documentation"]
+    },
+    "init_step4_module_integration": {
+      "prerequisites": ["init_step3_complete_task"],
+      "leads_to": ["init_step5_module_relations"],
+      "requires": ["file_documentation"],
+      "provides": ["module_integration", "module_overview"]
+    },
+    "init_step5_module_relations": {
+      "prerequisites": ["init_step4_module_integration"],
+      "leads_to": ["init_step6_architecture_docs"],
+      "requires": ["module_integration"],
+      "provides": ["relation_analysis", "dependency_graphs"]
+    },
+    "init_step6_architecture_docs": {
+      "prerequisites": ["init_step5_module_relations"],
+      "leads_to": [],
+      "requires": ["relation_analysis"],
+      "provides": ["architecture_docs", "final_documentation"]
     },
     "get_init_status": {
       "prerequisites": [],
@@ -228,7 +347,7 @@
     },
     "reset_init": {
       "prerequisites": [],
-      "leads_to": ["generate_project_overview"],
+      "leads_to": ["init_step1_project_analysis"],
       "clears": ["all_state", "cache"]
     },
     "workflow_guide": {
@@ -241,58 +360,63 @@
     "project_size_detection": {
       "small": {
         "files_count": "<100",
-        "recommended_batch_size": "40KB",
-        "recommended_style": "concise"
+        "recommended_approach": "6步完整流程，重点关注核心模块",
+        "expected_time": "30-60分钟"
       },
       "medium": {
         "files_count": "100-500",
-        "recommended_batch_size": "80KB",
-        "recommended_style": "comprehensive"
+        "recommended_approach": "6步完整流程，详细分析所有层面",
+        "expected_time": "1-3小时"
       },
       "large": {
         "files_count": ">500",
-        "recommended_batch_size": "120KB",
-        "recommended_style": "technical"
+        "recommended_approach": "6步完整流程，分批处理和模块化分析",
+        "expected_time": "3-6小时"
       }
     },
     "language_specific": {
       "JavaScript": {
-        "focus_areas": ["components", "modules", "apis"],
-        "style": "technical",
-        "include_tests": true
+        "module_analysis_focus": ["components", "services", "apis", "utilities"],
+        "relation_analysis_priority": ["import/export chains", "callback patterns", "event handling"],
+        "architecture_emphasis": ["module bundling", "async patterns", "framework architecture"]
       },
       "Python": {
-        "focus_areas": ["classes", "functions", "modules"],
-        "style": "comprehensive",
-        "include_tests": true
+        "module_analysis_focus": ["classes", "functions", "packages", "modules"],
+        "relation_analysis_priority": ["inheritance hierarchies", "dependency injection", "decorator patterns"],
+        "architecture_emphasis": ["package structure", "design patterns", "testing architecture"]
       },
       "Java": {
-        "focus_areas": ["interfaces", "classes", "packages"],
-        "style": "technical",
-        "include_tests": true
+        "module_analysis_focus": ["interfaces", "classes", "packages", "annotations"],
+        "relation_analysis_priority": ["interface implementations", "class hierarchies", "dependency injection"],
+        "architecture_emphasis": ["layered architecture", "design patterns", "enterprise patterns"]
       },
       "Go": {
-        "focus_areas": ["packages", "interfaces", "structs"],
-        "style": "concise",
-        "include_tests": true
+        "module_analysis_focus": ["packages", "interfaces", "structs", "functions"],
+        "relation_analysis_priority": ["interface satisfaction", "package dependencies", "struct composition"],
+        "architecture_emphasis": ["clean architecture", "concurrency patterns", "microservice design"]
       }
     }
   },
   "error_recovery": {
-    "context_overflow": {
-      "detection": "上下文长度超过限制",
-      "action": "减小 batchSize 参数并重试",
-      "recommendation": "使用更小的批次大小，如 40KB"
+    "step_prerequisite_failed": {
+      "detection": "前置步骤未完成或失败",
+      "action": "检查并重新运行前置步骤",
+      "recommendation": "使用 get_init_status 查看详细状态"
     },
-    "incomplete_overview": {
-      "detection": "项目概览信息不完整",
-      "action": "重新运行 generate_project_overview",
-      "recommendation": "检查项目路径和权限"
+    "file_processing_stuck": {
+      "detection": "文件处理循环停滞",
+      "action": "使用 get_init_status 检查当前任务状态",
+      "recommendation": "可能需要重新运行 init_step3_get_next_task"
     },
-    "documentation_stalled": {
-      "detection": "文档生成进度停滞",
-      "action": "使用 get_init_status 检查状态",
-      "recommendation": "可能需要 reset_init 并重新开始"
+    "ai_collaboration_failed": {
+      "detection": "AI协作步骤失败或不完整",
+      "action": "重新运行当前步骤的工具",
+      "recommendation": "确保按照AI指导完成所需的文档生成"
+    },
+    "workflow_corruption": {
+      "detection": "工作流状态损坏",
+      "action": "使用 reset_init 重置状态",
+      "recommendation": "重新开始完整的6步流程"
     }
   }
 }

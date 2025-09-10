@@ -157,14 +157,14 @@ async function startServer() {
       tools: [
         {
           name: "workflow_guide",
-          description: "工作流引导入口：获取完整的工作流程指引，了解如何使用其他工具完成复杂任务。这是使用本MCP服务的起点",
+          description: "工作流引导入口：获取完整的6步工作流程指引，了解如何使用其他工具完成复杂任务。这是使用本MCP服务的起点",
           inputSchema: {
             type: "object",
             properties: {
               workflow: {
                 type: "string",
-                description: "要执行的工作流类型：init(项目初始化) | documentation(文档生成) | analysis(项目分析) | status(状态查询)",
-                enum: ["init", "documentation", "analysis", "status"],
+                description: "要执行的工作流类型：init(项目初始化) | status(状态查询)",
+                enum: ["init", "status"],
                 default: "init"
               },
               currentStep: {
@@ -307,7 +307,7 @@ async function startServer() {
         },
         {
           name: "init_step4_module_integration",
-          description: "Step4: 模块整合提示词 - 基于文件文档进行模块化整合的AI指导",
+          description: "Step4: 模块整合 - 将模块内的多个文件整合在一起，添加模块相关功能，生成模块总览文档",
           inputSchema: {
             type: "object",
             properties: {
@@ -320,8 +320,8 @@ async function startServer() {
           }
         },
         {
-          name: "init_step5_overview_generation",
-          description: "Step5: 总览生成提示词 - 基于模块整合结果生成项目整体概览的AI指导",
+          name: "init_step5_module_relations",
+          description: "Step5: 模块关联分析 - 详细阐述每个文件之间的关联，分析哪个函数被多个模块调用，生成详细的依赖关系图",
           inputSchema: {
             type: "object",
             properties: {
@@ -334,8 +334,8 @@ async function startServer() {
           }
         },
         {
-          name: "init_step6_connect_docs",
-          description: "Step6: 连接文档提示词 - 分析模块连接关系并完成最终架构文档的AI指导（最终步骤）",
+          name: "init_step6_architecture_docs",
+          description: "Step6: 架构文档生成 - 生成README、架构图、项目总览等最终文档（最终步骤）",
           inputSchema: {
             type: "object",
             properties: {
@@ -345,68 +345,6 @@ async function startServer() {
               }
             },
             required: ["projectPath"]
-          }
-        },
-        {
-          name: "generate_project_overview",
-          description: "生成项目概览包：语言分析+依赖分析+目录结构+README+核心文件内容，为AI提供完整项目上下文",
-          inputSchema: {
-            type: "object",
-            properties: {
-              projectPath: {
-                type: "string",
-                description: "要分析的项目根目录路径（绝对路径）"
-              },
-              maxDepth: {
-                type: "number",
-                description: "目录扫描最大深度，默认3层",
-                default: 3
-              },
-              includeFiles: {
-                type: "array",
-                description: "额外要包含的文件模式列表",
-                items: { type: "string" },
-                default: []
-              },
-              maxKeyFileSize: {
-                type: "number",
-                description: "关键文件内容的最大字节数，默认50KB",
-                default: 51200
-              }
-            },
-            required: ["projectPath"]
-          }
-        },
-        {
-          name: "progressive_documentation",
-          description: "启动渐进式文档生成：AI协作流程，从项目概览到完整文档体系（文件文档→模块文档→集成文档→最终架构文档）",
-          inputSchema: {
-            type: "object",
-            properties: {
-              batchSize: {
-                type: "string",
-                description: "每批次处理的数据大小，如'80KB'，默认'80KB'",
-                default: "80KB"
-              },
-              style: {
-                type: "string",
-                description: "文档风格：comprehensive(全面) | concise(简洁) | technical(技术导向)",
-                enum: ["comprehensive", "concise", "technical"],
-                default: "comprehensive"
-              },
-              focusAreas: {
-                type: "array",
-                description: "重点关注的领域列表",
-                items: { type: "string" },
-                default: []
-              },
-              includeTests: {
-                type: "boolean",
-                description: "是否包含测试文件分析，默认true",
-                default: true
-              }
-            },
-            required: []
           }
         },
         {
@@ -1343,7 +1281,7 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step4] 模块整合 - ${projectPath}`);
           
-          // 使用增强的验证逻辑（新增）
+          // 使用增强的验证逻辑
           const validation = validateStepPrerequisites(projectPath, 4);
           if (!validation.valid) {
             return {
@@ -1359,7 +1297,7 @@ async function startServer() {
           initState.currentStep = 4;
           const docsDir = join(resolve(projectPath), 'mg_kiro');
           
-          // 生成模块整合提示词
+          // 生成模块整合AI指导提示词
           const integrationPrompt = `
 ## 模块整合任务 - Step 4
 
@@ -1369,36 +1307,55 @@ async function startServer() {
 - 已生成文档数: ${initState.documentCount || 0}
 
 ### 任务目标
-基于 ${docsDir}/files/ 中的所有文件文档，进行模块化整合分析。
+将模块内的多个文件整合在一起，添加模块相关功能，生成模块总览文档。
 
 ### 具体要求
-1. **模块识别**: 分析文件间的依赖关系，识别逻辑模块
-2. **架构梳理**: 整理模块间的调用关系和数据流
-3. **功能归类**: 将相关功能的文件归类到对应模块
-4. **接口分析**: 识别模块对外提供的接口和服务
+1. **模块识别**: 根据文件功能和依赖关系，将相关文件归类到逻辑模块
+2. **模块整合**: 为每个模块创建整合文档，包含：
+   - 模块职责和目标
+   - 模块内文件列表和作用
+   - 模块对外提供的接口
+   - 模块的核心功能
+3. **模块总览**: 创建所有模块的总览文档
 
 ### 输出要求
-请创建以下文档：
-- \`${docsDir}/modules/module-overview.md\` - 模块总览
-- \`${docsDir}/modules/module-dependencies.md\` - 依赖关系图
-- \`${docsDir}/modules/[module-name].md\` - 各模块详细文档
+请创建以下文档结构：
+- \`${docsDir}/modules/module-overview.md\` - 所有模块的总览
+- \`${docsDir}/modules/[module-name]/README.md\` - 每个模块的详细文档
+- \`${docsDir}/modules/[module-name]/files.md\` - 模块内文件清单和说明
 
-### 分析方法
-1. 读取 \`${docsDir}/files/\` 下的所有文档
-2. 分析import/require/include等依赖关系
-3. 识别相似功能和职责的文件组合
-4. 构建模块调用链和数据流向图
+### 分析步骤
+1. 读取 \`${docsDir}/files/\` 下的所有文件文档
+2. 根据文件路径、功能职责、依赖关系进行模块划分
+3. 为每个模块创建详细的整合文档
+4. 生成模块总览，说明每个模块的作用和重要性
 
-完成后，请调用 \`init_step5_overview_generation\` 继续下一步。
+### 模块划分建议
+- **核心模块**: 主要业务逻辑和核心功能
+- **服务模块**: 工具、服务、辅助功能
+- **配置模块**: 配置文件、环境设置
+- **接口模块**: API、路由、控制器
+- **数据模块**: 数据处理、模型、存储
+- **测试模块**: 测试文件和测试工具
+
+完成后，请调用 \`init_step5_module_relations\` 继续下一步。
           `;
           
-          // 存储Step4结果
+          // 存储Step4结果到临时文件
+          saveStepResult(projectPath, 'step4', {
+            integrationPrompt: integrationPrompt.trim(),
+            completedAt: new Date().toISOString(),
+            docsDirectory: docsDir
+          });
+          
+          // 存储Step4结果到主状态文件
           initState.stepResults.step4 = {
             integrationPrompt: integrationPrompt.trim(),
             completedAt: new Date().toISOString(),
             docsDirectory: docsDir
           };
           initState.stepsCompleted.push('step4');
+          updateProjectState(projectPath, initState);
           
           return {
             content: [
@@ -1424,12 +1381,12 @@ async function startServer() {
                     current_step: "4/6 - 模块整合",
                     status: "ready_for_ai",
                     next_steps: [{
-                      tool: "init_step5_overview_generation",
-                      description: "基于模块整合结果生成项目总览",
+                      tool: "init_step5_module_relations",
+                      description: "分析模块间的关联和依赖关系",
                       suggested_params: {
                         projectPath: resolve(projectPath)
                       },
-                      why: "模块整合指导已提供，AI完成整合后需要生成最终总览"
+                      why: "模块整合完成后，需要分析模块间的关联关系"
                     }],
                     progress: {
                       completed: 4,
@@ -1439,14 +1396,14 @@ async function startServer() {
                   },
                   
                   success: true,
-                  message: "Step4: 模块整合指导已生成，请按照提示完成模块分析"
+                  message: "Step4: 模块整合指导已生成，请按照提示完成模块整合"
                 }, null, 2)
               }
             ]
           };
         }
         
-        case "init_step5_overview_generation": {
+        case "init_step5_module_relations": {
           const { projectPath } = args;
           
           if (!projectPath) {
@@ -1458,9 +1415,9 @@ async function startServer() {
             };
           }
           
-          console.log(`[MCP-Init-Step5] 总览生成 - ${projectPath}`);
+          console.log(`[MCP-Init-Step5] 模块关联分析 - ${projectPath}`);
           
-          // 使用增强的验证逻辑（新增）
+          // 使用增强的验证逻辑
           const validation = validateStepPrerequisites(projectPath, 5);
           if (!validation.valid) {
             return {
@@ -1476,9 +1433,9 @@ async function startServer() {
           initState.currentStep = 5;
           const docsDir = join(resolve(projectPath), 'mg_kiro');
           
-          // 生成总览生成提示词
-          const overviewPrompt = `
-## 项目总览生成任务 - Step 5
+          // 生成模块关联分析提示词
+          const relationsPrompt = `
+## 模块关联分析任务 - Step 5
 
 ### 背景信息
 - 项目路径: ${resolve(projectPath)}
@@ -1486,50 +1443,88 @@ async function startServer() {
 - 处理阶段: 基于完整的文件文档和模块整合结果
 
 ### 任务目标
-整合所有分析结果，生成完整的项目概览文档。
+详细阐述每个文件之间的关联，分析哪个函数被多个模块调用，生成详细的依赖关系图。
 
 ### 输入资源
 1. **文件文档**: \`${docsDir}/files/\` - 所有源码文件的详细分析
-2. **模块文档**: \`${docsDir}/modules/\` - 模块化整合分析结果
-3. **基础信息**: Step1生成的项目概览包
+2. **模块文档**: \`${docsDir}/modules/\` - 模块整合分析结果
+
+### 分析维度
+
+#### 1. 函数调用关系
+- 识别跨模块的函数调用
+- 分析高频被调用的函数
+- 标记核心工具函数和接口
+
+#### 2. 数据依赖关系
+- 分析数据流向和传递链路
+- 识别共享的数据结构和类型
+- 标记关键数据接口
+
+#### 3. 模块间依赖
+- 分析模块之间的导入/导出关系
+- 识别循环依赖和潜在问题
+- 评估模块耦合程度
+
+#### 4. 接口和服务调用
+- 分析内部API调用关系
+- 识别服务层的调用模式
+- 标记关键的服务接口
 
 ### 输出要求
-请创建以下核心文档：
+请创建以下关联分析文档：
 
-#### 1. 项目总览 - \`${docsDir}/README.md\`
-- 项目简介和核心价值
-- 技术架构概要
-- 主要功能模块
-- 快速开始指南
+#### 1. 函数调用关系图 - \`${docsDir}/relations/function-calls.md\`
+- 跨模块函数调用的详细清单
+- 高频被调用函数的分析报告
+- 函数调用链路图和说明
 
-#### 2. 架构文档 - \`${docsDir}/architecture.md\`  
-- 整体架构图
-- 模块职责分工
-- 数据流向分析
-- 关键技术选型
+#### 2. 模块依赖关系图 - \`${docsDir}/relations/module-dependencies.md\`
+- 模块间的完整依赖关系图
+- 依赖强度分析和评级
+- 循环依赖检测和建议
 
-#### 3. 开发文档 - \`${docsDir}/development.md\`
-- 开发环境搭建
-- 代码规范说明
-- 调试和测试方法
-- 常见问题解答
+#### 3. 数据流向分析 - \`${docsDir}/relations/data-flows.md\`
+- 关键数据的流转路径
+- 数据变换和处理节点
+- 数据接口的使用频率
 
-### 生成策略
-1. 综合分析文件级和模块级信息
-2. 提取项目的核心价值和特色
-3. 构建清晰的技术架构视图  
-4. 提供实用的使用和开发指导
+#### 4. 关联总览 - \`${docsDir}/relations/overview.md\`
+- 整个项目的关联关系总结
+- 关键节点和瓶颈分析
+- 架构优化建议
 
-完成后，请调用 \`init_step6_connect_docs\` 进行最终的文档连接。
+### 分析方法
+1. 解析所有文件文档中的导入/导出信息
+2. 识别函数定义和调用关系
+3. 构建完整的调用关系图谱
+4. 分析数据传递和变换过程
+5. 评估模块间的耦合度和依赖强度
+
+### 重点关注
+- **高频调用函数**: 被多个模块调用的核心函数
+- **数据中心节点**: 数据汇聚和分发的关键位置
+- **接口边界**: 模块间的主要交互接口
+- **潜在风险点**: 过度耦合或循环依赖的位置
+
+完成后，请调用 \`init_step6_architecture_docs\` 进行最终的架构文档生成。
           `;
           
-          // 存储Step5结果
+          // 存储Step5结果到临时文件
+          saveStepResult(projectPath, 'step5', {
+            relationsPrompt: relationsPrompt.trim(),
+            completedAt: new Date().toISOString(),
+            docsDirectory: docsDir
+          });
+          
+          // 存储Step5结果到主状态文件
           initState.stepResults.step5 = {
-            overviewPrompt: overviewPrompt.trim(),
+            relationsPrompt: relationsPrompt.trim(),
             completedAt: new Date().toISOString(),
             docsDirectory: docsDir
           };
           initState.stepsCompleted.push('step5');
+          updateProjectState(projectPath, initState);
           
           return {
             content: [
@@ -1537,38 +1532,39 @@ async function startServer() {
                 type: "text",
                 text: JSON.stringify({
                   currentStep: 5,
-                  stepName: 'overview-generation',
+                  stepName: 'module-relations',
                   status: "prompt_ready",
                   
                   // Step5 AI指导提示词
-                  aiInstructions: overviewPrompt.trim(),
+                  aiInstructions: relationsPrompt.trim(),
                   
                   // 资源信息
                   resources: {
                     fileDocsPath: `${docsDir}/files/`,
                     moduleDocsPath: `${docsDir}/modules/`,
-                    outputPath: `${docsDir}/`,
+                    outputPath: `${docsDir}/relations/`,
                     totalFiles: initState.documentCount || 0
                   },
                   
                   // 输出文档规格
                   expectedOutputs: [
-                    `${docsDir}/README.md`,
-                    `${docsDir}/architecture.md`, 
-                    `${docsDir}/development.md`
+                    `${docsDir}/relations/function-calls.md`,
+                    `${docsDir}/relations/module-dependencies.md`, 
+                    `${docsDir}/relations/data-flows.md`,
+                    `${docsDir}/relations/overview.md`
                   ],
                   
                   // 下一步指导
                   workflow: {
-                    current_step: "5/6 - 总览生成",
+                    current_step: "5/6 - 模块关联分析",
                     status: "ready_for_ai",
                     next_steps: [{
-                      tool: "init_step6_connect_docs",
-                      description: "连接所有文档，完成init流程",
+                      tool: "init_step6_architecture_docs",
+                      description: "生成架构文档和项目总览",
                       suggested_params: {
                         projectPath: resolve(projectPath)
                       },
-                      why: "项目总览指导已提供，AI完成后需要进行最终的文档连接"
+                      why: "模块关联分析完成后，需要生成最终的架构文档"
                     }],
                     progress: {
                       completed: 5,
@@ -1578,14 +1574,14 @@ async function startServer() {
                   },
                   
                   success: true,
-                  message: "Step5: 项目总览生成指导已准备，请按照提示完成总览文档"
+                  message: "Step5: 模块关联分析指导已准备，请按照提示完成关联分析"
                 }, null, 2)
               }
             ]
           };
         }
         
-        case "init_step6_connect_docs": {
+        case "init_step6_architecture_docs": {
           const { projectPath } = args;
           
           if (!projectPath) {
@@ -1597,9 +1593,9 @@ async function startServer() {
             };
           }
           
-          console.log(`[MCP-Init-Step6] 连接文档 - ${projectPath}`);
+          console.log(`[MCP-Init-Step6] 架构文档生成 - ${projectPath}`);
           
-          // 使用增强的验证逻辑（新增）
+          // 使用增强的验证逻辑
           const validation = validateStepPrerequisites(projectPath, 6);
           if (!validation.valid) {
             return {
@@ -1615,80 +1611,159 @@ async function startServer() {
           initState.currentStep = 6;
           const docsDir = join(resolve(projectPath), 'mg_kiro');
           
-          // 生成文档连接提示词
-          const connectionPrompt = `
-## 文档连接任务 - Step 6 (最终步骤)
+          // 生成架构文档生成提示词
+          const architecturePrompt = `
+## 架构文档生成任务 - Step 6 (最终步骤)
 
 ### 背景信息
 - 项目路径: ${resolve(projectPath)}
 - 文档目录: ${docsDir}
-- 处理阶段: 所有文档已生成，需要建立连接关系
+- 处理阶段: 基于完整的文件、模块和关联分析结果
 
 ### 任务目标
-建立文档间的导航和引用关系，完成整个文档体系。
+生成README、架构图、项目总览等最终文档，完成整个文档体系。
+
+### 输入资源
+1. **文件文档**: \`${docsDir}/files/\` - 所有源码文件的详细分析
+2. **模块文档**: \`${docsDir}/modules/\` - 模块整合分析结果
+3. **关联文档**: \`${docsDir}/relations/\` - 模块关联和依赖分析
 
 ### 现有文档结构
 \`\`\`
 ${docsDir}/
-├── README.md          # 项目总览 (Step5生成)
-├── architecture.md    # 架构文档 (Step5生成)  
-├── development.md     # 开发文档 (Step5生成)
 ├── files/            # 文件文档目录 (Step3生成)
 │   ├── [filename1].md
 │   ├── [filename2].md
 │   └── ...
-└── modules/          # 模块文档目录 (Step4生成)
-    ├── module-overview.md
+├── modules/          # 模块文档目录 (Step4生成)
+│   ├── module-overview.md
+│   └── [module-name]/
+└── relations/        # 关联文档目录 (Step5生成)
+    ├── function-calls.md
     ├── module-dependencies.md
-    └── [module-name].md
+    ├── data-flows.md
+    └── overview.md
 \`\`\`
-
-### 连接任务
-1. **完善主README**: 在 \`${docsDir}/README.md\` 中添加完整的文档导航
-2. **创建索引**: 创建 \`${docsDir}/docs-index.md\` 作为文档索引
-3. **添加交叉引用**: 在各文档间添加相关链接
-4. **生成导航**: 创建 \`${docsDir}/navigation.md\` 提供快速导航
 
 ### 输出要求
-请完成以下文档连接工作：
+请创建以下最终架构文档：
 
-#### 1. 更新 \`${docsDir}/README.md\`
-在现有内容基础上，添加完整的文档导航部分：
-\`\`\`markdown
+#### 1. 项目README - \`${docsDir}/README.md\`
+```markdown
+# [项目名称]
+
+## 📖 项目概述
+- 项目简介和核心价值
+- 主要功能特性
+- 技术栈概览
+
+## 🏗️ 架构概览  
+- 整体架构图
+- 核心模块说明
+- 技术架构选型
+
+## 🚀 快速开始
+- 环境要求
+- 安装步骤
+- 运行指南
+
 ## 📚 文档导航
+- [架构设计](./architecture.md)
+- [开发指南](./development.md)
+- [模块总览](./modules/module-overview.md)
+- [关联分析](./relations/overview.md)
+- [完整文档索引](./docs-index.md)
+```
 
-### 🏗️ 架构文档
-- [架构概览](./architecture.md) - 技术架构和设计模式
-- [模块总览](./modules/module-overview.md) - 功能模块划分
-- [依赖关系](./modules/module-dependencies.md) - 模块间依赖
+#### 2. 架构设计文档 - \`${docsDir}/architecture.md\`
+```markdown
+# 架构设计文档
 
-### 🔧 开发文档  
-- [开发指南](./development.md) - 环境搭建和开发规范
-- [文档索引](./docs-index.md) - 完整文档列表
+## 🏗️ 整体架构
+- 系统架构图
+- 技术选型说明
+- 设计原则和理念
 
-### 📂 代码文档
-- [文件列表](./files/) - 源码文件详细分析
-- [模块文档](./modules/) - 功能模块详细文档
-\`\`\`
+## 📦 模块架构
+- 模块划分策略
+- 模块职责说明
+- 模块间交互关系
 
-#### 2. 创建 \`${docsDir}/docs-index.md\`
-生成完整的文档索引，包含所有生成的文档和简短描述。
+## 🔗 依赖关系
+- 核心依赖分析
+- 数据流向图
+- 接口设计原则
 
-#### 3. 创建 \`${docsDir}/navigation.md\`  
-提供快速导航菜单，便于文档间跳转。
+## ⚡ 性能架构
+- 性能关键点
+- 扩展性设计
+- 监控和优化策略
+```
 
-### 完成标志
-- 所有文档都有清晰的导航路径
-- 相关文档间建立了交叉引用
-- 提供了完整的文档索引
-- README.md 成为整个文档体系的入口
+#### 3. 开发指南 - \`${docsDir}/development.md\`
+```markdown
+# 开发指南
 
-**🎉 完成此步骤后，整个init工作流将全部完成！**
+## 🛠️ 开发环境
+- 环境搭建步骤
+- 开发工具推荐
+- 配置说明
+
+## 📝 开发规范
+- 代码规范
+- 提交规范
+- 文档规范
+
+## 🔧 开发流程
+- 功能开发流程
+- 测试流程
+- 部署流程
+
+## 🚀 贡献指南
+- 如何贡献代码
+- Issue报告规范
+- Pull Request流程
+```
+
+#### 4. 完整文档索引 - \`${docsDir}/docs-index.md\`
+```markdown
+# 文档索引
+
+## 🏠 主要文档
+- [README.md](./README.md) - 项目总览
+- [architecture.md](./architecture.md) - 架构设计
+- [development.md](./development.md) - 开发指南
+
+## 📁 文件文档
+[自动生成文件列表]
+
+## 📦 模块文档  
+[自动生成模块列表]
+
+## 🔗 关联文档
+[自动生成关联文档列表]
+```
+
+### 生成策略
+1. 整合所有前面步骤的分析结果
+2. 提取项目的核心价值和技术特色
+3. 构建清晰的架构视图和技术文档
+4. 提供完整的使用和开发指导
+5. 建立文档间的导航和索引系统
+
+### 重点要求
+- **完整性**: 覆盖项目的所有重要方面
+- **可读性**: 结构清晰，易于理解和导航
+- **实用性**: 提供实际的使用和开发指导  
+- **准确性**: 基于实际的代码分析结果
+- **连贯性**: 各文档间保持一致的风格和结构
+
+**🎉 完成此步骤后，整个6步init工作流将全部完成！**
           `;
           
           // 存储Step6结果并标记完成
           initState.stepResults.step6 = {
-            connectionPrompt: connectionPrompt.trim(),
+            architecturePrompt: architecturePrompt.trim(),
             completedAt: new Date().toISOString(),
             docsDirectory: docsDir
           };
@@ -1719,11 +1794,11 @@ ${docsDir}/
                 type: "text",
                 text: JSON.stringify({
                   currentStep: 6,
-                  stepName: 'connect-docs',
+                  stepName: 'architecture-docs',
                   status: "final_step",
                   
                   // Step6 AI指导提示词 (最终步骤)
-                  aiInstructions: connectionPrompt.trim(),
+                  aiInstructions: architecturePrompt.trim(),
                   
                   // 文档体系信息
                   documentationSystem: {
@@ -1732,20 +1807,21 @@ ${docsDir}/
                     generatedDocs: initState.generatedDocs?.length || 0,
                     expectedFinalDocs: [
                       `${docsDir}/README.md`,
-                      `${docsDir}/docs-index.md`,
-                      `${docsDir}/navigation.md`
+                      `${docsDir}/architecture.md`,
+                      `${docsDir}/development.md`,
+                      `${docsDir}/docs-index.md`
                     ]
                   },
                   
                   // 完成状态
                   workflow: {
-                    current_step: "6/6 - 文档连接 (最终步骤)",
+                    current_step: "6/6 - 架构文档生成 (最终步骤)",
                     status: "final_instructions_ready",
                     completion: {
                       message: "🎉 Init工作流即将完成！",
                       totalSteps: 6,
                       allStepsCompleted: true,
-                      finalTask: "完成文档连接后，整个初始化流程将全部完成"
+                      finalTask: "完成架构文档生成后，整个初始化流程将全部完成"
                     },
                     progress: {
                       completed: 6,
@@ -1766,7 +1842,7 @@ ${docsDir}/
                   },
                   
                   success: true,
-                  message: "Step6: 文档连接指导已准备，完成后init工作流将全部完成！"
+                  message: "Step6: 架构文档生成指导已准备，完成后init工作流将全部完成！"
                 }, null, 2)
               }
             ]
@@ -1851,27 +1927,27 @@ ${docsDir}/
                   },
                   {
                     step: 5,
-                    name: "总览生成",
-                    tool: "init_step5_overview_generation",
-                    description: "生成项目整体概览和核心文档",
+                    name: "模块关联分析",
+                    tool: "init_step5_module_relations",
+                    description: "详细阐述每个文件之间的关联，分析函数调用关系",
                     prerequisites: ["必须先完成init_step4_module_integration"],
                     required_params: {
                       projectPath: "项目根目录的绝对路径"
                     },
-                    expected_output: "项目总览指导、架构文档、开发文档生成提示",
-                    why: "整合所有分析结果，生成项目的核心文档和概览"
+                    expected_output: "函数调用关系图、模块依赖分析、数据流向图",
+                    why: "分析模块间的深度关联，识别关键节点和依赖关系"
                   },
                   {
                     step: 6,
-                    name: "文档连接",
-                    tool: "init_step6_connect_docs",
-                    description: "建立文档间的连接关系，完成整个文档体系（最终步骤）",
-                    prerequisites: ["必须先完成init_step5_overview_generation"],
+                    name: "架构文档生成",
+                    tool: "init_step6_architecture_docs",
+                    description: "生成README、架构图、项目总览等最终文档（最终步骤）",
+                    prerequisites: ["必须先完成init_step5_module_relations"],
                     required_params: {
                       projectPath: "项目根目录的绝对路径"
                     },
-                    expected_output: "完整的文档导航系统、交叉引用、索引文件",
-                    why: "建立文档间的连接，形成完整的文档体系，便于使用和维护"
+                    expected_output: "README.md、architecture.md、development.md、完整文档索引",
+                    why: "生成最终的架构文档和项目总览，完成整个文档体系"
                   }
                 ],
                 next_action: {
@@ -1879,8 +1955,8 @@ ${docsDir}/
                   if_step1_done: "调用 init_step2_create_todos 创建任务列表",
                   if_step2_done: "调用 init_step3_get_next_task 开始文件处理循环",
                   if_step3_done: "调用 init_step4_module_integration 进行模块整合",
-                  if_step4_done: "调用 init_step5_overview_generation 生成总览",
-                  if_step5_done: "调用 init_step6_connect_docs 完成文档连接",
+                  if_step4_done: "调用 init_step5_module_relations 进行关联分析",
+                  if_step5_done: "调用 init_step6_architecture_docs 生成架构文档",
                   if_completed: "🎉 所有步骤已完成！使用 get_init_status 查看最终状态"
                 },
                 workflow_features: [
@@ -1899,18 +1975,6 @@ ${docsDir}/
                   "可以随时使用 get_init_status 查看当前进度",
                   "如需重新开始，使用 reset_init 重置所有状态"
                 ]
-              },
-              documentation: {
-                workflow_name: "独立文档生成工作流",
-                description: "直接启动文档生成，适用于已有项目概览的情况",
-                tools: ["progressive_documentation"],
-                next_action: "调用 progressive_documentation 工具"
-              },
-              analysis: {
-                workflow_name: "项目分析工作流",
-                description: "仅进行项目分析，不生成文档",
-                tools: ["generate_project_overview"],
-                next_action: "调用 generate_project_overview 工具"
               },
               status: {
                 workflow_name: "状态查询工作流",
@@ -1940,135 +2004,6 @@ ${docsDir}/
           }
         }
         
-        case "generate_project_overview": {
-          const { projectPath, maxDepth, includeFiles, maxKeyFileSize } = args;
-          
-          if (!projectPath) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
-              }]
-            };
-          }
-          
-          console.log(`[MCP-Simplified] 生成项目概览 - ${projectPath}`);
-          
-          const result = await claudeCodeInit.generateProjectOverview(
-            resolve(projectPath),
-            {
-              maxDepth: maxDepth || 3,
-              includeFiles: includeFiles || [],
-              maxKeyFileSize: maxKeyFileSize || 50 * 1024
-            }
-          );
-          
-          // 添加工作流指引信息
-          const enhancedResult = {
-            ...result,
-            workflow: {
-              current_step: "1/2 - 项目概览生成",
-              status: "completed",
-              next_steps: [
-                {
-                  tool: "progressive_documentation",
-                  description: "基于已生成的项目概览，启动渐进式文档生成",
-                  suggested_params: {
-                    batchSize: "80KB",
-                    style: result.language === "JavaScript" ? "technical" : "comprehensive",
-                    includeTests: true
-                  },
-                  why: "项目概览已完成，现在需要生成详细文档"
-                }
-              ],
-              alternative_actions: [
-                {
-                  tool: "get_init_status",
-                  description: "查看当前初始化状态"
-                },
-                {
-                  tool: "workflow_guide",
-                  description: "获取完整工作流指引",
-                  params: { workflow: "init", currentStep: "2" }
-                }
-              ],
-              tips: [
-                "建议根据项目规模调整batchSize",
-                `检测到主要语言: ${result.language || '未知'}，建议使用相应的文档风格`
-              ]
-            }
-          };
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(enhancedResult, null, 2)
-              }
-            ]
-          };
-        }
-        
-        case "progressive_documentation": {
-          console.log(`[MCP-Simplified] 启动渐进式文档生成`);
-          
-          const { batchSize, style, focusAreas, includeTests } = args;
-          
-          const result = await claudeCodeInit.progressiveDocumentation({
-            batchSize: batchSize || '80KB',
-            style: style || 'comprehensive',
-            focusAreas: focusAreas || [],
-            includeTests: includeTests !== false
-          });
-          
-          // 添加工作流指引和进度信息
-          const enhancedResult = {
-            ...result,
-            workflow: {
-              current_step: "2/2 - 渐进式文档生成",
-              status: "in_progress",
-              progress: {
-                total_batches: result.totalBatches || "unknown",
-                current_batch: result.currentBatch || 1,
-                percentage: result.percentage || "0%",
-                estimated_time: result.estimatedTime || "calculating..."
-              },
-              next_steps: [
-                {
-                  tool: "AI_COLLABORATION",
-                  description: "按照生成的指令，逐步完成文档编写",
-                  instructions: result.aiInstructions || "等待AI协作指令",
-                  why: "这是一个AI协作流程，需要按照指令逐步执行"
-                }
-              ],
-              monitoring: [
-                {
-                  tool: "get_init_status",
-                  description: "随时查看文档生成进度",
-                  frequency: "after_each_batch"
-                }
-              ],
-              completion_check: {
-                when_done: "所有批次处理完成后，流程结束",
-                final_outputs: ["项目文档", "模块文档", "架构图", "API文档"]
-              },
-              tips: [
-                "按照AI协作指令逐步执行",
-                "每个批次处理后检查进度",
-                "如遇到上下文溢出，调整batchSize参数"
-              ]
-            }
-          };
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(enhancedResult, null, 2)
-              }
-            ]
-          };
-        }
         
         case "get_init_status": {
           const { projectPath } = args;
@@ -2103,7 +2038,7 @@ ${docsDir}/
                       step: projectState.currentStep + 1,
                       tool: `init_step${projectState.currentStep + 1}_${
                         ['project_analysis', 'create_todos', 'get_next_task', 
-                         'module_integration', 'overview_generation', 'connect_docs'][projectState.currentStep]
+                         'module_integration', 'module_relations', 'architecture_docs'][projectState.currentStep]
                       }`
                     } : null,
                     workflowVersion: "4.0-complete-6-steps"
@@ -2127,8 +2062,8 @@ ${docsDir}/
                       "init_step3_get_file_content - 获取文件内容",
                       "init_step3_complete_task - 完成文件处理任务",
                       "init_step4_module_integration - 模块整合",
-                      "init_step5_overview_generation - 总览生成",
-                      "init_step6_connect_docs - 文档连接",
+                      "init_step5_module_relations - 模块关联分析",
+                      "init_step6_architecture_docs - 架构文档生成",
                       "get_init_status - 获取状态信息",
                       "reset_init - 重置流程"
                     ],
@@ -2191,7 +2126,7 @@ ${docsDir}/
           return {
             content: [{
               type: "text",
-              text: JSON.stringify({ error: true, message: `未知的工具: ${name}. 可用工具: workflow_guide, init_step1_project_analysis, init_step2_create_todos, init_step3_get_next_task, init_step3_get_file_content, init_step3_complete_task, init_step4_module_integration, init_step5_overview_generation, init_step6_connect_docs, generate_project_overview, progressive_documentation, get_init_status, reset_init`, tool: name }, null, 2)
+              text: JSON.stringify({ error: true, message: `未知的工具: ${name}. 可用工具: workflow_guide, init_step1_project_analysis, init_step2_create_todos, init_step3_get_next_task, init_step3_get_file_content, init_step3_complete_task, init_step4_module_integration, init_step5_module_relations, init_step6_architecture_docs, get_init_status, reset_init`, tool: name }, null, 2)
             }]
           };
       }
@@ -2224,9 +2159,9 @@ ${docsDir}/
   const transport = new StdioServerTransport();
   await server.connect(transport);
   
-  console.log("\n✅ mg_kiro MCP服务器已启动 (stdio模式) - v4.0.0-complete-6-steps");
-  console.log("🚀 完整6步Init工作流已就绪");
-  console.log("🤖 支持工具: workflow_guide, init_step1-6, generate_project_overview, progressive_documentation");
+  console.log("\n✅ mg_kiro MCP服务器已启动 (stdio模式) - v5.0.0-complete-6-steps-redesigned");
+  console.log("🚀 重新设计的完整6步Init工作流已就绪");
+  console.log("🤖 支持工具: workflow_guide, init_step1-6 (文件分析→模块整合→关联分析→架构文档)");
   console.log("📡 等待Claude Code客户端连接...\n");
 }
 

@@ -1,11 +1,189 @@
 {
   "templates": {
+    "file-analysis": {
+      "id": "file-analysis",
+      "name": "文件分析模板",
+      "path": "./prompts/modes/init/file-documentation/file-analysis-template.md",
+      "category": "file_processing",
+      "priority": 1,
+      "step": 3,
+      "variables": [
+        "fileName",
+        "filePath", 
+        "fileSize",
+        "analysisCompleted",
+        "mainPurpose",
+        "codeStructure",
+        "keyFunctions",
+        "dependencies",
+        "usageExamples"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "module-integration": {
+      "id": "module-integration",
+      "name": "模块整合模板", 
+      "path": "./prompts/modes/init/module-integration/template.md",
+      "category": "module_processing",
+      "priority": 2,
+      "step": 4,
+      "variables": [
+        "moduleName",
+        "moduleType",
+        "integrationCompleted",
+        "moduleFiles",
+        "coreComponents",
+        "interfaceDefinitions",
+        "moduleRelationships"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "module-files-list": {
+      "id": "module-files-list",
+      "name": "模块文件清单",
+      "path": "./prompts/modes/init/module-integration/files-list-template.md",
+      "category": "module_processing",
+      "priority": 3,
+      "step": 4,
+      "variables": [
+        "moduleName",
+        "modulePath",
+        "totalFiles",
+        "entryFiles",
+        "coreFiles",
+        "utilityFiles"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "module-overview": {
+      "id": "module-overview",
+      "name": "模块总览",
+      "path": "./prompts/modes/init/module-integration/overview-template.md",
+      "category": "module_processing",
+      "priority": 4,
+      "step": 4,
+      "variables": [
+        "moduleName",
+        "moduleRole",
+        "keyFeatures",
+        "dependencies",
+        "exportedFunctions"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "function-calls-analysis": {
+      "id": "function-calls-analysis",
+      "name": "函数调用分析",
+      "path": "./prompts/modes/init/relations-analysis/function-calls-template.md",
+      "category": "relations_analysis",
+      "priority": 5,
+      "step": 5,
+      "variables": [
+        "projectName",
+        "totalFunctions",
+        "crossModuleCalls",
+        "highFrequencyFunctions",
+        "callFrequencyDistribution"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "module-dependencies": {
+      "id": "module-dependencies",
+      "name": "模块依赖分析",
+      "path": "./prompts/modes/init/relations-analysis/dependencies-template.md",
+      "category": "relations_analysis",
+      "priority": 6,
+      "step": 5,
+      "variables": [
+        "projectName",
+        "totalModules",
+        "totalDependencies",
+        "circularDependenciesCount",
+        "dependencyMatrix"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "data-flows-analysis": {
+      "id": "data-flows-analysis",
+      "name": "数据流分析",
+      "path": "./prompts/modes/init/relations-analysis/data-flows-template.md",
+      "category": "relations_analysis",
+      "priority": 7,
+      "step": 5,
+      "variables": [
+        "projectName",
+        "totalDataFlows",
+        "dataNodes",
+        "systemLevelDataFlow",
+        "interModuleDataFlow"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "relations-overview": {
+      "id": "relations-overview",
+      "name": "关联分析总览",
+      "path": "./prompts/modes/init/relations-analysis/overview-template.md",
+      "category": "relations_analysis",
+      "priority": 8,
+      "step": 5,
+      "variables": [
+        "projectName",
+        "analysisCompletedAt",
+        "totalModules",
+        "totalRelationships",
+        "overallRelationshipDiagram"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "module-relations": {
+      "id": "module-relations",
+      "name": "模块关联分析",
+      "path": "./prompts/modes/init/relations-analysis/relations-template.md",
+      "category": "relations_analysis",
+      "priority": 9,
+      "step": 5,
+      "variables": [
+        "analysisScope",
+        "totalModules",
+        "highFrequencyFunctions",
+        "dependencyMatrix",
+        "mainDataFlows"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "architecture-generation": {
+      "id": "architecture-generation",
+      "name": "架构文档生成",
+      "path": "./prompts/modes/init/architecture-generation/template.md",
+      "category": "architecture",
+      "priority": 10,
+      "step": 6,
+      "variables": [
+        "projectName",
+        "projectType",
+        "architectureOverview",
+        "coreModules",
+        "systemDiagram",
+        "developmentGuide"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
     "system-architecture": {
       "id": "system-architecture",
       "name": "系统架构",
       "path": "./prompts/generation/architecture/system-architecture-generation.md",
       "category": "architecture",
-      "priority": 1,
+      "priority": 11,
       "variables": [
         "project_name",
         "system_overview", 
@@ -143,6 +321,9 @@
     }
   },
   "categories": [
+    "file_processing",
+    "module_processing",
+    "relations_analysis",
     "architecture",
     "documentation", 
     "development",
@@ -153,10 +334,31 @@
     "planning",
     "process"
   ],
+  "init_workflow_templates": {
+    "step_3_file_processing": [
+      "file-analysis"
+    ],
+    "step_4_module_integration": [
+      "module-integration",
+      "module-files-list", 
+      "module-overview"
+    ],
+    "step_5_relations_analysis": [
+      "function-calls-analysis",
+      "module-dependencies",
+      "data-flows-analysis",
+      "relations-overview",
+      "module-relations"
+    ],
+    "step_6_architecture_generation": [
+      "architecture-generation"
+    ]
+  },
   "validation": {
     "template_exists": true,
     "variables_defined": true,
-    "mode_compatibility": true
+    "mode_compatibility": true,
+    "multi_document_support": true
   },
   "rendering": {
     "variable_format": "{{variable_name}}",

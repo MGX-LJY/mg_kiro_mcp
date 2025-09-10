@@ -473,20 +473,48 @@ class MasterTemplateService {
     }
 
     /**
-     * 构建模板文件路径
+     * 构建模板文件路径（支持新的多文档结构）
      * @private
      */
     _buildTemplatePath(category, name) {
         const fileName = name.endsWith('.md') ? name : `${name}.md`;
         
-        // 首先检查特定的模板路径映射（基于实际请求路径）
+        // 新的Init流程多文档特定映射
+        const initWorkflowMappings = {
+            // Step 3 - File Documentation
+            'file_processing/file-analysis': 'modes/init/file-documentation/file-analysis-template.md',
+            
+            // Step 4 - Module Integration  
+            'module_processing/module-integration': 'modes/init/module-integration/template.md',
+            'module_processing/module-files-list': 'modes/init/module-integration/files-list-template.md',
+            'module_processing/module-overview': 'modes/init/module-integration/overview-template.md',
+            
+            // Step 5 - Relations Analysis
+            'relations_analysis/function-calls-analysis': 'modes/init/relations-analysis/function-calls-template.md',
+            'relations_analysis/module-dependencies': 'modes/init/relations-analysis/dependencies-template.md', 
+            'relations_analysis/data-flows-analysis': 'modes/init/relations-analysis/data-flows-template.md',
+            'relations_analysis/relations-overview': 'modes/init/relations-analysis/overview-template.md',
+            'relations_analysis/module-relations': 'modes/init/relations-analysis/relations-template.md',
+            
+            // Step 6 - Architecture Generation
+            'architecture/architecture-generation': 'modes/init/architecture-generation/template.md'
+        };
+        
+        const fullTemplateName = `${category}/${name}`;
+        if (initWorkflowMappings[fullTemplateName]) {
+            const specificPath = path.join(this.promptsDir, initWorkflowMappings[fullTemplateName]);
+            if (fs.existsSync(specificPath)) {
+                return specificPath;
+            }
+        }
+        
+        // 特定的模板路径映射（向后兼容）
         const specificMappings = {
             'templates/architecture/system-architecture-generation': 'generation/architecture/system-architecture-generation.md',
             'templates/existing-project-requirement': 'modes/create/existing-project-requirement/template.md',
             'templates/new-project-requirement': 'modes/create/new-project-requirement/template.md'
         };
         
-        const fullTemplateName = `${category}/${name}`;
         if (specificMappings[fullTemplateName]) {
             const specificPath = path.join(this.promptsDir, specificMappings[fullTemplateName]);
             if (fs.existsSync(specificPath)) {
@@ -497,6 +525,9 @@ class MasterTemplateService {
         // 统一的类别映射
         const categoryPaths = {
             'modes': 'modes',
+            'file_processing': 'modes/init/file-documentation',
+            'module_processing': 'modes/init/module-integration', 
+            'relations_analysis': 'modes/init/relations-analysis',
             'analysis': 'templates/analysis',
             'generation': 'generation',
             'snippets': 'snippets',
@@ -761,11 +792,122 @@ ${Object.keys(request.variables).length > 0 ?
     }
 
     /**
-     * 列出模板
+     * 获取Init流程的多文档模板
+     */
+    async getInitStepTemplates(step, variables = {}) {
+        const stepTemplateMap = {
+            'file-documentation': {
+                category: 'file_processing',
+                templates: ['file-analysis']
+            },
+            'module-integration': {
+                category: 'module_processing', 
+                templates: ['module-integration', 'module-files-list', 'module-overview']
+            },
+            'relations-analysis': {
+                category: 'relations_analysis',
+                templates: ['function-calls-analysis', 'module-dependencies', 'data-flows-analysis', 'relations-overview', 'module-relations']
+            },
+            'architecture-generation': {
+                category: 'architecture',
+                templates: ['architecture-generation']
+            }
+        };
+        
+        const stepInfo = stepTemplateMap[step];
+        if (!stepInfo) {
+            throw new Error(`不支持的Init步骤: ${step}`);
+        }
+        
+        const results = [];
+        const errors = [];
+        
+        for (const templateName of stepInfo.templates) {
+            try {
+                const result = await this.getTemplate({
+                    category: stepInfo.category,
+                    name: templateName,
+                    variables
+                });
+                
+                if (result.success) {
+                    results.push({
+                        name: templateName,
+                        category: stepInfo.category,
+                        content: result.content,
+                        metadata: result.metadata
+                    });
+                } else {
+                    errors.push(`${templateName}: ${result.error}`);
+                }
+            } catch (error) {
+                errors.push(`${templateName}: ${error.message}`);
+            }
+        }
+        
+        return {
+            success: results.length > 0,
+            step: step,
+            templates: results,
+            totalTemplates: stepInfo.templates.length,
+            successfulTemplates: results.length,
+            errors: errors.length > 0 ? errors : undefined
+        };
+    }
+
+    /**
+     * 获取完整的Init工作流模板
+     */
+    async getInitWorkflowTemplates(variables = {}) {
+        const steps = ['file-documentation', 'module-integration', 'relations-analysis', 'architecture-generation'];
+        const workflow = {};
+        const errors = [];
+        let totalTemplates = 0;
+        let successfulTemplates = 0;
+        
+        for (const step of steps) {
+            try {
+                const stepResult = await this.getInitStepTemplates(step, variables);
+                workflow[step] = stepResult;
+                totalTemplates += stepResult.totalTemplates;
+                successfulTemplates += stepResult.successfulTemplates;
+                
+                if (stepResult.errors) {
+                    errors.push(...stepResult.errors.map(err => `${step}: ${err}`));
+                }
+            } catch (error) {
+                errors.push(`${step}: ${error.message}`);
+            }
+        }
+        
+        return {
+            success: Object.keys(workflow).length > 0,
+            workflow: 'init',
+            steps: workflow,
+            summary: {
+                totalSteps: steps.length,
+                successfulSteps: Object.keys(workflow).length,
+                totalTemplates: totalTemplates,
+                successfulTemplates: successfulTemplates,
+                errors: errors.length > 0 ? errors : undefined
+            }
+        };
+    }
+
+    /**
+     * 列出模板（支持新的多文档结构）
      */
     async listTemplates(category = null) {
         try {
-            const categories = category ? [category] : ['modes', 'templates', 'snippets', 'languages'];
+            const categories = category ? [category] : [
+                'modes', 
+                'templates', 
+                'snippets', 
+                'languages',
+                'file_processing',
+                'module_processing', 
+                'relations_analysis'
+            ];
             const allTemplates = [];
 
             for (const cat of categories) {
@@ -779,7 +921,8 @@ ${Object.keys(request.variables).length > 0 ?
             return {
                 templates: allTemplates,
                 total: allTemplates.length,
-                category: category || 'all'
+                category: category || 'all',
+                initWorkflowTemplates: this._getInitWorkflowTemplates()
             };
         } catch (error) {
             console.error('[MasterTemplateService] List templates failed:', error.message);
@@ -794,11 +937,76 @@ ${Object.keys(request.variables).length > 0 ?
             'snippets': 'snippets',
             'languages': 'languages',
             'analysis': 'templates/analysis',
-            'generation': 'templates'
+            'generation': 'generation',
+            'file_processing': 'modes/init/file-documentation',
+            'module_processing': 'modes/init/module-integration',
+            'relations_analysis': 'modes/init/relations-analysis'
         };
         
         const categoryDir = categoryPaths[category] || category;
         return path.join(this.promptsDir, categoryDir);
+    }
+
+    /**
+     * 获取Init工作流模板结构
+     * @private
+     */
+    _getInitWorkflowTemplates() {
+        const workflowSteps = {
+            'step_3_file_processing': {
+                name: '文件文档生成',
+                templates: ['file-analysis-template.md']
+            },
+            'step_4_module_integration': {
+                name: '模块整合',
+                templates: ['template.md', 'files-list-template.md', 'overview-template.md']
+            },
+            'step_5_relations_analysis': {
+                name: '关联关系分析', 
+                templates: [
+                    'function-calls-template.md',
+                    'dependencies-template.md',
+                    'data-flows-template.md', 
+                    'overview-template.md',
+                    'relations-template.md'
+                ]
+            },
+            'step_6_architecture_generation': {
+                name: '架构文档生成',
+                templates: ['template.md']
+            }
+        };
+        
+        // 检查模板文件存在性
+        for (const [stepKey, stepInfo] of Object.entries(workflowSteps)) {
+            stepInfo.availableTemplates = [];
+            stepInfo.missingTemplates = [];
+            
+            for (const template of stepInfo.templates) {
+                const stepDir = stepKey.replace('step_', '').replace('_', '-').substring(1); // 从 step_3_file_processing 到 file-documentation
+                const stepDirMap = {
+                    'file-processing': 'file-documentation',
+                    'module-integration': 'module-integration',
+                    'relations-analysis': 'relations-analysis', 
+                    'architecture-generation': 'architecture-generation'
+                };
+                
+                const actualStepDir = stepDirMap[stepDir] || stepDir;
+                const templatePath = path.join(this.promptsDir, 'modes/init', actualStepDir, template);
+                
+                if (fs.existsSync(templatePath)) {
+                    stepInfo.availableTemplates.push({
+                        name: template,
+                        path: templatePath,
+                        size: fs.statSync(templatePath).size
+                    });
+                } else {
+                    stepInfo.missingTemplates.push(template);
+                }
+            }
+        }
+        
+        return workflowSteps;
     }
 
     _listTemplatesRecursive(dir, category, subPath = '') {
@@ -857,7 +1065,7 @@ ${Object.keys(request.variables).length > 0 ?
     }
 
     /**
-     * 获取服务状态
+     * 获取服务状态（支持多文档结构）
      */
     getServiceStats() {
         const hitRate = this.cacheStats.totalRequests > 0 
@@ -878,7 +1086,14 @@ ${Object.keys(request.variables).length > 0 ?
                 directTemplates: true,
                 intelligentGeneration: !!this.languageIntelligence,
                 languageSpecific: !!this.languageIntelligence,
-                fallbackGeneration: true
+                fallbackGeneration: true,
+                multiDocumentSupport: true,
+                initWorkflowSupport: true
+            },
+            initWorkflow: {
+                supportedSteps: ['file-documentation', 'module-integration', 'relations-analysis', 'architecture-generation'],
+                totalTemplates: this._countInitWorkflowTemplates(),
+                templateStructure: this._getInitWorkflowTemplates()
             },
             metrics: {
                 ...this.metrics,
@@ -887,6 +1102,16 @@ ${Object.keys(request.variables).length > 0 ?
             globalVariables: Array.from(this.globalVariables.keys()),
             health: this._getHealthStatus()
         };
+    }
+
+    /**
+     * 统计Init工作流模板数量
+     * @private
+     */
+    _countInitWorkflowTemplates() {
+        const workflowTemplates = this._getInitWorkflowTemplates();
+        return Object.values(workflowTemplates)
+            .reduce((total, step) => total + (step.availableTemplates?.length || 0), 0);
     }
 
     _calculateStrategyPercentages() {
