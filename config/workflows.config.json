@@ -107,12 +107,12 @@
           "id": "file_processing",
           "step": 3,
           "name": "文件文档生成",
-          "tools": ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_complete_task"],
+          "tools": ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_generate_analysis", "init_step3_complete_task"],
           "description": "循环处理所有文件，AI生成每个文件的详细markdown文档",
           "required": true,
           "prerequisites": ["create_todos"],
           "execution_type": "loop",
-          "loop_description": "重复执行获取任务→获取内容→AI生成文档→完成任务，直到所有文件处理完成",
+          "loop_description": "重复执行获取任务→获取内容→AI生成分析→完成任务，直到所有文件处理完成",
           "expected_output": {
             "type": "directory",
             "path": "mg_kiro/files/",
@@ -312,14 +312,20 @@
     },
     "init_step3_get_file_content": {
       "prerequisites": ["init_step3_get_next_task"],
-      "leads_to": ["init_step3_complete_task"],
+      "leads_to": ["init_step3_generate_analysis"],
       "requires": ["next_task"],
       "provides": ["file_content", "ai_guidance"]
     },
-    "init_step3_complete_task": {
+    "init_step3_generate_analysis": {
       "prerequisites": ["init_step3_get_file_content"],
-      "leads_to": ["init_step3_get_next_task", "init_step4_module_integration"],
+      "leads_to": ["init_step3_complete_task"],
       "requires": ["file_content"],
+      "provides": ["analysis_content", "documentation_guidance"]
+    },
+    "init_step3_complete_task": {
+      "prerequisites": ["init_step3_generate_analysis"],
+      "leads_to": ["init_step3_get_next_task", "init_step4_module_integration"],
+      "requires": ["analysis_content"],
       "provides": ["file_documentation"]
     },
     "init_step4_module_integration": {

@@ -278,8 +278,40 @@ async function startServer() {
           }
         },
         {
+          name: "init_step3_generate_analysis",
+          description: "🧠 [新增链接层] 基于文件内容生成分析文档 - ⚠️ 前置条件：必须先调用get_file_content获取文件内容！✅ 严格用法：get_next_task→get_file_content→[此工具]→complete_task。🎯 解决AI不知道生成什么文档的问题！",
+          inputSchema: {
+            type: "object",
+            properties: {
+              projectPath: {
+                type: "string",
+                description: "项目根目录路径"
+              },
+              taskId: {
+                type: "string",
+                description: "任务ID（从任务上下文自动获取，一般无需手动传入）"
+              },
+              analysisContent: {
+                type: "string",
+                description: "AI生成的分析文档内容（第二次调用时提供）"
+              },
+              analysisStyle: {
+                type: "string",
+                description: "分析风格: comprehensive | concise | technical",
+                default: "comprehensive"
+              },
+              includeCodeExamples: {
+                type: "boolean",
+                description: "是否包含代码示例",
+                default: true
+              }
+            },
+            required: ["projectPath"]
+          }
+        },
+        {
           name: "init_step3_complete_task",
-          description: "✅ [必须第三步] 完成当前任务并处理下一个 - ⚠️ 前置条件：必须先调用get_next_task+get_file_content！✅ 严格调用顺序：get_next_task→get_file_content→[此工具]。🚫 直接调用此工具会失败！AI请按顺序执行！",
+          description: "✅ [必须第四步] 完成当前任务并处理下一个 - ⚠️ 前置条件：必须先调用get_next_task+get_file_content+generate_analysis！✅ 严格调用顺序：get_next_task→get_file_content→generate_analysis→[此工具]。🚫 直接调用此工具会失败！AI请按顺序执行！",
           inputSchema: {
             type: "object",
             properties: {
@@ -1339,17 +1371,17 @@ async function startServer() {
               },
               success: true,
               
-              // 🎯 AI状态可视化 - 文件内容已获取，现在可以完成任务
+              // 🎯 AI状态可视化 - 文件内容已获取，现在需要生成分析文档
               workflow_status: {
                 current_step: 3,
                 step_name: "文件处理循环", 
-                progress: `已获取${fileName}内容，准备完成任务`,
-                allowed_next_tools: ["init_step3_complete_task"],
-                forbidden_tools: ["init_step3_get_next_task", "init_step4_module_integration"],
+                progress: `已获取${fileName}内容，准备生成分析`,
+                allowed_next_tools: ["init_step3_generate_analysis"],
+                forbidden_tools: ["init_step3_get_next_task", "init_step3_complete_task", "init_step4_module_integration"],
                 
                 // 🧠 AI认知提示
-                ai_context: "✅ 文件内容已获取，任务上下文已更新，现在必须调用complete_task完成当前任务",
-                ai_instruction: `🎯 下一步：调用 init_step3_complete_task 完成任务${taskId}`,
+                ai_context: "✅ 文件内容已获取，任务上下文已更新，现在必须调用generate_analysis生成分析文档",
+                ai_instruction: `🎯 下一步：调用 init_step3_generate_analysis 基于文件内容生成分析文档`,
                 content_ready: true
               }
             };
@@ -1504,6 +1536,181 @@ async function startServer() {
           }
         }
         
+        case "init_step3_generate_analysis": {
+          // 🧠 新增：文档生成链接层 - 提供模板指导AI生成标准化分析文档
+          let { projectPath, taskId, analysisContent, analysisStyle, includeCodeExamples } = args;
+          
+          if (!projectPath) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
+          }
+          
+          // 🔥 自动参数补全：从上下文获取taskId和文件信息
+          const taskContext = getCurrentTaskContext(projectPath);
+          if (!taskId && taskContext) {
+            taskId = taskContext.taskId;
+            console.log(`[Auto-Param] 从上下文自动获取 taskId: ${taskId}`);
+          }
+          
+          if (!taskId) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ 
+                  error: true, 
+                  message: "任务ID不能为空。请先调用get_file_content获取任务上下文", 
+                  contextAvailable: !!taskContext,
+                  tool: name 
+                }, null, 2)
+              }]
+            };
+          }
+          
+          // 🎯 双重模式：如果AI没有提供内容，则提供模板指导；如果提供了内容，则保存
+          if (!analysisContent || analysisContent.trim().length === 0) {
+            // 模式1：提供模板和指导，让AI生成文档
+            try {
+              const templatePath = join(__dirname, 'prompts/modes/init/file-documentation/file-analysis.md');
+              const template = readFileSync(templatePath, 'utf-8');
+              
+              const fileName = taskContext?.fileName || '未知文件';
+              const fileContent = taskContext?.content || '';
+              const fileSize = fileContent.length;
+              const lineCount = fileContent.split('\n').length;
+              
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({
+                    currentStep: 3,
+                    stepName: 'file-documentation', 
+                    mode: "template_provided",
+                    taskId: taskId,
+                    
+                    // 🧠 AI指导信息
+                    ai_guidance: {
+                      instruction: "请基于提供的模板和文件信息，生成详细的文件分析文档",
+                      template_usage: "使用模板中的结构，替换{{变量}}为实际内容",
+                      next_action: "再次调用 init_step3_generate_analysis，提供 analysisContent 参数"
+                    },
+                    
+                    // 📋 文档生成模板
+                    documentation_template: template,
+                    
+                    // 📊 文件基础信息
+                    file_info: {
+                      fileName: fileName,
+                      filePath: taskContext?.relativePath || '',
+                      fileType: taskContext?.fileName?.split('.').pop() || '',
+                      language: taskContext?.language || 'unknown',
+                      fileSize: `${Math.round(fileSize / 1024 * 10) / 10}KB`,
+                      lineCount: lineCount,
+                      generatedAt: new Date().toISOString()
+                    },
+                    
+                    // 📝 文件内容摘要（用于AI参考）
+                    file_content_preview: fileContent.slice(0, 1000) + (fileContent.length > 1000 ? '...' : ''),
+                    
+                    workflow_status: {
+                      current_step: 3,
+                      step_name: "文件分析指导", 
+                      progress: `为${fileName}提供分析模板，等待AI生成文档`,
+                      allowed_next_tools: ["init_step3_generate_analysis"],
+                      forbidden_tools: ["init_step3_complete_task", "init_step3_get_next_task"],
+                      
+                      ai_context: "✅ 已提供文档模板和文件信息，AI需要基于模板生成分析文档",
+                      ai_instruction: `🎯 请基于模板生成${fileName}的详细分析，然后再次调用 init_step3_generate_analysis 提供 analysisContent`,
+                      template_ready: true
+                    },
+                    
+                    message: "Step3: 已提供文档模板，请AI基于模板生成分析文档"
+                  }, null, 2)
+                }]
+              };
+              
+            } catch (templateError) {
+              console.error('[Template Error]', templateError);
+              // 模板读取失败时的fallback
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({
+                    error: true,
+                    message: "无法读取文档模板",
+                    fallback_guidance: {
+                      instruction: "请为文件生成包含以下部分的分析文档：",
+                      sections: [
+                        "# 文件概述",
+                        "## 核心功能", 
+                        "## 代码结构",
+                        "## 主要组件",
+                        "## 依赖关系",
+                        "## 使用示例",
+                        "## 注意事项"
+                      ]
+                    },
+                    tool: name
+                  }, null, 2)
+                }]
+              };
+            }
+          } else {
+            // 模式2：AI提供了分析内容，保存到上下文
+            console.log(`[MCP-Init-Step3] 保存AI生成的分析文档 - ${projectPath} 任务:${taskId}`);
+            
+            // 🔥 保存AI生成的分析文档到任务上下文
+            if (taskContext) {
+              setCurrentTaskContext(projectPath, {
+                ...taskContext,
+                step: 'generate_analysis_completed',
+                analysisContent: analysisContent,
+                analysisStyle: analysisStyle || 'comprehensive',
+                includeCodeExamples: includeCodeExamples !== false
+              });
+            }
+            
+            // 🎯 精简响应 - 明确告诉AI下一步要做什么
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  currentStep: 3,
+                  stepName: 'file-documentation', 
+                  mode: "analysis_saved",
+                  status: "analysis_generated_ready_to_complete",
+                  taskId: taskId,
+                  analysisReceived: {
+                    length: analysisContent.length,
+                    style: analysisStyle || 'comprehensive',
+                    includeCodeExamples: includeCodeExamples !== false
+                  },
+                  success: true,
+                  
+                  // 🎯 AI状态可视化 - 分析文档已生成，现在必须完成任务
+                  workflow_status: {
+                    current_step: 3,
+                    step_name: "文件处理循环", 
+                    progress: `已生成${taskContext?.fileName || '文件'}分析，准备完成任务`,
+                    allowed_next_tools: ["init_step3_complete_task"],
+                    forbidden_tools: ["init_step3_get_next_task", "init_step3_get_file_content", "init_step4_module_integration"],
+                    
+                    // 🧠 AI认知提示
+                    ai_context: "✅ 分析文档已生成并保存到任务上下文，现在必须调用complete_task完成当前任务并保存文档",
+                    ai_instruction: `🎯 下一步：调用 init_step3_complete_task 完成任务${taskId}（分析文档会自动传递）`,
+                    analysis_ready: true
+                  },
+                  
+                  message: "Step3: 分析文档已生成，任务上下文已更新，准备完成任务"
+                }, null, 2)
+              }]
+            };
+          }
+        }
+        
         case "init_step3_complete_task": {
           // 🔥 修复：支持多种参数映射方式，支持从上下文自动获取taskId
           let { projectPath, taskId, documentContent, notes } = args;
@@ -1524,8 +1731,13 @@ async function startServer() {
             console.log(`[Auto-Param] 从上下文自动获取 taskId: ${taskId}`);
           }
 
-          // 🔥 参数映射：支持notes -> documentContent
-          if (!documentContent && notes) {
+          // 🔥 参数映射：优先使用任务上下文中的分析文档
+          if (!documentContent && taskContext?.analysisContent) {
+            documentContent = taskContext.analysisContent;
+            console.log(`[Param-Mapping] 从任务上下文自动获取分析文档内容`);
+          }
+          // 🔥 参数映射：支持notes -> documentContent（向后兼容）
+          else if (!documentContent && notes) {
             documentContent = notes;
             console.log(`[Param-Mapping] 将 notes 参数映射为 documentContent`);
           }
@@ -2575,7 +2787,7 @@ ${docsDir}/
           return {
             content: [{
               type: "text",
-              text: JSON.stringify({ error: true, message: `未知的工具: ${name}. 可用工具: workflow_guide, init_step1_project_analysis, init_step2_create_todos, init_step3_get_next_task, init_step3_get_file_content, init_step3_complete_task, init_step4_module_integration, init_step5_module_relations, init_step6_architecture_docs, get_init_status, reset_init`, tool: name }, null, 2)
+              text: JSON.stringify({ error: true, message: `未知的工具: ${name}. 可用工具: workflow_guide, init_step1_project_analysis, init_step2_create_todos, init_step3_get_next_task, init_step3_get_file_content, init_step3_generate_analysis, init_step3_complete_task, init_step4_module_integration, init_step5_module_relations, init_step6_architecture_docs, get_init_status, reset_init`, tool: name }, null, 2)
             }]
           };
       }
