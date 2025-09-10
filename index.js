@@ -24,7 +24,7 @@ import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, unlinkSync } from 'fs';
+import fs, { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, unlinkSync } from 'fs';
 import { createAppRoutes } from './server/routes/index.js';
 import { initializeServices } from './server/services/service-registry.js';
 
@@ -1176,7 +1176,7 @@ async function startServer() {
         
         case "init_step3_get_file_content": {
           // 🔥 新增：智能参数补全 - 支持自动从上下文获取任务信息
-          let { projectPath, taskId, relativePath, maxContentLength } = args;
+          let { projectPath, taskId, relativePath} = args;
           
           if (!projectPath) {
             return {
@@ -1311,9 +1311,6 @@ async function startServer() {
             const fileExtension = fileDetails.file.extension.replace('.', '');
             const fileContent = fileDetails.content;
             const fileSize = fileDetails.file.size;
-            const fileStats = { size: fileSize };
-            
-            // 生成保存路径
             const docsDir = ensureDocsDirectory(resolve(projectPath));
             const filesDir = join(docsDir, 'files');
             if (!fs.existsSync(filesDir)) {
