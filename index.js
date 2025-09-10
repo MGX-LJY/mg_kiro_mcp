@@ -387,6 +387,36 @@ async function startServer() {
     // 全局状态管理 - 持久化到文件系统
     const projectStates = new Map();
     
+    // 新增：当前任务上下文管理器 - 解决AI调用断档问题
+    const currentTaskContexts = new Map(); // projectPath -> 当前活跃任务信息
+    
+    // 设置当前任务上下文
+    function setCurrentTaskContext(projectPath, taskContext) {
+      const normalizedPath = resolve(projectPath);
+      currentTaskContexts.set(normalizedPath, {
+        ...taskContext,
+        updatedAt: new Date().toISOString()
+      });
+      console.log(`[TaskContext] 设置项目 ${normalizedPath} 的当前任务上下文: ${taskContext.taskId || taskContext.fileName || 'unknown'}`);
+    }
+    
+    // 获取当前任务上下文
+    function getCurrentTaskContext(projectPath) {
+      const normalizedPath = resolve(projectPath);
+      const context = currentTaskContexts.get(normalizedPath);
+      if (context) {
+        console.log(`[TaskContext] 获取项目 ${normalizedPath} 的当前任务上下文: ${context.taskId || context.fileName || 'unknown'}`);
+      }
+      return context;
+    }
+    
+    // 清除任务上下文
+    function clearCurrentTaskContext(projectPath) {
+      const normalizedPath = resolve(projectPath);
+      currentTaskContexts.delete(normalizedPath);
+      console.log(`[TaskContext] 清除项目 ${normalizedPath} 的任务上下文`);
+    }
+    
     // 状态文件路径
     function getStateFilePath(projectPath) {
       const docsDir = join(projectPath, 'mg_kiro');
@@ -1018,6 +1048,20 @@ async function startServer() {
           
           // 返回下一个任务（修复：使用新的aiTodoManager结果格式）
           const task = nextTaskResult.task;
+          
+          // 🔥 新增：自动设置当前任务上下文，解决AI调用断档问题
+          setCurrentTaskContext(projectPath, {
+            taskId: task?.id || 'unknown',
+            relativePath: task?.file?.relativePath || 'unknown',
+            fileName: task?.file?.name || 'unknown',
+            fileSize: task?.file?.estimatedSize || 0,
+            priority: task?.priority || 0,
+            estimatedTime: task?.estimatedTime || '未知',
+            title: task?.title || '未知任务',
+            description: task?.description || '无描述',
+            step: 'get_next_task_completed'
+          });
+          
           return {
             content: [
               {
@@ -1047,18 +1091,18 @@ async function startServer() {
                     percentage: 0
                   },
                   
-                  // 下一步指导
+                  // 🔥 新增：智能调用指导 - AI现在可以直接调用，无需手动传参
                   workflow: {
                     current_step: "3/6 - 文件文档生成（进行中）",
                     status: "in_progress",
                     next_steps: [{
                       tool: "init_step3_get_file_content",
-                      description: "获取文件内容进行文档生成",
+                      description: "获取文件内容进行文档生成（自动获取任务参数）",
                       suggested_params: {
-                        projectPath: resolve(projectPath),
-                        relativePath: task?.file?.relativePath || 'unknown'
+                        projectPath: resolve(projectPath)
+                        // ⚡ 注意：不再需要手动传递 relativePath 和 taskId，会自动从上下文获取
                       },
-                      why: "获得了下一个任务，现在需要读取文件内容"
+                      why: "任务上下文已自动设置，AI可以直接调用获取文件内容"
                     }],
                     progress: {
                       completed: 3,
@@ -1068,7 +1112,7 @@ async function startServer() {
                   },
                   
                   success: true,
-                  message: "Step3: 获取到下一个文件处理任务"
+                  message: "Step3: 获取到下一个文件处理任务，上下文已自动设置"
                 }, null, 2)
               }
             ]
@@ -1076,100 +1120,189 @@ async function startServer() {
         }
         
         case "init_step3_get_file_content": {
-          const { projectPath, taskId } = args;
+          // 🔥 新增：智能参数补全 - 支持自动从上下文获取任务信息
+          let { projectPath, taskId, relativePath, maxContentLength } = args;
           
-          if (!projectPath || !taskId) {
+          if (!projectPath) {
             return {
               content: [{
                 type: "text",
-                text: JSON.stringify({ error: true, message: "项目路径和任务ID不能为空", tool: name }, null, 2)
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
               }]
             };
           }
           
-          console.log(`[MCP-Init-Step3] 获取文件内容 - ${projectPath} 任务:${taskId}`);
+          // 🔥 智能参数补全：从任务上下文自动获取缺失的参数
+          const taskContext = getCurrentTaskContext(projectPath);
           
-          const initState = getProjectState(projectPath);
-          
-          if (initState.currentStep < 3) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({ error: true, message: "需要先调用init_step3_get_next_task获取任务", tool: name }, null, 2)
-              }]
-            };
+          if (!taskId && taskContext) {
+            taskId = taskContext.taskId;
+            console.log(`[Auto-Param] 从上下文自动获取 taskId: ${taskId}`);
           }
           
-          // 获取文件内容
-          /** @type {Object|null} fileContent - 文件内容对象 */
-          const fileContent = await (fileQueryService && fileQueryService['getFileContent'] 
-            ? fileQueryService['getFileContent'](resolve(projectPath), taskId) 
-            : Promise.resolve(null)) || null;
-          
-          if (!fileContent) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({ error: true, message: `无法获取任务 ${taskId} 的文件内容`, tool: name }, null, 2)
-              }]
-            };
+          if (!relativePath && taskContext) {
+            relativePath = taskContext.relativePath;
+            console.log(`[Auto-Param] 从上下文自动获取 relativePath: ${relativePath}`);
           }
           
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify({
-                  currentStep: 3,
-                  stepName: 'file-documentation',
-                  status: "content_ready",
-                  
-                  // 文件内容信息
-                  fileContent: {
-                    taskId: fileContent.taskId,
-                    filePath: fileContent.filePath,
-                    fileName: fileContent.fileName,
-                    content: fileContent.content,
-                    language: fileContent.language,
-                    size: fileContent.size,
-                    lines: fileContent.lines
-                  },
-                  
-                  // AI处理指导
-                  aiInstructions: {
-                    task: "为这个文件生成详细的技术文档",
-                    focus: "分析代码功能、架构设计、重要逻辑和使用方式",
-                    format: "Markdown格式，包含代码示例和技术说明",
-                    outputFile: `mg_kiro/files/${fileContent.fileName}.md`
-                  },
-                  
-                  // 下一步指导
-                  workflow: {
-                    current_step: "3/6 - 文件文档生成（准备AI处理）",
+          // 🔥 容错处理：如果还是缺少关键参数，尝试智能恢复
+          if (!taskId || !relativePath) {
+            if (taskContext) {
+              console.log(`[Auto-Recovery] 任务上下文存在但参数不完整，尝试恢复...`);
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({ 
+                    error: true, 
+                    message: `参数不完整，上下文信息: taskId=${taskContext.taskId}, relativePath=${taskContext.relativePath}`, 
+                    autoRecovery: {
+                      suggestion: "请先调用 init_step3_get_next_task 获取新任务，或提供 taskId 和 relativePath 参数",
+                      contextAvailable: true,
+                      contextData: taskContext
+                    },
+                    tool: name 
+                  }, null, 2)
+                }]
+              };
+            } else {
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({ 
+                    error: true, 
+                    message: "缺少任务上下文，请先调用 init_step3_get_next_task 获取任务", 
+                    autoRecovery: {
+                      suggestion: "调用 init_step3_get_next_task 获取下一个文件任务",
+                      contextAvailable: false
+                    },
+                    tool: name 
+                  }, null, 2)
+                }]
+              };
+            }
+          }
+          
+          console.log(`[MCP-Init-Step3] 获取文件内容 - ${projectPath} 任务:${taskId} 文件:${relativePath}`);
+          
+          try {
+            // 🔥 新增：直接文件读取 + 原有服务兼容
+            const fs = await import('fs');
+            const fullFilePath = resolve(projectPath, relativePath);
+            
+            if (!fs.existsSync(fullFilePath)) {
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({ error: true, message: `文件不存在: ${relativePath}`, tool: name }, null, 2)
+                }]
+              };
+            }
+            
+            const fileStats = fs.statSync(fullFilePath);
+            const maxSize = maxContentLength || 50000;
+            
+            let fileContent = '';
+            if (fileStats.size > maxSize) {
+              const fd = fs.openSync(fullFilePath, 'r');
+              const buffer = Buffer.alloc(maxSize);
+              fs.readSync(fd, buffer, 0, maxSize, 0);
+              fs.closeSync(fd);
+              fileContent = buffer.toString('utf8') + `\n\n... (文件太大，已截断。完整大小: ${fileStats.size} 字节)`;
+            } else {
+              fileContent = fs.readFileSync(fullFilePath, 'utf8');
+            }
+            
+            const fileName = relativePath.split('/').pop();
+            const fileExtension = fileName.includes('.') ? fileName.split('.').pop() : '';
+            
+            // 生成保存路径
+            const docsDir = ensureDocsDirectory(resolve(projectPath));
+            const filesDir = join(docsDir, 'files');
+            if (!fs.existsSync(filesDir)) {
+              fs.mkdirSync(filesDir, { recursive: true });
+            }
+            
+            // 🔥 更新任务上下文状态
+            if (taskContext) {
+              setCurrentTaskContext(projectPath, {
+                ...taskContext,
+                step: 'get_file_content_completed',
+                content: fileContent.slice(0, 200) + '...' // 保存内容预览
+              });
+            }
+            
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    currentStep: 3,
+                    stepName: 'file-documentation',
                     status: "content_ready",
-                    next_steps: [{
-                      tool: "init_step3_complete_task",
-                      description: "完成文件文档生成并保存结果",
-                      suggested_params: {
-                        projectPath: resolve(projectPath),
-                        taskId: taskId,
-                        documentContent: "【AI生成的文档内容】"
-                      },
-                      why: "文件内容已获取，AI处理完成后需要保存文档并标记任务完成"
-                    }],
-                    progress: {
-                      completed: 3,
-                      total: 6,
-                      percentage: Math.round(3/6 * 100)
-                    }
-                  },
-                  
-                  success: true,
-                  message: "Step3: 文件内容已准备就绪，可以开始AI文档生成"
+                    
+                    // 文件内容信息
+                    fileContent: {
+                      taskId: taskId,
+                      relativePath: relativePath,
+                      fileName: fileName,
+                      content: fileContent,
+                      language: fileExtension,
+                      size: fileStats.size,
+                      lines: fileContent.split('\n').length,
+                      truncated: fileStats.size > maxSize
+                    },
+                    
+                    // AI处理指导
+                    aiInstructions: {
+                      task: "为这个文件生成详细的技术文档",
+                      focus: "分析代码功能、架构设计、重要逻辑和使用方式", 
+                      format: "Markdown格式，包含代码示例和技术说明",
+                      outputFile: `mg_kiro/files/${fileName}.md`,
+                      saveToPath: join(filesDir, `${fileName}.md`)
+                    },
+                    
+                    // 🔥 简化的工作流程 - 支持直接保存或继续下一任务
+                    workflow: {
+                      current_step: "3/6 - 文件文档生成（内容已准备）",
+                      status: "content_ready", 
+                      next_steps: [{
+                        description: "AI现在可以直接处理文件内容并继续下一个任务",
+                        actions: [
+                          `1. 生成文档并保存到: ${join(filesDir, `${fileName}.md`)}`,
+                          `2. 调用 init_step3_get_next_task 获取下一个任务（无需手动完成当前任务）`
+                        ],
+                        why: "文件内容已获取且上下文管理自动化，可以流畅进行下一步"
+                      }],
+                      progress: {
+                        completed: 3,
+                        total: 6,
+                        percentage: Math.round(3/6 * 100)
+                      }
+                    },
+                    
+                    success: true,
+                    message: `Step3: 文件 ${relativePath} 内容已准备就绪（自动化上下文管理）`
+                  }, null, 2)
+                }
+              ]
+            };
+          } catch (error) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ 
+                  error: true, 
+                  message: `读取文件失败: ${error.message}`, 
+                  tool: name,
+                  autoRecovery: {
+                    suggestion: "请检查文件路径是否正确，或尝试重新获取任务",
+                    file: relativePath,
+                    projectPath: projectPath
+                  }
                 }, null, 2)
-              }
-            ]
-          };
+              }]
+            };
+          }
         }
         
         case "init_step3_complete_task": {
@@ -2071,7 +2204,7 @@ ${docsDir}/
         }
         
         case "reset_init": {
-          console.log(`[MCP-Simplified] 重置流程状态`);
+          console.log(`[MCP-AutoReset] 重置流程状态（增强版）`);
           
           // 新增：支持可选的项目路径参数
           const { projectPath } = args || {};
@@ -2079,21 +2212,51 @@ ${docsDir}/
           let cleanupResults = {};
           if (projectPath) {
             try {
+              // 🔥 新增：清理任务上下文（解决AI调用断档问题）
+              const normalizedPath = resolve(projectPath);
+              const hadContext = currentTaskContexts.has(normalizedPath);
+              clearCurrentTaskContext(projectPath);
+              
               // 清理指定项目的临时文件
               cleanupResults = cleanupTempFiles(projectPath);
-              console.log(`[Reset] 清理项目 ${projectPath}: 删除${cleanupResults.cleaned}个临时文件`);
+              console.log(`[Reset] 清理项目 ${projectPath}: 删除${cleanupResults.cleaned}个临时文件，任务上下文已清理: ${hadContext}`);
               
               // 清除内存状态
-              const normalizedPath = resolve(projectPath);
               projectStates.delete(normalizedPath);
+              
+              // 清理aiTodoManager中的项目数据
+              if (aiTodoManager && aiTodoManager.projectTodos) {
+                aiTodoManager.projectTodos.delete(normalizedPath);
+                console.log(`[Reset] 已清理aiTodoManager中的项目数据: ${normalizedPath}`);
+              }
+              
+              cleanupResults.taskContextCleared = hadContext;
+              cleanupResults.projectStateCleared = true;
               
             } catch (error) {
               console.warn(`[Reset] 清理项目 ${projectPath} 时出现错误: ${error.message}`);
+              cleanupResults.error = error.message;
             }
           } else {
-            // 全局重置：清理所有内存状态
+            // 🔥 全局重置：清理所有内存状态和任务上下文
+            const projectCount = projectStates.size;
+            const contextCount = currentTaskContexts.size;
+            
             projectStates.clear();
-            console.log(`[Reset] 已清除所有内存项目状态`);
+            currentTaskContexts.clear(); // 清理所有任务上下文
+            
+            // 清理所有aiTodoManager数据
+            if (aiTodoManager && aiTodoManager.projectTodos) {
+              aiTodoManager.projectTodos.clear();
+            }
+            
+            console.log(`[Reset] 全局清理完成: ${projectCount}个项目状态，${contextCount}个任务上下文`);
+            
+            cleanupResults = {
+              projectStatesCleared: projectCount,
+              taskContextsCleared: contextCount,
+              globalReset: true
+            };
           }
           
           const result = claudeCodeInit.reset();
@@ -2104,10 +2267,24 @@ ${docsDir}/
                 type: "text",
                 text: JSON.stringify({
                   ...result,
-                  nextStep: "调用 generate_project_overview 开始新的Init流程",
-                  simplifiedFlow: true,
-                  version: "4.0-complete-6-steps",
-                  cleanupResults: cleanupResults // 新增：清理结果信息
+                  nextStep: "调用 init_step1_project_analysis 开始新的6步Init流程",
+                  automationEnhanced: true,
+                  version: "4.0-complete-6-steps-automated",
+                  cleanupResults: cleanupResults, // 增强的清理结果信息
+                  
+                  // 🔥 新增：自动化功能说明
+                  automationFeatures: {
+                    smartParameterCompletion: "AI调用工具时自动补全参数",
+                    contextManagement: "自动维护任务上下文，避免断档",
+                    errorRecovery: "智能错误恢复和建议",
+                    seamlessWorkflow: "工具间无缝衔接，减少手动参数传递"
+                  },
+                  
+                  improvedUserExperience: {
+                    before: "AI需要手动管理taskId和relativePath参数",
+                    after: "AI只需提供projectPath，其他参数自动补全",
+                    benefit: "大幅减少调用断档，提升工作流连续性"
+                  }
                 }, null, 2)
               }
             ]
