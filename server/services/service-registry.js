@@ -10,6 +10,8 @@ import CompleteTaskMonitor from './complete-task-monitor.js';
 
 import LanguageDetector from '../language/detector.js';
 import LanguageIntelligenceService from './language-intelligence-service.js';
+import { ProjectOverviewGenerator } from './project-overview-generator.js';
+import { FileQueryService } from './file-query-service.js';
 // 已删除: import InitStateService from './init-state-service.js';
 // 已删除: import { ClaudeCodeInitService } from './claude-code-init-service.js';
 
@@ -41,7 +43,9 @@ export function registerServices(configDir = './config') {
         
         .register('languageIntelligence', LanguageIntelligenceService, {}, [])
         .register('aiTodoManager', AITodoManager, {}, [])
-        .register('completeTaskMonitor', CompleteTaskMonitor, {}, []);
+        .register('completeTaskMonitor', CompleteTaskMonitor, {}, [])
+        .register('projectOverviewGenerator', ProjectOverviewGenerator, {}, [])
+        .register('fileQueryService', FileQueryService, {}, []);
 
     // 高级服务层（依赖核心服务）
     serviceBus
@@ -124,6 +128,10 @@ export function getServices() {
         // Create模式所需服务
         aiTodoManager: serviceBus.get('aiTodoManager'),
         completeTaskMonitor: serviceBus.get('completeTaskMonitor'),
+        
+        // Init模式所需服务
+        projectOverviewGenerator: serviceBus.get('projectOverviewGenerator'),
+        fileQueryService: serviceBus.get('fileQueryService'),
         
         // 向后兼容的别名（指向新服务）
         promptService: serviceBus.get('masterTemplateService'), // promptManager 的替代

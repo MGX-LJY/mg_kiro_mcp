@@ -236,7 +236,8 @@ export class AITodoManager {
                 totalTasks: todoList.totalTasks,
                 currentTask: todoList.currentTask,
                 progress: todoList.progress,
-                aiGuidance: todoList.aiGuidance
+                aiGuidance: todoList.aiGuidance,
+                tasks: todoList.tasks  // 关键修复：包含所有任务数组
             },
             summary: {
                 fileProcessingTasks: todoList.tasks.fileProcessing.length,

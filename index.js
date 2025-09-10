@@ -441,10 +441,8 @@ async function startServer() {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     
-    // 导入必要的服务
-    const { ProjectOverviewGenerator } = await import('./server/services/project-overview-generator.js');
-    const { AITodoManager } = await import('./server/services/ai-todo-manager.js');
-    const { FileQueryService } = await import('./server/services/file-query-service.js');
+    // 使用共享的serviceBus获取服务实例（修复：不再创建新实例）
+    // 移除动态导入，改为使用serviceBus中已注册的服务
     
     // eslint-disable-next-line no-unused-vars - 全局错误处理
     
@@ -683,10 +681,10 @@ async function startServer() {
       return fileState;
     }
     
-    // 创建服务实例
-    const projectOverviewGenerator = new ProjectOverviewGenerator();
-    const aiTodoManager = new AITodoManager();
-    const fileQueryService = new FileQueryService();
+    // 使用共享的serviceBus获取服务实例（修复状态管理问题）
+    const projectOverviewGenerator = serviceBus.get('projectOverviewGenerator');
+    const aiTodoManager = serviceBus.get('aiTodoManager');
+    const fileQueryService = serviceBus.get('fileQueryService');
     
     // 向后兼容的claudeCodeInit服务
     const claudeCodeInit = {
@@ -963,13 +961,77 @@ async function startServer() {
           
           initState.currentStep = 3;
           
-          // 获取下一个待处理的任务
-          /** @type {Object|null} nextTask - 任务对象，包含allCompleted、fileName等属性 */
-          const nextTask = await (fileQueryService && fileQueryService['getNextTask'] 
-            ? fileQueryService['getNextTask'](resolve(projectPath)) 
-            : Promise.resolve(null)) || null;
+          // 修复：使用aiTodoManager获取下一个待处理的任务，并添加状态恢复逻辑
+          let nextTaskResult = null;
           
-          if (!nextTask || (nextTask && nextTask['allCompleted'] === true)) {
+          try {
+            // 首先尝试从aiTodoManager获取任务
+            nextTaskResult = await aiTodoManager.getNextTask(resolve(projectPath));
+          } catch (error) {
+            console.log(`[Step3-Fix] aiTodoManager中没有找到todoList，尝试从临时文件恢复: ${error.message}`);
+            
+            // 如果失败，尝试从.tmp文件恢复todoList状态
+            try {
+              const tempDir = join(resolve(projectPath), 'mg_kiro', '.tmp');
+              const step2File = join(tempDir, 'step2-result.json');
+              
+              if (existsSync(step2File)) {
+                const step2Data = JSON.parse(readFileSync(step2File, 'utf8'));
+                const savedTodoList = step2Data.data?.todoList?.todoList; // 修复双重嵌套问题
+                
+                if (savedTodoList && savedTodoList.totalTasks > 0) {
+                  console.log(`[Step3-Fix] 正在恢复todoList状态，包含 ${savedTodoList.totalTasks} 个任务`);
+                  console.log(`[Step3-Fix] 任务分布: fileProcessing=${savedTodoList.tasks?.fileProcessing?.length || 0}, analysis=${savedTodoList.tasks?.analysis?.length || 0}, summary=${savedTodoList.tasks?.summary?.length || 0}`);
+                  
+                  // 确保所有必需的属性都存在，特别是optimization数组
+                  if (!savedTodoList.tasks) {
+                    savedTodoList.tasks = {
+                      fileProcessing: [],
+                      analysis: [],
+                      summary: [],
+                      optimization: []
+                    };
+                  } else {
+                    // 确保optimization数组存在，这很关键
+                    if (!savedTodoList.tasks.optimization) {
+                      savedTodoList.tasks.optimization = [];
+                    }
+                  }
+                  
+                  // 验证数据完整性
+                  const totalExpectedTasks = (savedTodoList.tasks.fileProcessing?.length || 0) + 
+                                           (savedTodoList.tasks.analysis?.length || 0) + 
+                                           (savedTodoList.tasks.summary?.length || 0) + 
+                                           (savedTodoList.tasks.optimization?.length || 0);
+                  
+                  console.log(`[Step3-Fix] 数据验证: 期望任务数=${savedTodoList.totalTasks}, 实际任务数=${totalExpectedTasks}`);
+                  
+                  // 直接设置到aiTodoManager的内部Map中
+                  aiTodoManager.projectTodos.set(resolve(projectPath), savedTodoList);
+                  console.log(`[Step3-Fix] 状态恢复完成，设置了 ${savedTodoList.totalTasks} 个任务到projectTodos Map`);
+                  
+                  // 调试: 检查恢复的数据结构
+                  const restoredData = aiTodoManager.projectTodos.get(resolve(projectPath));
+                  console.log(`[Step3-Debug] 恢复的数据结构:`, {
+                    hasFileProcessing: !!restoredData?.tasks?.fileProcessing,
+                    fileProcessingLength: restoredData?.tasks?.fileProcessing?.length || 0,
+                    hasOptimization: !!restoredData?.tasks?.optimization,
+                    optimizationLength: restoredData?.tasks?.optimization?.length || 0,
+                    firstTaskStatus: restoredData?.tasks?.fileProcessing?.[0]?.status
+                  });
+                  
+                  // 再次尝试获取任务
+                  nextTaskResult = await aiTodoManager.getNextTask(resolve(projectPath));
+                  console.log(`[Step3-Fix] 恢复后的getNextTask结果:`, nextTaskResult.completed ? 'completed' : 'has_tasks');
+                }
+              }
+            } catch (restoreError) {
+              console.error(`[Step3-Fix] 恢复todoList状态失败: ${restoreError.message}`);
+              nextTaskResult = { completed: true, success: true };
+            }
+          }
+          
+          if (!nextTaskResult || nextTaskResult.completed === true) {
             // 所有文件处理任务完成，准备进入Step4
             initState.stepsCompleted.push('step3');
             
@@ -1016,7 +1078,8 @@ async function startServer() {
             };
           }
           
-          // 返回下一个任务
+          // 返回下一个任务（修复：使用新的aiTodoManager结果格式）
+          const task = nextTaskResult.task;
           return {
             content: [
               {
@@ -1026,22 +1089,24 @@ async function startServer() {
                   stepName: 'file-documentation',
                   status: "task_available",
                   
-                  // 当前任务信息
+                  // 当前任务信息（使用aiTodoManager的格式）
                   currentTask: {
-                    taskId: nextTask.taskId,
-                    filePath: nextTask.filePath,
-                    fileName: nextTask.fileName,
-                    fileSize: nextTask.fileSize,
-                    priority: nextTask.priority,
-                    estimatedTime: (nextTask && nextTask['estimatedProcessingTime']) || '未知'
+                    taskId: task?.id || 'unknown',
+                    filePath: task?.file?.relativePath || 'unknown',
+                    fileName: task?.file?.name || 'unknown',
+                    fileSize: task?.file?.estimatedSize || 0,
+                    priority: task?.priority || 0,
+                    estimatedTime: task?.estimatedTime || '未知',
+                    title: task?.title || '未知任务',
+                    description: task?.description || '无描述'
                   },
                   
-                  // 进度信息
-                  progress: {
-                    completed: nextTask.progress?.completed || 0,
-                    total: nextTask.progress?.total || 0,
-                    remaining: nextTask.progress?.remaining || 0,
-                    percentage: Math.round(((nextTask.progress?.completed || 0) / (nextTask.progress?.total || 1)) * 100)
+                  // 进度信息（使用aiTodoManager的格式）
+                  progress: nextTaskResult.progress || {
+                    completed: 0,
+                    total: 0,
+                    remaining: 0,
+                    percentage: 0
                   },
                   
                   // 下一步指导
@@ -1053,7 +1118,7 @@ async function startServer() {
                       description: "获取文件内容进行文档生成",
                       suggested_params: {
                         projectPath: resolve(projectPath),
-                        taskId: nextTask.taskId
+                        relativePath: task?.file?.relativePath || 'unknown'
                       },
                       why: "获得了下一个任务，现在需要读取文件内容"
                     }],
