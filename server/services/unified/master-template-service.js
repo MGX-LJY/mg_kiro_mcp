@@ -479,25 +479,25 @@ class MasterTemplateService {
     _buildTemplatePath(category, name) {
         const fileName = name.endsWith('.md') ? name : `${name}.md`;
         
-        // 新的Init流程多文档特定映射
+        // 新的Init流程多文档特定映射（统一命名后）
         const initWorkflowMappings = {
             // Step 3 - File Documentation
-            'file_processing/file-analysis': 'modes/init/file-documentation/file-analysis-template.md',
+            'file_processing/file-analysis': 'modes/init/file-documentation/file-analysis.md',
             
             // Step 4 - Module Integration  
-            'module_processing/module-integration': 'modes/init/module-integration/template.md',
-            'module_processing/module-files-list': 'modes/init/module-integration/files-list-template.md',
-            'module_processing/module-overview': 'modes/init/module-integration/overview-template.md',
+            'module_processing/module-integration': 'modes/init/module-integration/module-integration.md',
+            'module_processing/module-files-list': 'modes/init/module-integration/module-files.md',
+            'module_processing/module-overview': 'modes/init/module-integration/module-overview.md',
             
             // Step 5 - Relations Analysis
-            'relations_analysis/function-calls-analysis': 'modes/init/relations-analysis/function-calls-template.md',
-            'relations_analysis/module-dependencies': 'modes/init/relations-analysis/dependencies-template.md', 
-            'relations_analysis/data-flows-analysis': 'modes/init/relations-analysis/data-flows-template.md',
-            'relations_analysis/relations-overview': 'modes/init/relations-analysis/overview-template.md',
-            'relations_analysis/module-relations': 'modes/init/relations-analysis/relations-template.md',
+            'relations_analysis/function-calls-analysis': 'modes/init/relations-analysis/function-calls.md',
+            'relations_analysis/module-dependencies': 'modes/init/relations-analysis/dependencies.md', 
+            'relations_analysis/data-flows-analysis': 'modes/init/relations-analysis/data-flows.md',
+            'relations_analysis/relations-overview': 'modes/init/relations-analysis/relations-overview.md',
+            'relations_analysis/module-relations': 'modes/init/relations-analysis/relations-analysis.md',
             
             // Step 6 - Architecture Generation
-            'architecture/architecture-generation': 'modes/init/architecture-generation/template.md'
+            'architecture/architecture-generation': 'modes/init/architecture-generation/architecture-docs.md'
         };
         
         const fullTemplateName = `${category}/${name}`;
@@ -955,25 +955,25 @@ ${Object.keys(request.variables).length > 0 ?
         const workflowSteps = {
             'step_3_file_processing': {
                 name: '文件文档生成',
-                templates: ['file-analysis-template.md']
+                templates: ['file-analysis.md']
             },
             'step_4_module_integration': {
                 name: '模块整合',
-                templates: ['template.md', 'files-list-template.md', 'overview-template.md']
+                templates: ['module-integration.md', 'module-files.md', 'module-overview.md']
             },
             'step_5_relations_analysis': {
                 name: '关联关系分析', 
                 templates: [
-                    'function-calls-template.md',
-                    'dependencies-template.md',
-                    'data-flows-template.md', 
-                    'overview-template.md',
-                    'relations-template.md'
+                    'function-calls.md',
+                    'dependencies.md',
+                    'data-flows.md', 
+                    'relations-overview.md',
+                    'relations-analysis.md'
                 ]
             },
             'step_6_architecture_generation': {
                 name: '架构文档生成',
-                templates: ['template.md']
+                templates: ['architecture-docs.md']
             }
         };
         

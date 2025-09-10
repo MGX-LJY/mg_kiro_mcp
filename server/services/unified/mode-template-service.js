@@ -67,10 +67,10 @@ class ModeTemplateService {
                 templatePrefix: 'init',
                 priority: 100,
                 multiDocumentSteps: {
-                    'file-documentation': ['file-analysis-template.md'],
-                    'module-integration': ['template.md', 'files-list-template.md', 'overview-template.md'], 
-                    'relations-analysis': ['function-calls-template.md', 'dependencies-template.md', 'data-flows-template.md', 'overview-template.md', 'relations-template.md'],
-                    'architecture-generation': ['template.md']
+                    'file-documentation': ['file-analysis.md'],
+                    'module-integration': ['module-integration.md', 'module-files.md', 'module-overview.md'], 
+                    'relations-analysis': ['function-calls.md', 'dependencies.md', 'data-flows.md', 'relations-overview.md', 'relations-analysis.md'],
+                    'architecture-generation': ['architecture-docs.md']
                 }
             },
             create: {
@@ -457,7 +457,7 @@ class ModeTemplateService {
                     
                     documents.push({
                         filename: templateFile,
-                        name: templateFile.replace(/[-_]template\.md$/, '').replace(/\.md$/, ''),
+                        name: templateFile.replace(/\.md$/, ''),
                         content: processedContent,
                         path: templatePath,
                         size: content.length

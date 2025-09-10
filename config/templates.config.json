@@ -3,7 +3,7 @@
     "file-analysis": {
       "id": "file-analysis",
       "name": "文件分析模板",
-      "path": "./prompts/modes/init/file-documentation/file-analysis-template.md",
+      "path": "./prompts/modes/init/file-documentation/file-analysis.md",
       "category": "file_processing",
       "priority": 1,
       "step": 3,
@@ -24,7 +24,7 @@
     "module-integration": {
       "id": "module-integration",
       "name": "模块整合模板", 
-      "path": "./prompts/modes/init/module-integration/template.md",
+      "path": "./prompts/modes/init/module-integration/module-integration.md",
       "category": "module_processing",
       "priority": 2,
       "step": 4,
@@ -43,7 +43,7 @@
     "module-files-list": {
       "id": "module-files-list",
       "name": "模块文件清单",
-      "path": "./prompts/modes/init/module-integration/files-list-template.md",
+      "path": "./prompts/modes/init/module-integration/module-files.md",
       "category": "module_processing",
       "priority": 3,
       "step": 4,
@@ -61,7 +61,7 @@
     "module-overview": {
       "id": "module-overview",
       "name": "模块总览",
-      "path": "./prompts/modes/init/module-integration/overview-template.md",
+      "path": "./prompts/modes/init/module-integration/module-overview.md",
       "category": "module_processing",
       "priority": 4,
       "step": 4,
@@ -78,7 +78,7 @@
     "function-calls-analysis": {
       "id": "function-calls-analysis",
       "name": "函数调用分析",
-      "path": "./prompts/modes/init/relations-analysis/function-calls-template.md",
+      "path": "./prompts/modes/init/relations-analysis/function-calls.md",
       "category": "relations_analysis",
       "priority": 5,
       "step": 5,
@@ -95,7 +95,7 @@
     "module-dependencies": {
       "id": "module-dependencies",
       "name": "模块依赖分析",
-      "path": "./prompts/modes/init/relations-analysis/dependencies-template.md",
+      "path": "./prompts/modes/init/relations-analysis/dependencies.md",
       "category": "relations_analysis",
       "priority": 6,
       "step": 5,
@@ -112,7 +112,7 @@
     "data-flows-analysis": {
       "id": "data-flows-analysis",
       "name": "数据流分析",
-      "path": "./prompts/modes/init/relations-analysis/data-flows-template.md",
+      "path": "./prompts/modes/init/relations-analysis/data-flows.md",
       "category": "relations_analysis",
       "priority": 7,
       "step": 5,
@@ -129,7 +129,7 @@
     "relations-overview": {
       "id": "relations-overview",
       "name": "关联分析总览",
-      "path": "./prompts/modes/init/relations-analysis/overview-template.md",
+      "path": "./prompts/modes/init/relations-analysis/relations-overview.md",
       "category": "relations_analysis",
       "priority": 8,
       "step": 5,
@@ -146,7 +146,7 @@
     "module-relations": {
       "id": "module-relations",
       "name": "模块关联分析",
-      "path": "./prompts/modes/init/relations-analysis/relations-template.md",
+      "path": "./prompts/modes/init/relations-analysis/relations-analysis.md",
       "category": "relations_analysis",
       "priority": 9,
       "step": 5,
@@ -163,7 +163,7 @@
     "architecture-generation": {
       "id": "architecture-generation",
       "name": "架构文档生成",
-      "path": "./prompts/modes/init/architecture-generation/template.md",
+      "path": "./prompts/modes/init/architecture-generation/architecture-docs.md",
       "category": "architecture",
       "priority": 10,
       "step": 6,
@@ -335,24 +335,32 @@
     "process"
   ],
   "init_workflow_templates": {
-    "step_3_file_processing": [
-      "file-analysis"
-    ],
-    "step_4_module_integration": [
-      "module-integration",
-      "module-files-list", 
-      "module-overview"
-    ],
-    "step_5_relations_analysis": [
-      "function-calls-analysis",
-      "module-dependencies",
-      "data-flows-analysis",
-      "relations-overview",
-      "module-relations"
-    ],
-    "step_6_architecture_generation": [
-      "architecture-generation"
-    ]
+    "step_3_file_processing": {
+      "name": "文件文档生成",
+      "templates": ["file-analysis.md"]
+    },
+    "step_4_module_integration": {
+      "name": "模块整合",
+      "templates": [
+        "module-integration.md",
+        "module-files.md", 
+        "module-overview.md"
+      ]
+    },
+    "step_5_relations_analysis": {
+      "name": "关联关系分析",
+      "templates": [
+        "function-calls.md",
+        "dependencies.md",
+        "data-flows.md",
+        "relations-overview.md",
+        "relations-analysis.md"
+      ]
+    },
+    "step_6_architecture_generation": {
+      "name": "架构文档生成",
+      "templates": ["architecture-docs.md"]
+    }
   },
   "validation": {
     "template_exists": true,
