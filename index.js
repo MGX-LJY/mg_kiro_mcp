@@ -24,7 +24,7 @@ import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
-import { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, unlinkSync } from 'fs';
 import { createAppRoutes } from './server/routes/index.js';
 import { initializeServices } from './server/services/service-registry.js';
 
@@ -393,27 +393,80 @@ async function startServer() {
     // 设置当前任务上下文
     function setCurrentTaskContext(projectPath, taskContext) {
       const normalizedPath = resolve(projectPath);
-      currentTaskContexts.set(normalizedPath, {
+      const contextData = {
         ...taskContext,
         updatedAt: new Date().toISOString()
-      });
-      console.log(`[TaskContext] 设置项目 ${normalizedPath} 的当前任务上下文: ${taskContext.taskId || taskContext.fileName || 'unknown'}`);
+      };
+      
+      // 保存到内存
+      currentTaskContexts.set(normalizedPath, contextData);
+      
+      // 🔥 修复：同时保存到文件系统，确保持久化
+      try {
+        const tempDir = join(projectPath, 'mg_kiro', '.tmp');
+        if (!existsSync(tempDir)) {
+          mkdirSync(tempDir, { recursive: true });
+        }
+        
+        const contextFile = join(tempDir, 'current-task-context.json');
+        writeFileSync(contextFile, JSON.stringify(contextData, null, 2), 'utf8');
+        console.log(`[TaskContext] 设置并保存项目 ${normalizedPath} 的当前任务上下文: ${taskContext.taskId || taskContext.fileName || 'unknown'}`);
+      } catch (error) {
+        console.error(`[TaskContext] 保存任务上下文到文件失败: ${error.message}`);
+        console.error(`[TaskContext] 尝试的路径: ${join(projectPath, 'mg_kiro', '.tmp')}`);
+        // 即使文件保存失败，内存中的上下文依然可用
+      }
     }
     
     // 获取当前任务上下文
     function getCurrentTaskContext(projectPath) {
       const normalizedPath = resolve(projectPath);
-      const context = currentTaskContexts.get(normalizedPath);
+      
+      // 首先尝试从内存获取
+      let context = currentTaskContexts.get(normalizedPath);
       if (context) {
-        console.log(`[TaskContext] 获取项目 ${normalizedPath} 的当前任务上下文: ${context.taskId || context.fileName || 'unknown'}`);
+        console.log(`[TaskContext] 从内存获取项目 ${normalizedPath} 的当前任务上下文: ${context.taskId || context.fileName || 'unknown'}`);
+        return context;
       }
-      return context;
+      
+      // 🔥 修复：如果内存中没有，尝试从文件系统恢复
+      try {
+        const contextFile = join(projectPath, 'mg_kiro', '.tmp', 'current-task-context.json');
+        if (existsSync(contextFile)) {
+          const fileContent = readFileSync(contextFile, 'utf8');
+          context = JSON.parse(fileContent);
+          
+          // 恢复到内存中
+          currentTaskContexts.set(normalizedPath, context);
+          console.log(`[TaskContext] 从文件恢复项目 ${normalizedPath} 的当前任务上下文: ${context.taskId || context.fileName || 'unknown'}`);
+          return context;
+        }
+      } catch (error) {
+        console.error(`[TaskContext] 从文件恢复任务上下文失败: ${error.message}`);
+        console.error(`[TaskContext] 尝试的路径: ${join(projectPath, 'mg_kiro', '.tmp', 'current-task-context.json')}`);
+      }
+      
+      console.log(`[TaskContext] 项目 ${normalizedPath} 没有找到任务上下文`);
+      return null;
     }
     
     // 清除任务上下文
     function clearCurrentTaskContext(projectPath) {
       const normalizedPath = resolve(projectPath);
+      
+      // 从内存清除
       currentTaskContexts.delete(normalizedPath);
+      
+      // 🔥 修复：同时清除文件系统中的任务上下文
+      try {
+        const contextFile = join(projectPath, 'mg_kiro', '.tmp', 'current-task-context.json');
+        if (existsSync(contextFile)) {
+          unlinkSync(contextFile);
+        }
+      } catch (error) {
+        console.error(`[TaskContext] 删除任务上下文文件失败: ${error.message}`);
+      }
+      
       console.log(`[TaskContext] 清除项目 ${normalizedPath} 的任务上下文`);
     }
     
@@ -654,24 +707,7 @@ async function startServer() {
     const aiTodoManager = serviceBus.get('aiTodoManager');
     const fileQueryService = serviceBus.get('fileQueryService');
     
-    // 向后兼容的claudeCodeInit服务
     const claudeCodeInit = {
-      generateProjectOverview: async (projectPath, options) => {
-        return await projectOverviewGenerator.generateOverview(projectPath, options);
-      },
-      progressiveDocumentation: async (_options) => {
-        // 模拟渐进式文档生成响应
-        return {
-          success: true,
-          message: "渐进式文档生成流程已启动",
-          aiInstructions: "请按照以下步骤生成文档...",
-          totalBatches: 5,
-          currentBatch: 1,
-          percentage: "20%",
-          estimatedTime: "约10分钟"
-        };
-      },
-      // 保留向后兼容的方法
       getProgress: () => ({ percentage: 0, message: 'Ready' }),
       reset: () => ({ success: true, message: 'State reset successfully' })
     };
@@ -998,7 +1034,7 @@ async function startServer() {
               nextTaskResult = { completed: true, success: true };
             }
           }
-          
+
           if (!nextTaskResult || nextTaskResult.completed === true) {
             // 所有文件处理任务完成，准备进入Step4
             initState.stepsCompleted.push('step3');
@@ -1050,7 +1086,8 @@ async function startServer() {
           const task = nextTaskResult.task;
           
           // 🔥 新增：自动设置当前任务上下文，解决AI调用断档问题
-          setCurrentTaskContext(projectPath, {
+          console.log('[DEBUG] 准备设置任务上下文，task结构:', JSON.stringify(task, null, 2));
+          const contextData = {
             taskId: task?.id || 'unknown',
             relativePath: task?.file?.relativePath || 'unknown',
             fileName: task?.file?.name || 'unknown',
@@ -1060,7 +1097,11 @@ async function startServer() {
             title: task?.title || '未知任务',
             description: task?.description || '无描述',
             step: 'get_next_task_completed'
-          });
+          };
+          console.log('[DEBUG] 任务上下文数据:', JSON.stringify(contextData, null, 2));
+          console.log('[DEBUG] projectPath:', projectPath);
+          
+          setCurrentTaskContext(projectPath, contextData);
           
           return {
             content: [
