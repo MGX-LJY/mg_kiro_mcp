@@ -20,6 +20,18 @@ import MasterTemplateService from './unified/master-template-service.js';
 import TemplateConfigManager from './unified/template-config-manager.js';
 import ModeTemplateService from './unified/mode-template-service.js';
 
+// 文件分析模块
+import { FileAnalysisModule } from './file-analysis/FileAnalysisModule.js';
+import { PreciseTokenCalculator } from './file-analysis/token-analysis/PreciseTokenCalculator.js';
+import { CombinedFileBatchStrategy } from './file-analysis/batch-strategies/CombinedFileBatchStrategy.js';
+import { SingleFileBatchStrategy } from './file-analysis/batch-strategies/SingleFileBatchStrategy.js';
+import { LargeFileMultiBatchStrategy } from './file-analysis/batch-strategies/LargeFileMultiBatchStrategy.js';
+
+// 任务管理模块
+import { UnifiedTaskManager } from './task-management/UnifiedTaskManager.js';
+import { UnifiedTaskValidator } from './task-management/UnifiedTaskValidator.js';
+import { TaskStateManager } from './task-management/TaskStateManager.js';
+
 /**
  * 注册所有系统服务到ServiceBus
  * 定义服务依赖关系，实现依赖注入
@@ -46,6 +58,33 @@ export function registerServices(configDir = './config') {
         .register('completeTaskMonitor', CompleteTaskMonitor, {}, [])
         .register('projectOverviewGenerator', ProjectOverviewGenerator, {}, [])
         .register('fileQueryService', FileQueryService, {}, []);
+
+    // 文件分析模块层（依赖基础服务）
+    serviceBus
+        .register('preciseTokenCalculator', PreciseTokenCalculator, {}, [])
+        .register('combinedFileBatchStrategy', CombinedFileBatchStrategy, {}, [])
+        .register('singleFileBatchStrategy', SingleFileBatchStrategy, {}, [])
+        .register('largeFileMultiBatchStrategy', LargeFileMultiBatchStrategy, {}, [])
+        .register('taskStateManager', TaskStateManager, {}, []);
+
+    // 文件分析模块核心（依赖Token计算器和批次策略）
+    serviceBus
+        .register('fileAnalysisModule', FileAnalysisModule, {}, [
+            'preciseTokenCalculator',
+            'combinedFileBatchStrategy',
+            'singleFileBatchStrategy',
+            'largeFileMultiBatchStrategy'
+        ]);
+
+    // 任务管理模块（依赖文件分析模块）
+    serviceBus
+        .register('unifiedTaskValidator', UnifiedTaskValidator, {}, [
+            'fileAnalysisModule'
+        ])
+        .register('unifiedTaskManager', UnifiedTaskManager, {}, [
+            'taskStateManager',
+            'unifiedTaskValidator'
+        ]);
 
     // 高级服务层（依赖核心服务）
     serviceBus
@@ -132,6 +171,12 @@ export function getServices() {
         // Init模式所需服务
         projectOverviewGenerator: serviceBus.get('projectOverviewGenerator'),
         fileQueryService: serviceBus.get('fileQueryService'),
+        
+        // 新的文件分析模块和任务管理服务
+        fileAnalysisModule: serviceBus.get('fileAnalysisModule'),
+        unifiedTaskManager: serviceBus.get('unifiedTaskManager'),
+        unifiedTaskValidator: serviceBus.get('unifiedTaskValidator'),
+        taskStateManager: serviceBus.get('taskStateManager'),
         
         // 向后兼容的别名（指向新服务）
         promptService: serviceBus.get('masterTemplateService'), // promptManager 的替代

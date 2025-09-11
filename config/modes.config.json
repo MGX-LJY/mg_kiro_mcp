@@ -3,20 +3,67 @@
     "init": {
       "id": "init",
       "name": "初始化模式",
-      "description": "项目初始化和文档生成",
+      "description": "项目初始化和文档生成 - 6步智能工作流程",
       "priority": 1,
       "enabled": true,
       "prompt_path": "./prompts/modes/init.md",
+      "workflow": {
+        "steps": [
+          {
+            "step": 1,
+            "name": "项目分析",
+            "tool": "init_step1_project_analysis",
+            "description": "简化版项目分析，生成基础数据包"
+          },
+          {
+            "step": 2,
+            "name": "文件分析模块",
+            "tool": "init_step2_file_analysis",
+            "description": "智能Token分析和批次规划"
+          },
+          {
+            "step": 3,
+            "name": "文件文档循环生成",
+            "tools": ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_generate_analysis", "init_step3_complete_task"],
+            "description": "基于FileAnalysisModule协调的文档生成循环"
+          },
+          {
+            "step": 4,
+            "name": "模块整合",
+            "tool": "init_step4_module_integration",
+            "description": "统一任务管理的模块整合"
+          },
+          {
+            "step": 5,
+            "name": "模块关联分析",
+            "tool": "init_step5_module_relations",
+            "description": "统一任务管理的关联分析"
+          },
+          {
+            "step": 6,
+            "name": "架构文档生成",
+            "tool": "init_step6_architecture_docs",
+            "description": "统一任务管理的架构文档"
+          }
+        ]
+      },
       "templates": [
-        "system-architecture",
-        "modules-catalog", 
-        "user-stories",
-        "technical-analysis"
+        "file-analysis",
+        "combined-batch-template",
+        "single-batch-template",
+        "multi-batch-template",
+        "module-integration",
+        "module-relations",
+        "architecture-generation"
       ],
       "capabilities": [
         "project_setup",
         "doc_generation",
-        "architecture_design"
+        "architecture_design",
+        "file_analysis",
+        "token_calculation",
+        "batch_strategies",
+        "unified_task_management"
       ]
     },
     "create": {

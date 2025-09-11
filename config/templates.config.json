@@ -318,6 +318,58 @@
       ],
       "required": false,
       "modes": ["analyze"]
+    },
+    "combined-batch-template": {
+      "id": "combined-batch-template",
+      "name": "综合文件批次模板",
+      "path": "./prompts/modes/init/file-documentation/combined-batch.md",
+      "category": "batch_processing",
+      "priority": 11,
+      "step": 3,
+      "variables": [
+        "taskId",
+        "batchFiles",
+        "totalTokens",
+        "analysisStrategy",
+        "combinedAnalysis"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "single-batch-template": {
+      "id": "single-batch-template", 
+      "name": "单文件单批次模板",
+      "path": "./prompts/modes/init/file-documentation/single-batch.md",
+      "category": "batch_processing",
+      "priority": 12,
+      "step": 3,
+      "variables": [
+        "taskId",
+        "fileName",
+        "filePath",
+        "fileTokens",
+        "singleFileAnalysis"
+      ],
+      "required": true,
+      "modes": ["init"]
+    },
+    "multi-batch-template": {
+      "id": "multi-batch-template",
+      "name": "大文件多批次模板",
+      "path": "./prompts/modes/init/file-documentation/multi-batch.md",
+      "category": "batch_processing",
+      "priority": 13,
+      "step": 3,
+      "variables": [
+        "taskId",
+        "fileName", 
+        "segmentNumber",
+        "totalSegments",
+        "segmentContent",
+        "mergeStrategy"
+      ],
+      "required": true,
+      "modes": ["init"]
     }
   },
   "categories": [
@@ -332,12 +384,39 @@
     "requirements",
     "analysis", 
     "planning",
-    "process"
+    "process",
+    "batch_processing"
   ],
   "init_workflow_templates": {
+    "step_2_file_analysis": {
+      "name": "文件分析模块",
+      "templates": []
+    },
     "step_3_file_processing": {
-      "name": "文件文档生成",
-      "templates": ["file-analysis.md"]
+      "name": "文件文档生成 - 智能批次策略",
+      "batch_strategies": {
+        "combined_batch": {
+          "name": "综合文件批次",
+          "threshold": "< 15K tokens",
+          "templates": ["combined-batch-template"]
+        },
+        "single_batch": {
+          "name": "单文件单批次", 
+          "threshold": "15K-20K tokens",
+          "templates": ["single-batch-template"]
+        },
+        "multi_batch": {
+          "name": "大文件多批次",
+          "threshold": "> 20K tokens",
+          "templates": ["multi-batch-template"]
+        }
+      },
+      "templates": [
+        "file-analysis.md",
+        "combined-batch-template",
+        "single-batch-template", 
+        "multi-batch-template"
+      ]
     },
     "step_4_module_integration": {
       "name": "模块整合",

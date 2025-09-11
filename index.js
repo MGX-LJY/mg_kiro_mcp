@@ -48,6 +48,16 @@ function getServiceContainer(serviceBus) {
     aiTodoManager: serviceBus.get('aiTodoManager'),
     completeTaskMonitor: serviceBus.get('completeTaskMonitor'),
     
+    // Init模式所需服务
+    projectOverviewGenerator: serviceBus.get('projectOverviewGenerator'),
+    fileQueryService: serviceBus.get('fileQueryService'),
+    
+    // 新的文件分析模块和任务管理服务
+    fileAnalysisModule: serviceBus.get('fileAnalysisModule'),
+    unifiedTaskManager: serviceBus.get('unifiedTaskManager'),
+    unifiedTaskValidator: serviceBus.get('unifiedTaskValidator'),
+    taskStateManager: serviceBus.get('taskStateManager'),
+    
     // 向后兼容的别名（指向新服务）
     promptService: serviceBus.get('masterTemplateService'),
     unifiedTemplateService: serviceBus.get('masterTemplateService'),
@@ -235,6 +245,20 @@ async function startServer() {
                 type: "boolean",
                 description: "是否包含总结任务",
                 default: true
+              }
+            },
+            required: ["projectPath"]
+          }
+        },
+        {
+          name: "init_step2_file_analysis", 
+          description: "Step2: 文件分析模块 - 智能Token分析和批次规划，使用FileAnalysisModule作为系统大脑进行精确的文件分析和智能批次分配",
+          inputSchema: {
+            type: "object",
+            properties: {
+              projectPath: {
+                type: "string", 
+                description: "项目根目录路径（与Step1相同）"
               }
             },
             required: ["projectPath"]
@@ -818,22 +842,29 @@ async function startServer() {
                     projectName: overviewResult.projectMetadata?.name || 'Unknown',
                     primaryLanguage: overviewResult.languageProfile?.primary || 'Unknown',
                     totalFiles: overviewResult.projectMetadata?.totalFiles || 0,
+                    sourceCodeFiles: overviewResult.fileAnalysisInput?.fileList?.length || 0,
                     architectureType: overviewResult.projectCharacteristics?.architecture || 'Unknown',
                     complexity: overviewResult.projectCharacteristics?.complexity || 'Unknown'
                   },
                   
-                  // 下一步指导
+                  // 为Step2 FileAnalysisModule提供的数据
+                  fileAnalysisInput: overviewResult.fileAnalysisInput || {
+                    fileList: [],
+                    projectMetadata: overviewResult.projectMetadata,
+                    languageProfile: overviewResult.languageProfile
+                  },
+                  
+                  // 下一步指导 - 更新为新的工作流程
                   workflow: {
                     current_step: "1/6 - 项目分析",
                     status: "completed",
                     next_steps: [{
-                      tool: "init_step2_create_todos",
-                      description: "基于项目分析结果创建详细的AI任务列表",
+                      tool: "init_step2_file_analysis",
+                      description: "使用FileAnalysisModule进行智能文件分析和批次规划",
                       suggested_params: {
-                        projectPath: resolve(projectPath),
-                        batchSize: overviewResult.aiGenerationGuide?.step2Guidance?.suggestedBatchSize || 3
+                        projectPath: resolve(projectPath)
                       },
-                      why: "项目分析已完成，需要创建AI任务列表以进行文件处理"
+                      why: "项目基础分析已完成，现在需要FileAnalysisModule进行精确Token分析和智能批次分配"
                     }],
                     progress: {
                       completed: 1,
@@ -889,7 +920,7 @@ async function startServer() {
           
           // 获取处理计划
           const processingPlan = await fileQueryService.getProcessingPlan(resolve(projectPath), {
-            batchSize: batchSize || step1Results.aiGenerationGuide?.step2Guidance?.suggestedBatchSize || 3,
+            batchSize: batchSize || 3,
             priorityOrder: true,
             estimateOnly: false
           });
@@ -966,6 +997,162 @@ async function startServer() {
               }
             ]
           };
+        }
+
+        case "init_step2_file_analysis": {
+          const { projectPath } = args;
+          
+          if (!projectPath) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
+          }
+          
+          console.log(`[MCP-Init-Step2] FileAnalysisModule 文件分析 - ${projectPath}`);
+          
+          // 验证 Step1 是否完成
+          const validation = validateStepPrerequisites(projectPath, 2);
+          if (!validation.valid) {
+            return {
+              content: [{
+                type: "text", 
+                text: JSON.stringify({ error: true, message: validation.error, tool: name, step: 2 }, null, 2)
+              }]
+            };
+          }
+
+          // 更新当前步骤
+          updateProjectState(projectPath, { currentStep: 2 });
+          
+          // 获取Step1的结果
+          const initState = getProjectStateEnhanced(projectPath);
+          const step1Results = initState.stepResults.step1.projectOverview;
+          
+          // 准备FileAnalysisModule所需的数据
+          const analysisInput = {
+            projectPath: resolve(projectPath),
+            fileList: step1Results.fileAnalysisInput?.fileList || [],
+            projectMetadata: step1Results.projectMetadata,
+            languageProfile: step1Results.languageProfile,
+            options: {
+              smallFileThreshold: 15000,
+              largeFileThreshold: 20000,
+              batchTargetSize: 18000
+            }
+          };
+
+          try {
+            // 使用真实的 FileAnalysisModule 进行分析
+            console.log(`[MCP-Init-Step2] FileAnalysisModule 分析开始:`, {
+              fileCount: analysisInput.fileList.length,
+              projectName: analysisInput.projectMetadata?.name,
+              language: analysisInput.languageProfile?.primary
+            });
+            
+            const { fileAnalysisModule } = serviceContainer;
+            if (!fileAnalysisModule) {
+              throw new Error('FileAnalysisModule 服务未找到');
+            }
+
+            // 调用 FileAnalysisModule 进行智能分析和批次规划
+            const analysisResult = await fileAnalysisModule.analyzeProject(
+              analysisInput.projectPath,
+              analysisInput.fileList,
+              {
+                projectMetadata: analysisInput.projectMetadata,
+                languageProfile: analysisInput.languageProfile,
+                options: analysisInput.options
+              }
+            );
+
+            console.log(`[MCP-Init-Step2] FileAnalysisModule 分析完成:`, {
+              success: analysisResult.success,
+              totalFiles: analysisResult.fileAnalysis?.totalFiles || 0,
+              totalBatches: analysisResult.batchStrategy?.totalBatches || 0,
+              totalTasks: analysisResult.taskManagement?.totalTasks || 0
+            });
+
+            // 存储Step2结果
+            saveStepResult(projectPath, 'step2', {
+              analysisResult,
+              fileAnalysisInput: analysisInput,
+              completedAt: new Date().toISOString()
+            });
+            
+            // 更新项目状态
+            updateProjectState(projectPath, {
+              stepResults: {
+                ...initState.stepResults,
+                step2: {
+                  analysisResult,
+                  fileAnalysisInput: analysisInput,
+                  completedAt: new Date().toISOString()
+                }
+              },
+              stepsCompleted: [...initState.stepsCompleted, 'step2']
+            });
+
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify({
+                    currentStep: 2,
+                    stepName: 'file-analysis',
+                    projectPath: resolve(projectPath),
+                    
+                    // 分析结果摘要
+                    analysisResults: {
+                      totalFiles: analysisResult.fileAnalysis.totalFiles,
+                      analyzedFiles: analysisResult.fileAnalysis.analyzedFiles,
+                      totalTokens: analysisResult.fileAnalysis.tokenSummary.totalTokens,
+                      totalBatches: analysisResult.batchStrategy.totalBatches,
+                      totalTasks: analysisResult.taskManagement.totalTasks
+                    },
+                    
+                    // 下一步指导
+                    workflow: {
+                      current_step: "2/6 - 文件分析模块",
+                      status: "completed", 
+                      next_steps: [{
+                        tool: "init_step3_get_next_task",
+                        description: "开始Step3文件文档生成循环，基于FileAnalysisModule的智能批次计划",
+                        suggested_params: {
+                          projectPath: resolve(projectPath)
+                        },
+                        why: "FileAnalysisModule已完成智能文件分析和批次规划，现在可以开始精确的文件处理流程"
+                      }],
+                      progress: {
+                        completed: 2,
+                        total: 6,
+                        percentage: Math.round(2/6 * 100)
+                      }
+                    },
+                    
+                    success: true,
+                    message: "Step2: FileAnalysisModule分析完成，智能批次计划已生成"
+                  }, null, 2)
+                }
+              ]
+            };
+
+          } catch (error) {
+            console.error('[MCP-Init-Step2] FileAnalysisModule分析失败:', error);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: `FileAnalysisModule分析失败: ${error.message}`,
+                  tool: name,
+                  step: 2
+                }, null, 2)
+              }]
+            };
+          }
         }
         
         case "init_step3_get_next_task": {

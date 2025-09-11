@@ -130,20 +130,11 @@ export class ProjectOverviewGenerator {
                 // 新增：AI任务上下文
                 aiTaskContext,
                 
-                // AI生成指导信息（增强版）
-                aiGenerationGuide: {
-                    suggestedDocumentSections: this.suggestDocumentSections(projectCharacteristics),
-                    keyFocusAreas: this.identifyKeyFocusAreas(languageProfile, projectCharacteristics),
-                    complexityLevel: this.assessComplexity(projectMetadata, directoryStructure, dependencyAnalysis),
-                    recommendedApproach: this.recommendDocumentationApproach(projectCharacteristics),
-                    
-                    // 新增：为Step2提供的具体指导
-                    step2Guidance: {
-                        suggestedBatchSize: this.calculateOptimalBatchSize(directoryStructure),
-                        priorityFiles: this.identifyPriorityFiles(keyFileContents, projectCharacteristics),
-                        documentationStrategy: this.recommendDocumentationStrategy(languageProfile, projectCharacteristics),
-                        estimatedTaskCount: this.estimateTaskCount(directoryStructure, projectCharacteristics)
-                    }
+                // 为Step2 FileAnalysisModule提供必要的基础数据
+                fileAnalysisInput: {
+                    fileList: this.extractFileListFromStructure(directoryStructure),
+                    projectMetadata,
+                    languageProfile
                 }
             };
 
@@ -666,10 +657,9 @@ export class ProjectOverviewGenerator {
             generatedAt: new Date().toISOString(),
             projectName: data.projectMetadata.name,
             
-            // 文件处理指导
+            // 简化的文件处理指导 (主要功能迁移到FileAnalysisModule)
             fileProcessingGuide: {
                 totalFilesToProcess: this.countProcessableFiles(data.directoryStructure),
-                recommendedBatchSize: this.calculateOptimalBatchSize(data.directoryStructure),
                 priorityLevels: this.definePriorityLevels(data),
                 processingStrategy: this.recommendProcessingStrategy(data.languageProfile, data.projectCharacteristics)
             },
@@ -681,9 +671,8 @@ export class ProjectOverviewGenerator {
                 supportingModules: this.identifySupportingModules(data.directoryStructure)
             },
             
-            // 文档生成策略
+            // 简化的文档生成策略 (详细策略迁移到FileAnalysisModule)
             documentationStrategy: {
-                approach: this.recommendDocumentationStrategy(data.languageProfile, data.projectCharacteristics),
                 templates: this.recommendTemplates(data.languageProfile),
                 qualityStandards: this.defineQualityStandards(data.projectCharacteristics)
             },
@@ -741,42 +730,76 @@ export class ProjectOverviewGenerator {
         return coreModules;
     }
     
-    calculateOptimalBatchSize(structure) {
-        const totalFiles = structure.totalFiles || 0;
-        if (totalFiles <= 20) return 3;
-        if (totalFiles <= 50) return 5;
-        if (totalFiles <= 100) return 7;
-        return 10;
-    }
-    
-    identifyPriorityFiles(keyFiles, characteristics) {
-        return Object.entries(keyFiles)
-            .map(([fileName, fileData]) => ({
-                fileName,
-                priority: fileData.importance || this.calculateFileImportance(fileName),
-                reason: this.getPriorityReason(fileName, fileData)
-            }))
-            .sort((a, b) => b.priority - a.priority)
-            .slice(0, 10);
-    }
-    
-    recommendDocumentationStrategy(languageProfile, characteristics) {
-        const strategies = {
-            javascript: '重点关注模块导入导出、异步处理和API设计',
-            typescript: '强调类型定义、接口设计和模块边界',
-            python: '注重类结构、函数签名和包组织',
-            java: '突出类继承、接口实现和包结构',
-            go: '重点记录包接口、并发模式和错误处理'
-        };
+    /**
+     * 为FileAnalysisModule提取文件列表 - 替代aiGenerationGuide功能
+     */
+    extractFileListFromStructure(directoryStructure) {
+        const fileList = [];
         
-        return strategies[languageProfile.primary] || '通用文档生成策略';
+        const processDirectory = (dir, basePath = '') => {
+            if (dir.type === 'file') {
+                // 只处理源代码文件，过滤掉临时文件和日志
+                if (this.isSourceCodeFile(dir.name)) {
+                    fileList.push({
+                        path: basePath ? `${basePath}/${dir.name}` : dir.name,
+                        name: dir.name,
+                        size: dir.size || 0,
+                        extension: this.getFileExtension(dir.name),
+                        isSourceCode: true
+                    });
+                }
+            } else if (dir.children) {
+                // 递归处理子目录
+                Object.entries(dir.children).forEach(([childName, childDir]) => {
+                    const childPath = basePath ? `${basePath}/${childName}` : childName;
+                    processDirectory(childDir, childPath);
+                });
+            }
+        };
+
+        // 处理根目录结构
+        if (directoryStructure.children) {
+            Object.entries(directoryStructure.children).forEach(([name, dir]) => {
+                processDirectory(dir, name);
+            });
+        }
+        
+        // 按文件大小排序，方便FileAnalysisModule进行智能分组
+        return fileList.sort((a, b) => (b.size || 0) - (a.size || 0));
     }
-    
-    estimateTaskCount(structure, characteristics) {
-        const base = structure.totalFiles || 0;
-        const multiplier = characteristics.complexity === 'high' ? 1.3 : 
-                          characteristics.complexity === 'low' ? 0.8 : 1.0;
-        return Math.ceil(base * multiplier) + 5; // +5 for analysis and summary tasks
+
+    /**
+     * 判断是否为源代码文件
+     */
+    isSourceCodeFile(fileName) {
+        const sourceExtensions = [
+            '.js', '.ts', '.jsx', '.tsx',     // JavaScript/TypeScript
+            '.py', '.pyx',                    // Python
+            '.java', '.kt', '.scala',         // JVM languages
+            '.go',                           // Go
+            '.rs',                          // Rust
+            '.c', '.cpp', '.cc', '.h', '.hpp', // C/C++
+            '.cs',                          // C#
+            '.rb',                          // Ruby
+            '.php',                         // PHP
+            '.swift',                       // Swift
+            '.dart',                        // Dart
+            '.vue', '.svelte'               // Frontend frameworks
+        ];
+        
+        const extension = this.getFileExtension(fileName);
+        return sourceExtensions.includes(extension) && 
+               !fileName.includes('.test.') && 
+               !fileName.includes('.spec.') &&
+               !fileName.includes('.min.');
+    }
+
+    /**
+     * 获取文件扩展名
+     */
+    getFileExtension(fileName) {
+        const parts = fileName.split('.');
+        return parts.length > 1 ? '.' + parts[parts.length - 1] : '';
     }
     
     countProcessableFiles(structure) {
@@ -1018,10 +1041,6 @@ export class ProjectOverviewGenerator {
             maturity: 'development'
         };
     }
-    suggestDocumentSections(characteristics) { return ['overview', 'architecture', 'setup']; }
-    identifyKeyFocusAreas(language, characteristics) { return ['core_functionality']; }
-    assessComplexity(metadata, structure, dependencies) { return 'medium'; }
-    recommendDocumentationApproach(characteristics) { return 'standard'; }
     calculateFileImportance(fileName) { return this.keyFilePatterns.indexOf(fileName) + 1; }
     detectFileType(fileName) {
         if (fileName.endsWith('.json')) return 'config';

@@ -50,5 +50,46 @@
     "hot_reload": true,
     "health_check": true,
     "metrics": true
+  },
+  "file_analysis": {
+    "enabled": true,
+    "token_calculation": {
+      "precise_mode": true,
+      "language_specific": true,
+      "cache_enabled": true,
+      "cache_duration": 3600
+    },
+    "batch_strategies": {
+      "small_file_threshold": 15000,
+      "large_file_threshold": 20000,
+      "batch_target_size": 18000,
+      "function_boundary_detection": true,
+      "smart_grouping": true
+    },
+    "task_management": {
+      "unified_validation": true,
+      "auto_completion": true,
+      "progress_tracking": true,
+      "error_recovery": true
+    }
+  },
+  "services": {
+    "file_analysis_module": {
+      "enabled": true,
+      "priority": 1
+    },
+    "unified_task_manager": {
+      "enabled": true,
+      "priority": 2
+    },
+    "task_validator": {
+      "enabled": true,
+      "validation_strategies": [
+        "Step3FolderValidator",
+        "Step4ModuleValidator", 
+        "Step5FixedFileValidator",
+        "Step6ArchitectureValidator"
+      ]
+    }
   }
 }
