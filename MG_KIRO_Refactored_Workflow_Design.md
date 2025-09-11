@@ -134,14 +134,14 @@ graph TD
     M -->|否| N[生成片段文档<br/>继续下一片段]
     M -->|是| O[生成完整文档<br/>file5.md]
     
-    K --> P[complete_task<br/>验证文档生成]
+    K --> P[check_task_completion<br/>检查文件存在]
     L --> P
     N --> P
     O --> P
     
-    P --> Q{文件分析模块验证}
-    Q -->|缺失文件| R[报告缺失文件列表<br/>AI重新生成]
-    Q -->|验证通过| S[标记任务完成<br/>更新进度]
+    P --> Q{文件夹是否有文件?}
+    Q -->|文件夹为空| R[报告文件夹为空<br/>AI重新生成]
+    Q -->|文件夹有文件| S[任务管理器自动完成任务<br/>更新进度]
     
     R --> H
     S --> T{还有更多任务?}
@@ -169,8 +169,10 @@ graph TB
         A2 --> A3[读取Step3生成的文件文档]
         A3 --> A4[提供模块整合模板]
         A4 --> A5[AI生成模块文档]
-        A5 --> A6[验证模块文档完整性]
-        A6 --> A7[完成模块整合任务]
+        A5 --> A6{检查模块文档文件夹}
+        A6 -->|文件夹有文件| A7[任务管理器自动完成任务]
+        A6 -->|文件夹为空| A8[报告模块文档文件夹为空<br/>module文档未生成]
+        A8 --> A5
     end
     
     subgraph "Step 5: 模块关联分析"
@@ -179,8 +181,10 @@ graph TB
         B2 --> B3[读取Step4模块文档]
         B3 --> B4[提供关联分析模板]
         B4 --> B5[AI生成关联分析文档]
-        B5 --> B6[验证关联分析完整性]
-        B6 --> B7[完成关联分析任务]
+        B5 --> B6{检查固定关联文档}
+        B6 -->|relations.md存在| B7[任务管理器自动完成任务]
+        B6 -->|relations.md缺失| B8[报告缺失关联文档<br/>relations.md 未生成]
+        B8 --> B5
     end
     
     subgraph "Step 6: 架构文档生成"
@@ -189,8 +193,10 @@ graph TB
         C2 --> C3[读取所有已生成文档]
         C3 --> C4[提供架构文档模板]
         C4 --> C5[AI生成最终架构文档]
-        C5 --> C6[验证架构文档完整性]
-        C6 --> C7[完成所有任务<br/>流程结束]
+        C5 --> C6{检查固定架构文档}
+        C6 -->|README.md, architecture.md存在| C7[任务管理器自动完成任务<br/>流程结束]
+        C6 -->|文档缺失| C8[报告缺失架构文档<br/>README.md, architecture.md 未生成]
+        C8 --> C5
     end
     
     A7 --> B1
@@ -209,9 +215,9 @@ graph TB
     classDef step6 fill:#9c27b0,stroke:#333,stroke-width:2px
     
     class D taskManager
-    class A1,A2,A3,A4,A5,A6,A7 step4
-    class B1,B2,B3,B4,B5,B6,B7 step5
-    class C1,C2,C3,C4,C5,C6,C7 step6
+    class A1,A2,A3,A4,A5,A6,A7,A8 step4
+    class B1,B2,B3,B4,B5,B6,B7,B8 step5
+    class C1,C2,C3,C4,C5,C6,C7,C8 step6
 ```
 
 ## 🏗️ 系统架构组件关系图
@@ -301,12 +307,25 @@ Step 6: architecture_task_1, architecture_task_2...
 ### 文档生成验证
 ```mermaid
 graph LR
-    A[complete_task调用] --> B[文件分析模块提供<br/>预期文件列表]
-    B --> C{检查文件是否存在}
-    C -->|全部存在| D[任务完成<br/>进入下一任务]
-    C -->|有文件缺失| E[生成缺失文件报告<br/>文件1.md, 文件3.md 未生成]
-    E --> F[AI重新生成缺失文件]
-    F --> C
+    A[check_task_completion调用] --> B{步骤类型判断}
+    
+    B -->|Step 3| C[检查文件夹是否有文件]
+    B -->|Step 5| D[检查relations.md是否存在]  
+    B -->|Step 6| E[检查README.md, architecture.md是否存在]
+    
+    C -->|文件夹有文件| F[任务管理器自动完成任务]
+    C -->|文件夹为空| G[报告文件夹为空<br/>需要生成文档]
+    
+    D -->|relations.md存在| F
+    D -->|relations.md缺失| H[报告relations.md未生成]
+    
+    E -->|所需文档存在| F
+    E -->|文档缺失| I[报告README.md, architecture.md未生成]
+    
+    G --> J[AI重新生成]
+    H --> J
+    I --> J
+    J --> A
 ```
 
 ## 🎯 重构目标实现
