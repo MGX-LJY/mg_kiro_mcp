@@ -12,6 +12,7 @@ import LanguageDetector from '../language/detector.js';
 import LanguageIntelligenceService from './language-intelligence-service.js';
 import { ProjectOverviewGenerator } from './project-overview-generator.js';
 import { FileQueryService } from './file-query-service.js';
+import { SmartContentTrimmer } from './smart-content-trimmer.js';
 
 // 新的统一模板系统
 import MasterTemplateService from './unified/master-template-service.js';
@@ -53,7 +54,8 @@ export function registerServices(configDir = './config') {
         .register('aiTodoManager', AITodoManager, {}, [])
         .register('completeTaskMonitor', CompleteTaskMonitor, {}, [])
         .register('projectOverviewGenerator', ProjectOverviewGenerator, {}, [])
-        .register('fileQueryService', FileQueryService, {}, []);
+        .register('smartContentTrimmer', SmartContentTrimmer, {}, [])
+        .register('fileQueryService', FileQueryService, {}, ['smartContentTrimmer']);
 
     // 文件分析模块层（依赖基础服务）
     serviceBus
@@ -187,6 +189,7 @@ export function getServices() {
         // Init模式所需服务
         projectOverviewGenerator: serviceBus.get('projectOverviewGenerator'),
         fileQueryService: serviceBus.get('fileQueryService'),
+        smartContentTrimmer: serviceBus.get('smartContentTrimmer'),
         
         // 新的文件分析模块和任务管理服务
         fileAnalysisModule: serviceBus.get('fileAnalysisModule'),

@@ -13,34 +13,87 @@
  */
 
 export class AITodoManager {
-    constructor() {
+    constructor(config = {}, dependencies = {}, serviceBus = null) {
+        // 配置合并（ServiceBus格式）
+        this.config = {
+            // Todo管理配置
+            maxConcurrentTasks: 3,
+            enableAutoProgress: true,
+            saveProgress: true,
+            progressFile: 'mg_kiro/progress.json',
+            
+            // 任务状态枚举
+            taskStatus: {
+                PENDING: 'pending',
+                IN_PROGRESS: 'in_progress', 
+                COMPLETED: 'completed',
+                SKIPPED: 'skipped',
+                ERROR: 'error'
+            },
+            
+            // 工作流类型
+            workflowTypes: {
+                INIT: 'init',
+                CREATE: 'create',
+                FIX: 'fix',
+                ANALYZE: 'analyze'
+            },
+            
+            // Create模式任务类型
+            createTaskTypes: {
+                REQUIREMENT_ANALYSIS: 'requirement_analysis',
+                IMPACT_ANALYSIS: 'impact_analysis',
+                ARCHITECTURE_DESIGN: 'architecture_design',
+                MODULE_CREATION: 'module_creation',
+                CODE_IMPLEMENTATION: 'code_implementation',
+                DOCUMENT_UPDATE: 'document_update',
+                TESTING: 'testing',
+                INTEGRATION: 'integration'
+            },
+            
+            // 默认AI指导配置
+            defaultGuidance: {
+                currentInstruction: '准备开始文件处理，请调用 get_next_task 获取第一个任务',
+                processingStrategy: '按重要性顺序逐个处理文件，每个文件完成后标记为已完成',
+                qualityStandards: ['确保代码文档完整', '保持文档结构一致', '添加必要的使用示例']
+            },
+            
+            // 覆盖默认配置
+            ...config
+        };
+
+        // 依赖注入（ServiceBus格式）
+        this.serviceBus = serviceBus;
+        this.logger = dependencies.logger || console;
+        
+        // 核心状态
         this.projectTodos = new Map(); // 每个项目的to-do列表
-        this.taskStatus = {
-            PENDING: 'pending',
-            IN_PROGRESS: 'in_progress', 
-            COMPLETED: 'completed',
-            SKIPPED: 'skipped',
-            ERROR: 'error'
-        };
         
-        // 工作流类型
-        this.workflowTypes = {
-            INIT: 'init',
-            CREATE: 'create',
-            FIX: 'fix',
-            ANALYZE: 'analyze'
-        };
+        // 使用配置中的枚举（向后兼容）
+        this.taskStatus = this.config.taskStatus;
+        this.workflowTypes = this.config.workflowTypes;
+        this.createTaskTypes = this.config.createTaskTypes;
         
-        // Create模式任务类型
-        this.createTaskTypes = {
-            REQUIREMENT_ANALYSIS: 'requirement_analysis',
-            IMPACT_ANALYSIS: 'impact_analysis',
-            ARCHITECTURE_DESIGN: 'architecture_design',
-            MODULE_CREATION: 'module_creation',
-            CODE_IMPLEMENTATION: 'code_implementation',
-            DOCUMENT_UPDATE: 'document_update',
-            TESTING: 'testing',
-            INTEGRATION: 'integration'
+        this.logger.info('[AITodoManager] AI Todo管理器已初始化');
+    }
+
+    /**
+     * ServiceBus兼容方法：初始化服务
+     */
+    async initialize() {
+        // 执行任何异步初始化逻辑
+        return Promise.resolve();
+    }
+
+    /**
+     * ServiceBus兼容方法：获取服务状态
+     */
+    getStatus() {
+        return {
+            name: 'AITodoManager',
+            status: 'active',
+            projectTodos: this.projectTodos.size,
+            config: this.config
         };
     }
 
@@ -48,7 +101,7 @@ export class AITodoManager {
      * 为项目创建AI to-do列表
      */
     async createProjectTodoList(projectPath, processingPlan, options = {}) {
-        console.log(`[AITodo] 为项目创建to-do列表: ${projectPath}`);
+        this.logger.info(`[AITodo] 为项目创建to-do列表: ${projectPath}`);
         
         const {
             includeAnalysisTasks = true,
@@ -93,11 +146,7 @@ export class AITodoManager {
             },
             
             // AI指导信息
-            aiGuidance: {
-                currentInstruction: '准备开始文件处理，请调用 get_next_task 获取第一个任务',
-                processingStrategy: '按重要性顺序逐个处理文件，每个文件完成后标记为已完成',
-                qualityStandards: ['确保代码文档完整', '保持文档结构一致', '添加必要的使用示例']
-            }
+            aiGuidance: this.config.defaultGuidance
         };
 
         // 根据工作流类型创建对应的任务
@@ -227,7 +276,7 @@ export class AITodoManager {
         // 缓存to-do列表
         this.projectTodos.set(projectPath, todoList);
         
-        console.log(`[AITodo] 创建了 ${todoList.totalTasks} 个任务`);
+        this.logger.info(`[AITodo] 创建了 ${todoList.totalTasks} 个任务`);
         
         return {
             success: true,
@@ -355,7 +404,7 @@ export class AITodoManager {
         // 清除当前任务
         todoList.currentTask = null;
 
-        console.log(`[AITodo] 任务完成: ${task.title}`);
+        this.logger.info(`[AITodo] 任务完成: ${task.title}`);
 
         return {
             success: true,
@@ -571,7 +620,7 @@ export class AITodoManager {
      * Create模式任务创建方法
      */
     async createCreateModeTasks(todoList, processingPlan, options) {
-        console.log('[AITodo] 创建Create模式任务');
+        this.logger.info('[AITodo] 创建Create模式任务');
         
         const { workflowType = 'feature_addition' } = options;
         
@@ -807,7 +856,7 @@ export class AITodoManager {
      */
     async createDefaultFileTasks(todoList, processingPlan, options) {
         // 保持原有的文件处理逻辑不变
-        console.log('[AITodo] 创建默认文件处理任务');
+        this.logger.info('[AITodo] 创建默认文件处理任务');
     }
 
     /**

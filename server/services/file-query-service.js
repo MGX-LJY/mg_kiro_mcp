@@ -212,45 +212,94 @@ class SmartChunker {
 }
 
 export class FileQueryService {
-    constructor() {
+    constructor(config = {}, dependencies = {}, serviceBus = null) {
+        // 配置合并（ServiceBus格式）
+        this.config = {
+            // 文件查询配置
+            enableCaching: true,
+            cacheExpiration: 300000, // 5分钟
+            maxFileSize: 5000000, // 5MB
+            maxContentLength: 50000, // 50K字符
+            
+            // 支持的文件扩展名
+            supportedExtensions: [
+                '.js', '.ts', '.jsx', '.tsx', '.mjs',
+                '.py', '.java', '.go', '.rs', '.cpp', '.c', '.cs',
+                '.php', '.rb', '.swift', '.kt', '.scala',
+                '.json', '.yaml', '.yml', '.toml', '.xml',
+                '.md', '.txt', '.sql', '.sh', '.bat',
+                '.vue', '.svelte', '.html', '.css', '.scss', '.less'
+            ],
+            
+            // 文件分类配置
+            fileCategories: {
+                entry: ['main.js', 'app.js', 'index.js', 'server.js', 'start.js'],
+                config: ['package.json', 'tsconfig.json', 'webpack.config.js', '.env'],
+                route: ['router', 'routes', 'endpoint', 'api'],
+                controller: ['controller', 'ctrl', 'handler'],
+                service: ['service', 'provider', 'manager', 'client'],
+                model: ['model', 'schema', 'entity', 'dto'],
+                component: ['component', 'widget', 'view'],
+                utility: ['util', 'helper', 'lib', 'common', 'tools'],
+                test: ['test', 'spec', '__test__', '.test.', '.spec.'],
+                documentation: ['README', 'CHANGELOG', 'LICENSE', 'docs']
+            },
+            
+            // 排除模式
+            exclusionPatterns: [
+                '.git', '.svn', 'node_modules', '__pycache__', '.pytest_cache',
+                'venv', '.venv', 'build', 'dist', 'target', 'out',
+                '.DS_Store', '.idea', '.vscode', '*.log', '*.tmp',
+                'coverage', '.nyc_output', 'logs'
+            ],
+            
+            // 覆盖默认配置
+            ...config
+        };
+
+        // 依赖注入（ServiceBus格式）
+        this.serviceBus = serviceBus;
+        this.logger = dependencies.logger || console;
+        this.smartContentTrimmer = dependencies.smartContentTrimmer;
+        
+        // 核心状态
         this.cachedProjects = new Map(); // 缓存项目信息
         this.tokenCalculator = new TokenCalculator();
         this.smartChunker = new SmartChunker(this.tokenCalculator);
-        this.supportedExtensions = [
-            '.js', '.ts', '.jsx', '.tsx', '.mjs',
-            '.py', '.java', '.go', '.rs', '.cpp', '.c', '.cs',
-            '.php', '.rb', '.swift', '.kt', '.scala',
-            '.json', '.yaml', '.yml', '.toml', '.xml',
-            '.md', '.txt', '.sql', '.sh', '.bat',
-            '.vue', '.svelte', '.html', '.css', '.scss', '.less'
-        ];
         
-        this.fileCategories = {
-            entry: ['main.js', 'app.js', 'index.js', 'server.js', 'start.js'],
-            config: ['package.json', 'tsconfig.json', 'webpack.config.js', '.env'],
-            route: ['router', 'routes', 'endpoint', 'api'],
-            controller: ['controller', 'ctrl', 'handler'],
-            service: ['service', 'provider', 'manager', 'client'],
-            model: ['model', 'schema', 'entity', 'dto'],
-            component: ['component', 'widget', 'view'],
-            utility: ['util', 'helper', 'lib', 'common', 'tools'],
-            test: ['test', 'spec', '__test__', '.test.', '.spec.'],
-            documentation: ['README', 'CHANGELOG', 'LICENSE', 'docs']
+        // 使用配置中的数据（向后兼容）
+        this.supportedExtensions = this.config.supportedExtensions;
+        this.fileCategories = this.config.fileCategories;
+        this.exclusionPatterns = this.config.exclusionPatterns;
+        
+        this.logger.info('[FileQueryService] 文件查询服务已初始化');
+    }
+
+    /**
+     * ServiceBus兼容方法：初始化服务
+     */
+    async initialize() {
+        // 执行任何异步初始化逻辑
+        return Promise.resolve();
+    }
+
+    /**
+     * ServiceBus兼容方法：获取服务状态
+     */
+    getStatus() {
+        return {
+            name: 'FileQueryService',
+            status: 'active',
+            cachedProjects: this.cachedProjects.size,
+            config: this.config
         };
-        
-        this.exclusionPatterns = [
-            '.git', '.svn', 'node_modules', '__pycache__', '.pytest_cache',
-            'venv', '.venv', 'build', 'dist', 'target', 'out',
-            '.DS_Store', '.idea', '.vscode', '*.log', '*.tmp',
-            'coverage', '.nyc_output', 'logs'
-        ];
     }
 
     /**
      * 初始化项目文件索引
      */
     async initializeProject(projectPath) {
-        console.log(`[FileQuery] 初始化项目文件索引: ${projectPath}`);
+        this.logger.info(`[FileQuery] 初始化项目文件索引: ${projectPath}`);
         
         const startTime = Date.now();
         const projectKey = resolve(projectPath);
@@ -258,7 +307,7 @@ export class FileQueryService {
         try {
             // 扫描项目文件
             const allFiles = await this.scanProjectFiles(projectPath);
-            console.log(`[FileQuery] 发现 ${allFiles.length} 个源代码文件`);
+            this.logger.info(`[FileQuery] 发现 ${allFiles.length} 个源代码文件`);
 
             // 分析文件信息
             const analysisResults = await this.analyzeProjectFiles(projectPath, allFiles);
@@ -274,11 +323,11 @@ export class FileQueryService {
             
             this.cachedProjects.set(projectKey, projectInfo);
             
-            console.log(`[FileQuery] 项目索引完成: ${projectInfo.indexingTime}`);
+            this.logger.info(`[FileQuery] 项目索引完成: ${projectInfo.indexingTime}`);
             return projectInfo;
 
         } catch (error) {
-            console.error('[FileQuery] 项目初始化失败:', error);
+            this.logger.error('[FileQuery] 项目初始化失败:', error);
             throw new Error(`项目文件索引失败: ${error.message}`);
         }
     }
@@ -400,7 +449,7 @@ export class FileQueryService {
             let content = await fs.readFile(filePath, 'utf8');
             
             const {
-                maxContentLength = 50000,  // 最大内容长度
+                maxContentLength = this.config.maxContentLength,  // 最大内容长度
                 includeTrimming = true,    // 是否包含裁切信息
                 includeAnalysis = true,    // 是否包含文件分析
                 enableChunking = false,    // 是否启用智能分片
@@ -457,8 +506,12 @@ export class FileQueryService {
             }
             // 检查是否需要裁切（当未启用分片时）
             else if (content.length > maxContentLength && includeTrimming) {
-                const trimmer = await import('./smart-content-trimmer.js');
-                const smartTrimmer = new trimmer.SmartContentTrimmer();
+                // 使用依赖注入的smartContentTrimmer，如果没有则动态导入
+                let smartTrimmer = this.smartContentTrimmer;
+                if (!smartTrimmer) {
+                    const trimmer = await import('./smart-content-trimmer.js');
+                    smartTrimmer = new trimmer.SmartContentTrimmer();
+                }
                 
                 content = await smartTrimmer.trimContent(
                     content, 

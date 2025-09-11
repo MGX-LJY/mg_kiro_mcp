@@ -1,0 +1,4201 @@
+{
+  "currentStep": 2,
+  "projectPath": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
+  "stepsCompleted": [
+    "step1",
+    "step2"
+  ],
+  "stepResults": {
+    "step1": {
+      "projectOverview": {
+        "generatedAt": "2025-09-11T14:51:20.311Z",
+        "generationTime": "22ms",
+        "projectMetadata": {
+          "name": "mg_kiro_mcp",
+          "path": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
+          "lastModified": "2025-09-11T14:51:20.289Z",
+          "createdAt": "2025-09-06T14:38:08.793Z",
+          "totalFiles": 9,
+          "totalSize": "643.95 KB",
+          "totalSizeBytes": 659407,
+          "fileTypeDistribution": {
+            ".md": 4,
+            ".js": 2,
+            ".json": 2,
+            ".backup": 1
+          }
+        },
+        "languageProfile": {
+          "primary": "javascript",
+          "secondary": [
+            {
+              "name": "express",
+              "confidence": 33.33333333333333
+            }
+          ],
+          "frameworks": [
+            {
+              "name": "express",
+              "confidence": 33.33333333333333
+            }
+          ],
+          "techStack": {
+            "primary": "javascript",
+            "frameworks": [
+              {
+                "name": "express",
+                "confidence": 33.33333333333333
+              }
+            ]
+          },
+          "confidence": 81,
+          "detectionSources": [
+            "base-detection"
+          ],
+          "languageStats": {},
+          "ecosystem": "javascript"
+        },
+        "dependencyAnalysis": {
+          "systems": [
+            "npm"
+          ],
+          "details": {
+            "npm": {
+              "production": {
+                "@modelcontextprotocol/sdk": "^1.0.0",
+                "axios": "^1.6.2",
+                "compression": "^1.7.4",
+                "cors": "^2.8.5",
+                "express": "^4.18.2",
+                "express-rate-limit": "^7.1.5",
+                "helmet": "^7.1.0",
+                "ws": "^8.16.0"
+              },
+              "development": {
+                "@babel/core": "^7.28.4",
+                "@babel/preset-env": "^7.28.3",
+                "@jest/globals": "^30.1.2",
+                "babel-jest": "^30.1.2",
+                "jest": "^30.1.3",
+                "nodemon": "^3.0.2",
+                "supertest": "^7.1.4"
+              },
+              "peer": {},
+              "scripts": {
+                "start": "node index.js",
+                "dev": "node --watch index.js",
+                "test": "jest",
+                "test:watch": "jest --watch",
+                "test:coverage": "jest --coverage",
+                "test:integration": "jest --testPathPattern=integration",
+                "test:unit": "jest --testPathPattern=unit",
+                "test:config": "node tests/config-integration.test.js",
+                "test:system": "node test-integration.js",
+                "validate:refactoring": "node scripts/validate-refactoring.js",
+                "daemon": "nohup node index.js > logs/mg_kiro.log 2>&1 &"
+              },
+              "engines": {
+                "node": ">=16.0.0",
+                "npm": ">=8.0.0"
+              },
+              "projectInfo": {
+                "name": "mg_kiro_mcp",
+                "version": "2.0.0",
+                "description": "智能项目文档管理与代码维护系统的 MCP (Model Context Protocol) 服务器实现",
+                "author": "mg_kiro Team",
+                "license": "MIT"
+              }
+            }
+          },
+          "totalDependencies": 15,
+          "hasLockFile": false,
+          "securityAnalysis": {
+            "issues": [],
+            "score": "unknown"
+          },
+          "summary": "No analysis available"
+        },
+        "directoryStructure": {
+          "maxDepth": 3,
+          "totalDirectories": 0,
+          "totalFiles": 0,
+          "importantPaths": [],
+          "projectType": "unknown",
+          "architecturePattern": "unknown",
+          "structure": {
+            "name": "mg_kiro_mcp",
+            "type": "directory",
+            "children": [
+              {
+                "name": ".claude",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "commands",
+                    "type": "directory",
+                    "children": [
+                      {
+                        "name": "init.md",
+                        "type": "file",
+                        "size": 8333,
+                        "ext": ".md"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "settings.local.json",
+                    "type": "file",
+                    "size": 2364,
+                    "ext": ".json"
+                  }
+                ]
+              },
+              {
+                "name": "CLAUDE.md",
+                "type": "file",
+                "size": 4319,
+                "ext": ".md"
+              },
+              {
+                "name": "README.md",
+                "type": "file",
+                "size": 9586,
+                "ext": ".md"
+              },
+              {
+                "name": "Requirement.md",
+                "type": "file",
+                "size": 3209,
+                "ext": ".md"
+              },
+              {
+                "name": "config",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "mcp.config.json",
+                    "type": "file",
+                    "size": 1946,
+                    "ext": ".json"
+                  },
+                  {
+                    "name": "modes.config.json",
+                    "type": "file",
+                    "size": 3734,
+                    "ext": ".json"
+                  },
+                  {
+                    "name": "template-system.config.json",
+                    "type": "file",
+                    "size": 2488,
+                    "ext": ".json"
+                  },
+                  {
+                    "name": "templates.config.json",
+                    "type": "file",
+                    "size": 12077,
+                    "ext": ".json"
+                  },
+                  {
+                    "name": "workflows.config.json",
+                    "type": "file",
+                    "size": 15362,
+                    "ext": ".json"
+                  }
+                ]
+              },
+              {
+                "name": "docs",
+                "type": "directory",
+                "children": []
+              },
+              {
+                "name": "index.js",
+                "type": "file",
+                "size": 130095,
+                "ext": ".js"
+              },
+              {
+                "name": "index.js.backup",
+                "type": "file",
+                "size": 141942,
+                "ext": ".backup"
+              },
+              {
+                "name": "jest.config.js",
+                "type": "file",
+                "size": 826,
+                "ext": ".js"
+              },
+              {
+                "name": "mg_kiro",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "init-state.json",
+                    "type": "file",
+                    "size": 243,
+                    "ext": ".json"
+                  }
+                ]
+              },
+              {
+                "name": "package-lock.json",
+                "type": "file",
+                "size": 351388,
+                "ext": ".json"
+              },
+              {
+                "name": "package.json",
+                "type": "file",
+                "size": 1702,
+                "ext": ".json"
+              },
+              {
+                "name": "prompts",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "generation",
+                    "type": "directory",
+                    "children": [
+                      {
+                        "name": "architecture",
+                        "type": "directory",
+                        "truncated": true
+                      }
+                    ]
+                  },
+                  {
+                    "name": "languages",
+                    "type": "directory",
+                    "children": [
+                      {
+                        "name": "javascript",
+                        "type": "directory",
+                        "truncated": true
+                      }
+                    ]
+                  },
+                  {
+                    "name": "modes",
+                    "type": "directory",
+                    "children": [
+                      {
+                        "name": "create",
+                        "type": "directory",
+                        "truncated": true
+                      },
+                      {
+                        "name": "init",
+                        "type": "directory",
+                        "truncated": true
+                      }
+                    ]
+                  },
+                  {
+                    "name": "shared",
+                    "type": "directory",
+                    "children": [
+                      {
+                        "name": "common",
+                        "type": "directory",
+                        "truncated": true
+                      },
+                      {
+                        "name": "variables",
+                        "type": "directory",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "scripts",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "test-service-registry.js",
+                    "type": "file",
+                    "size": 5271,
+                    "ext": ".js"
+                  }
+                ]
+              },
+              {
+                "name": "server",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "language",
+                    "type": "directory",
+                    "children": [
+                      {
+                        "name": "detector.js",
+                        "type": "file",
+                        "size": 14782,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "prompt-intelligence.js",
+                        "type": "file",
+                        "size": 19744,
+                        "ext": ".js"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "services",
+                    "type": "directory",
+                    "children": [
+                      {
+                        "name": "ai-todo-manager.js",
+                        "type": "file",
+                        "size": 37948,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "complete-task-monitor.js",
+                        "type": "file",
+                        "size": 29402,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "config-service.js",
+                        "type": "file",
+                        "size": 9827,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "file-analysis",
+                        "type": "directory",
+                        "truncated": true
+                      },
+                      {
+                        "name": "file-query-service.js",
+                        "type": "file",
+                        "size": 39433,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "language-intelligence-service.js",
+                        "type": "file",
+                        "size": 22062,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "project-overview-generator.js",
+                        "type": "file",
+                        "size": 39072,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "response-service.js",
+                        "type": "file",
+                        "size": 2668,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "service-bus.js",
+                        "type": "file",
+                        "size": 8689,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "service-registry.js",
+                        "type": "file",
+                        "size": 8923,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "smart-content-trimmer.js",
+                        "type": "file",
+                        "size": 11576,
+                        "ext": ".js"
+                      },
+                      {
+                        "name": "task-management",
+                        "type": "directory",
+                        "truncated": true
+                      },
+                      {
+                        "name": "unified",
+                        "type": "directory",
+                        "truncated": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "name": "tests",
+                "type": "directory",
+                "children": [
+                  {
+                    "name": "file-analysis",
+                    "type": "directory",
+                    "children": [
+                      {
+                        "name": "integration",
+                        "type": "directory",
+                        "truncated": true
+                      }
+                    ]
+                  },
+                  {
+                    "name": "task-management",
+                    "type": "directory",
+                    "children": []
+                  },
+                  {
+                    "name": "validation-strategies",
+                    "type": "directory",
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "name": "项目深度分析报告.md",
+                "type": "file",
+                "size": 16340,
+                "ext": ".md"
+              }
+            ]
+          },
+          "keyFindings": []
+        },
+        "keyFileContents": {
+          "package.json": {
+            "content": "{\n  \"name\": \"mg_kiro_mcp\",\n  \"version\": \"2.0.0\",\n  \"description\": \"智能项目文档管理与代码维护系统的 MCP (Model Context Protocol) 服务器实现\",\n  \"main\": \"index.js\",\n  \"type\": \"module\",\n  \"scripts\": {\n    \"start\": \"node index.js\",\n    \"dev\": \"node --watch index.js\",\n    \"test\": \"jest\",\n    \"test:watch\": \"jest --watch\",\n    \"test:coverage\": \"jest --coverage\",\n    \"test:integration\": \"jest --testPathPattern=integration\",\n    \"test:unit\": \"jest --testPathPattern=unit\",\n    \"test:config\": \"node tests/config-integration.test.js\",\n    \"test:system\": \"node test-integration.js\",\n    \"validate:refactoring\": \"node scripts/validate-refactoring.js\",\n    \"daemon\": \"nohup node index.js > logs/mg_kiro.log 2>&1 &\"\n  },\n  \"keywords\": [\n    \"mcp\",\n    \"model-context-protocol\",\n    \"claude-code\",\n    \"documentation\",\n    \"project-management\"\n  ],\n  \"author\": \"mg_kiro Team\",\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"@modelcontextprotocol/sdk\": \"^1.0.0\",\n    \"axios\": \"^1.6.2\",\n    \"compression\": \"^1.7.4\",\n    \"cors\": \"^2.8.5\",\n    \"express\": \"^4.18.2\",\n    \"express-rate-limit\": \"^7.1.5\",\n    \"helmet\": \"^7.1.0\",\n    \"ws\": \"^8.16.0\"\n  },\n  \"devDependencies\": {\n    \"@babel/core\": \"^7.28.4\",\n    \"@babel/preset-env\": \"^7.28.3\",\n    \"@jest/globals\": \"^30.1.2\",\n    \"babel-jest\": \"^30.1.2\",\n    \"jest\": \"^30.1.3\",\n    \"nodemon\": \"^3.0.2\",\n    \"supertest\": \"^7.1.4\"\n  },\n  \"engines\": {\n    \"node\": \">=16.0.0\",\n    \"npm\": \">=8.0.0\"\n  },\n  \"repository\": {\n    \"type\": \"git\",\n    \"url\": \"https://github.com/yourusername/mg_kiro_mcp.git\"\n  },\n  \"bugs\": {\n    \"url\": \"https://github.com/yourusername/mg_kiro_mcp/issues\"\n  },\n  \"homepage\": \"https://github.com/yourusername/mg_kiro_mcp#readme\"\n}\n",
+            "size": 1702,
+            "isTrimmed": false,
+            "lastModified": "2025-09-11T13:32:52.722Z",
+            "importance": 1,
+            "type": "config"
+          },
+          "package-lock.json": {
+            "content": "{\n  \"name\": \"mg_kiro_mcp\",\n  \"version\": \"2.0.0\"\n}",
+            "size": 351388,
+            "isTrimmed": true,
+            "lastModified": "2025-09-08T16:43:00.133Z",
+            "importance": 10,
+            "type": "config"
+          },
+          "README.md": {
+            "content": "# mg_kiro MCP Server\n\n智能项目文档管理系统的 MCP (Model Context Protocol) 服务器实现\n\n## 概述\n\nmg_kiro MCP Server 是一个专为 Claude Code 设计的 Model Context Protocol 服务器，提供项目初始化和文档生成功能。\n\n**版本**: v2.0.0\n**状态**: 生产就绪 - 精简架构，专注MCP协议\n**核心功能**: MCP协议服务器、项目概览生成、渐进式文档生成\n\n## 核心特性\n\n- **🎯 MCP协议服务器** - 支持stdio和HTTP/WebSocket双模式\n- **🚀 简化架构** - 专注于项目初始化和文档生成的2步流程\n- **📊 项目分析** - 智能项目结构扫描和语言识别\n- **📝 文档生成** - 基于项目分析的渐进式文档生成\n- **🔧 服务化设计** - 模块化服务架构，依赖注入\n- **🌐 多语言支持** - JavaScript/Python/Java/Go/Rust/C#等主流语言\n\n## 项目架构\n\n### 实际目录结构\n\n```\nmg_kiro_mcp/\n├── index.js                    # 🚀 统一入口点 - MCP协议服务器 + Express + WebSocket\n├── package.json                # 项目配置 - v2.0.0\n├── server/                     # 📁 服务器核心模块\n│   ├── routes/                 # 🛤️ 路由系统\n│   │   ├── index.js            # 主路由配置\n│   │   ├── system/             # 系统路由\n│   │   │   ├── health.js       # 健康检查和系统状态\n│   │   │   ├── mcp.js          # MCP协议端点\n│   │   │   └── prompts.js      # 提示词管理\n│   │   ├── init/               # 初始化流程路由\n│   │   │   ├── claude-code-init.js  # Claude Code集成流程\n│   │   │   ├── turbo-init.js        # 高性能处理版本\n│   │   │   └── ai-batch-init.js     # AI批量分析版本\n│   │   └── create/             # Create模式路由\n│   │       ├── index.js\n│   │       ├── existing-project-workflow.js\n│   │       └── new-project-workflow.js\n│   ├── services/               # 🔧 服务层\n│   │   ├── service-registry.js      # 服务注册和依赖注入\n│   │   ├── service-bus.js           # 服务总线\n│   │   ├── config-service.js        # 配置管理\n│   │   ├── language-intelligence-service.js  # 语言智能服务\n│   │   ├── project-overview-generator.js     # 项目概览生成\n│   │   ├── ai-todo-manager.js       # AI任务管理\n│   │   ├── file-query-service.js    # 文件查询服务\n│   │   ├── response-service.js      # 标准化响应\n│   │   └── unified/            # 统一模板系统\n│   │       ├── master-template-service.js\n│   │       ├── template-config-manager.js\n│   │       └── mode-template-service.js\n│   ├── language/               # 🧠 语言处理模块\n│   │   ├── detector.js         # 语言识别引擎\n│   │   ├── language-prompt-generator.js\n│   │   └── prompt-intelligence.js\n├── prompts/                    # 📝 提示词和模板\n│   ├── modes/                  # 工作模式提示词\n│   │   ├── init/\n│   │   └── create/\n│   ├── languages/              # 语言特定配置\n│   │   └── javascript/\n│   └── shared/                 # 共享模板\n├── config/                     # ⚙️ 配置文件\n│   ├── mcp.config.json        # MCP服务器配置\n│   ├── modes.config.json      # 工作模式配置\n│   ├── templates.config.json  # 模板配置\n│   └── template-system.config.json\n└── tests/                      # 🧪 测试套件\n    ├── config-integration.test.js\n    └── server.test.js\n```\n\n## 快速开始\n\n### 安装和运行\n\n```bash\n# 克隆项目\ngit clone <repository-url>\ncd mg_kiro_mcp\n\n# 安装依赖\nnpm install\n\n# 启动服务器\nnpm start              # MCP协议模式（stdio）\nMCP_PORT=3000 npm start # Web服务器模式\nnpm run dev            # 开发模式（热重载）\n\n# 运行测试\nnpm test               # 运行所有测试\nnpm run test:config    # 配置系统测试\n```\n\n### 两种运行模式\n\n#### 1. MCP协议模式（推荐）\n```bash\n# 直接启动，用于Claude Code集成\nnode index.js\n```\n\n#### 2. Web服务器模式\n```bash\n# 启动HTTP/WebSocket服务器\nMCP_PORT=3000 node index.js\n\n# 验证服务\ncurl http://localhost:3000/health\n```\n\n## MCP工具接口\n\n### 核心MCP工具（v3.0.0-simplified）\n\n| 工具名称 | 功能描述 |\n|---------|----------|\n| `generate_project_overview` | 生成项目概览包：语言分析+依赖分析+目录结构+README+核心文件内容 |\n| `progressive_documentation` | 启动渐进式文档生成：AI协作流程，从项目概览到完整文档体系 |\n| `get_init_status` | 获取当前Init流程的状态、进度和健康信息 |\n| `reset_init` | 重置Init流程，清除所有缓存状态 |\n\n### Web API接口（当启用HTTP模式时）\n\n| 方法 | 路径 | 功能 |\n|------|------|------|\n| GET | `/health` | 健康检查和系统状态 |\n| GET | `/status` | 详细服务状态 |\n| GET | `/metrics` | 系统性能指标 |\n| POST | `/init/initialize` | 项目初始化 |\n| POST | `/init/project-overview` | 生成项目概览 |\n| POST | `/init/progressive-documentation` | 渐进式文档生成 |\n| GET | `/init/status` | 获取初始化状态 |\n| GET | `/services/status` | 服务状态查询 |\n\n## 核心功能详解\n\n### 🎯 精简化2步Init流程（v3.0-simplified）\n\n#### **Step 1: 项目概览生成**\n使用MCP工具 `generate_project_overview`：\n- **📁 项目结构分析** - 智能目录扫描，最大深度可配置\n- **🔍 语言识别** - 自动识别主要编程语言和框架\n- **📄 依赖分析** - 解析配置文件，提取依赖关系\n- **📋 核心文件内容** - 自动读取关键文件（README、配置、主要代码文件）\n- **📊 项目统计** - 文件数量、代码行数、项目规模评估\n\n#### **Step 2: 渐进式文档生成**\n使用MCP工具 `progressive_documentation`：\n- **📝 AI协作流程** - 基于项目概览，启动分批文档生成\n- **📚 文档体系构建** - 从文件文档到模块文档到集成文档\n- **🎨 多种文档风格** - comprehensive（全面）/ concise（简洁）/ technical（技术导向）\n- **🔄 批量处理** - 可配置批次大小（默认80KB），避免上下文溢出\n- **📈 进度管理** - 实时跟踪文档生成进度和状态\n\n### 🧠 智能语言识别系统\n\n**实现文件**: `server/language/detector.js` 和 `server/analyzers/enhanced-language-detector.js`\n\n**支持语言**：\n- **JavaScript/Node.js** - React、Vue、Angular、Express、Next.js\n- **Python** - Django、Flask、FastAPI\n- **Java** - Spring、Maven、Gradle\n- **Go** - Gin、Echo、Fiber\n- **Rust** - Actix、Rocket、Warp\n- **C#/.NET** - ASP.NET、Blazor、WPF\n\n**识别机制**：\n- 文件扩展名权重分析\n- 配置文件特征识别（package.json、requirements.txt等）\n- 目录结构模式匹配\n- 框架特征检测和权重算法评分\n\n### 📊 语言识别系统\n\n**核心组件**：\n- **语言检测器** (`server/language/detector.js`)\n\n**功能特性**：\n- 智能语言识别（JavaScript/TypeScript、Python、Java、Go、Rust、C#）\n- 框架自动检测（React、Vue、Django、Express等）\n- 配置文件分析和权重评分\n- 项目结构模式识别\n\n### ⚙️ 服务化架构\n\n**服务注册系统** (`server/services/service-registry.js`)：\n- 依赖注入模式\n- 服务生命周期管理\n- 统一的服务总线 (`service-bus.js`)\n\n**核心服务**：\n- `LanguageIntelligenceService` - 语言智能分析\n- `MasterTemplateService` - 统一模板管理\n- `ProjectOverviewGenerator` - 项目概览生成\n- `AITodoManager` - AI任务管理\n\n## 🧪 测试和验证\n\n### 测试套件\n\n```bash\n# 运行所有测试\nnpm test\n\n# 配置系统测试\nnpm run test:config\n\n# 单元测试\nnpm run test:unit\n\n# 集成测试\nnpm run test:integration\n```\n\n### 健康检查\n\n```bash\n# 系统健康检查（HTTP模式下）\ncurl http://localhost:3000/health\ncurl http://localhost:3000/status\ncurl http://localhost:3000/metrics\n\n# MCP工具测试\n# 使用Claude Code客户端测试MCP工具\n```\n\n## 配置\n\n### 环境变量\n```bash\nexport MCP_PORT=3000              # 服务端口\nexport MCP_HOST=localhost         # 主机地址\nexport MCP_LOG_LEVEL=info        # 日志级别\nexport MCP_API_KEY=your-key      # API密钥(可选)\n```\n\n### 模板系统\n系统支持多种文档模板，配置在 `config/templates.config.json`:\n- system-architecture（系统架构）\n- modules-catalog（模块目录）\n- user-stories（用户故事）\n- technical-analysis（技术分析）\n- action-items（行动项目）\n- changelog（变更日志）\n\n## Claude Code 集成\n\n### MCP服务器配置\n\n在Claude Code的MCP配置中添加：\n\n```json\n{\n  \"mcpServers\": {\n    \"mg_kiro\": {\n      \"command\": \"node\",\n      \"args\": [\"/path/to/mg_kiro_mcp/index.js\"]\n    }\n  }\n}\n```\n\n### 使用方式\n\n1. **项目概览生成**：\n   ```\n   使用MCP工具 generate_project_overview\n   参数：projectPath（项目根目录绝对路径）\n   ```\n\n2. **渐进式文档生成**：\n   ```\n   使用MCP工具 progressive_documentation\n   参数：batchSize, style, focusAreas, includeTests\n   ```\n\n3. **状态查询**：\n   ```\n   使用MCP工具 get_init_status\n   获取当前初始化流程的进度和状态\n   ```\n\n## 许可证\n\nMIT许可证 - 查看 [LICENSE](LICENSE) 文件了解详情",
+            "size": 9586,
+            "isTrimmed": false,
+            "lastModified": "2025-09-09T13:16:26.096Z",
+            "importance": 11,
+            "type": "documentation"
+          },
+          ".env.example": {
+            "content": "",
+            "size": 0,
+            "isTrimmed": false,
+            "lastModified": "2025-09-06T14:38:08.796Z",
+            "importance": 19,
+            "type": "unknown"
+          },
+          "index.js": {
+            "content": "#!/usr/bin/env node\n\n/* eslint-disable no-unreachable */\n/* eslint-disable no-throw-literal */\n\n/**\n * mg_kiro MCP Server\n * 统一入口点 - MCP协议服务器 + Express API + WebSocket\n * \n * 支持两种运行模式:\n * 1. MCP服务器模式: node index.js (MCP服务器运行在stdio)\n * 2. Express服务器模式: MCP_PORT=3000 node index.js (Web服务器运行在指定端口)\n */\n\nimport { Server } from \"@modelcontextprotocol/sdk/server/index.js\";\nimport { StdioServerTransport } from \"@modelcontextprotocol/sdk/server/stdio.js\";\nimport {\n  CallToolRequestSchema,\n  ListToolsRequestSchema,\n} from \"@modelcontextprotocol/sdk/types.js\";\nimport express from 'express';\nimport http from 'http';\nimport { WebSocketServer } from 'ws';\nimport cors from 'cors';\nimport { fileURLToPath } from 'url';\nimport { dirname, join, resolve } from 'path';\nimport fs, { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, unlinkSync } from 'fs';\nimport { createAppRoutes } from './server/routes/index.js';\nimport { initializeServices } from './server/services/service-registry.js';\n\nconst __filename = fileURLToPath(import.meta.url);\nconst __dirname = dirname(__filename);\nconst CONFIG_DIR = join(__dirname, 'config');\n\n// ========== 服务容器包装器 ==========\nfunction getServiceContainer(serviceBus) {\n  return {\n    // 新的统一模板系统\n    masterTemplateService: serviceBus.get('masterTemplateService'),\n    templateConfigManager: serviceBus.get('templateConfigManager'),\n    \n    // 其他核心服务\n    languageDetector: serviceBus.get('languageDetector'),\n    languageIntelligence: serviceBus.get('languageIntelligence'),\n    configService: serviceBus.get('configService'),\n    \n    // Create模式所需服务\n    aiTodoManager: serviceBus.get('aiTodoManager'),\n    completeTaskMonitor: serviceBus.get('completeTaskMonitor'),\n    \n    // Init模式所需服务\n    projectOverviewGenerator: serviceBus.get('projectOverviewGenerator'),\n    fileQueryService: serviceBus.get('fileQueryService'),\n    \n    // 新的文件分析模块和任务管理服务\n    fileAnalysisModule: serviceBus.get('fileAnalysisModule'),\n    unifiedTaskManager: serviceBus.get('unifiedTaskManager'),\n    unifiedTaskValidator: serviceBus.get('unifiedTaskValidator'),\n    taskStateManager: serviceBus.get('taskStateManager'),\n    \n    // 文件分析模块组件（可选直接访问）\n    preciseTokenCalculator: serviceBus.get('preciseTokenCalculator'),\n    combinedFileBatchStrategy: serviceBus.get('combinedFileBatchStrategy'),\n    singleFileBatchStrategy: serviceBus.get('singleFileBatchStrategy'),\n    largeFileMultiBatchStrategy: serviceBus.get('largeFileMultiBatchStrategy'),\n    \n    // 向后兼容的别名（指向新服务）\n    promptService: serviceBus.get('masterTemplateService'),\n    unifiedTemplateService: serviceBus.get('masterTemplateService'),\n    \n    // ServiceBus工具方法\n    getService: (name) => serviceBus.get(name),\n    getServiceStatus: (name) => serviceBus.getServiceStatus(name),\n    getStats: () => serviceBus.getStats(),\n    getAllServices: () => serviceBus.getAllServices()\n  };\n}\n\n// ========== 服务器模式 ==========\nstartServer().catch(console.error);\n\nasync function startServer() {\n  // 初始化服务系统\n  console.log('[Server] 初始化服务系统...');\n  const serviceBus = await initializeServices(CONFIG_DIR);\n\n  // ========== Express服务器设置 ==========\n  const PORT = process.env.MCP_PORT || process.env.PORT;\n  \n  if (PORT) {\n    // Express服务器模式\n    console.log('[Server] 启动Express服务器模式...');\n    \n    const app = express();\n    const httpServer = http.createServer(app);\n\n    // 中间件配置\n    app.use(cors());\n    app.use(express.json({ limit: '50mb' }));\n    app.use(express.urlencoded({ extended: true }));\n\n    // 请求日志\n    app.use((req, res, next) => {\n      console.log(`[HTTP] ${req.method} ${req.path}`);\n      next();\n    });\n\n    // 创建服务容器并生成路由\n    const serviceContainer = getServiceContainer(serviceBus);\n    const routes = createAppRoutes(serviceContainer, null);\n    app.use('/', routes);\n\n    // WebSocket服务器\n    const wss = new WebSocketServer({ server: httpServer });\n    \n    wss.on('connection', (ws) => {\n      console.log('[WebSocket] 新客户端连接');\n      \n      ws.on('message', (message) => {\n        try {\n          const data = JSON.parse(message);\n          console.log('[WebSocket] 收到消息:', data.type || 'unknown');\n          \n          // 处理WebSocket消息\n          handleWebSocketMessage(ws, data, serviceBus);\n        } catch (error) {\n          console.error('[WebSocket] 消息处理错误:', error);\n          ws.send(JSON.stringify({ error: error.message }));\n        }\n      });\n      \n      ws.on('close', () => {\n        console.log('[WebSocket] 客户端断开连接');\n      });\n    });\n\n    // 启动HTTP服务器\n    httpServer.listen(PORT, () => {\n      console.log(`\\n✅ mg_kiro Express服务器已启动`);\n      console.log(`📡 HTTP服务: http://localhost:${PORT}`);\n\n... [内容已截断] ...\n\n  });\n\n  // 启动MCP服务器\n  const transport = new StdioServerTransport();\n  await server.connect(transport);\n  \n  console.log(\"\\n✅ mg_kiro MCP服务器已启动 (stdio模式) - v5.0.0-complete-6-steps-redesigned\");\n  console.log(\"🚀 重新设计的完整6步Init工作流已就绪\");\n  console.log(\"🤖 支持工具: workflow_guide, init_step1-6 (文件分析→模块整合→关联分析→架构文档)\");\n  console.log(\"📡 等待Claude Code客户端连接...\\n\");\n}\n\n// WebSocket消息处理\nfunction handleWebSocketMessage(ws, data, serviceBus) {\n  const { type, payload } = data;\n  \n  switch (type) {\n    case 'init':\n      // 处理Init请求 - 使用新的MCP协议服务\n      const { projectPath } = payload;\n      const claudeCodeInit = serviceBus.get('claudeCodeInit');\n      \n      try {\n        claudeCodeInit.initialize(resolve(projectPath));\n        ws.send(JSON.stringify({\n          type: 'init_started',\n          message: 'Init流程已启动，请使用MCP工具进行分步执行',\n          availableTools: [\n            'init_step1_data_collection',\n            'init_step2_architecture',\n            'init_step3_deep_analysis',\n            'init_step4_module_docs',\n            'init_step5_contracts'\n          ]\n        }));\n      } catch (error) {\n        ws.send(JSON.stringify({\n          type: 'error',\n          error: error.message\n        }));\n      }\n      break;\n      \n    case 'status':\n      // 获取状态\n      const initState = serviceBus.get('initState');\n      const status = initState ? initState.getProgress() : { status: 'idle' };\n      ws.send(JSON.stringify({\n        type: 'status',\n        status\n      }));\n      break;\n      \n    default:\n      ws.send(JSON.stringify({\n        type: 'error',\n        error: `未知的消息类型: ${type}`\n      }));\n  }\n}",
+            "size": 130095,
+            "isTrimmed": true,
+            "lastModified": "2025-09-11T14:07:02.501Z",
+            "importance": 38,
+            "type": "unknown"
+          }
+        },
+        "projectCharacteristics": {
+          "type": "application",
+          "architecture": "unknown",
+          "complexity": "medium",
+          "maturity": "development"
+        },
+        "architectureDocument": {
+          "title": "mg_kiro_mcp - 系统架构文档",
+          "generatedAt": "2025-09-11T14:51:20.310Z",
+          "version": "1.0-auto",
+          "overview": {
+            "name": "mg_kiro_mcp",
+            "primaryLanguage": "javascript",
+            "architecture": "unknown",
+            "complexity": "medium",
+            "totalFiles": 9
+          },
+          "techStack": {
+            "primary": "javascript",
+            "frameworks": [
+              {
+                "name": "express",
+                "confidence": 33.33333333333333
+              }
+            ],
+            "dependencies": 1,
+            "ecosystem": "javascript"
+          },
+          "structure": {
+            "type": "unknown",
+            "pattern": "unknown",
+            "importantPaths": [],
+            "totalDirectories": 0
+          },
+          "coreModules": [
+            {
+              "name": "Application Entry",
+              "files": [
+                "index.js"
+              ],
+              "importance": 100,
+              "description": "应用程序入口点"
+            },
+            {
+              "name": "Configuration",
+              "files": [
+                "package.json",
+                ".env.example"
+              ],
+              "importance": 90,
+              "description": "系统配置和环境设置"
+            }
+          ],
+          "characteristics": {
+            "designPatterns": [
+              "RESTful API"
+            ],
+            "scalabilityLevel": "medium",
+            "maintainabilityScore": 80,
+            "testability": "medium"
+          },
+          "recommendations": []
+        },
+        "aiTaskContext": {
+          "generatedAt": "2025-09-11T14:51:20.310Z",
+          "projectName": "mg_kiro_mcp",
+          "fileProcessingGuide": {
+            "totalFilesToProcess": 0,
+            "priorityLevels": {
+              "critical": [
+                "entry points",
+                "main configurations"
+              ],
+              "high": [
+                "core business logic",
+                "API definitions"
+              ],
+              "medium": [
+                "utilities",
+                "helpers",
+                "components"
+              ],
+              "low": [
+                "tests",
+                "documentation",
+                "assets"
+              ]
+            },
+            "processingStrategy": "adaptive-batch"
+          },
+          "moduleClassification": {
+            "expectedModules": [
+              "core",
+              "config",
+              "routes",
+              "controllers",
+              "services",
+              "models",
+              "utils",
+              "components",
+              "hooks",
+              "middleware"
+            ],
+            "coreModules": [],
+            "supportingModules": [
+              {
+                "name": "tests",
+                "pattern": "test|spec",
+                "importance": 30
+              },
+              {
+                "name": "docs",
+                "pattern": "doc|readme",
+                "importance": 20
+              },
+              {
+                "name": "build",
+                "pattern": "build|dist|webpack",
+                "importance": 15
+              }
+            ]
+          },
+          "documentationStrategy": {
+            "templates": [
+              "module-documentation",
+              "api-documentation",
+              "component-documentation"
+            ],
+            "qualityStandards": {
+              "completeness": 0.8,
+              "clarity": 0.85,
+              "examples": true,
+              "codeSnippets": true,
+              "apiDocumentation": true
+            }
+          },
+          "aiCollaborationGuide": {
+            "contextSize": {
+              "estimatedSize": 9216,
+              "maxFileSize": 51200,
+              "compressionNeeded": false
+            },
+            "specialInstructions": [
+              "注意异步函数和Promise处理",
+              "记录模块导入导出关系"
+            ],
+            "qualityChecks": {
+              "syntaxValidation": true,
+              "structureConsistency": true,
+              "exampleCompleteness": true,
+              "linkValidation": true
+            },
+            "progressMilestones": [
+              {
+                "stage": "25%",
+                "description": "核心文件文档完成",
+                "fileCount": 3
+              },
+              {
+                "stage": "50%",
+                "description": "主要模块文档完成",
+                "fileCount": 5
+              },
+              {
+                "stage": "75%",
+                "description": "支持模块文档完成",
+                "fileCount": 7
+              },
+              {
+                "stage": "100%",
+                "description": "所有文档和整合完成",
+                "fileCount": 9
+              }
+            ]
+          }
+        },
+        "fileAnalysisInput": {
+          "fileList": [],
+          "projectMetadata": {
+            "name": "mg_kiro_mcp",
+            "path": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
+            "lastModified": "2025-09-11T14:51:20.289Z",
+            "createdAt": "2025-09-06T14:38:08.793Z",
+            "totalFiles": 9,
+            "totalSize": "643.95 KB",
+            "totalSizeBytes": 659407,
+            "fileTypeDistribution": {
+              ".md": 4,
+              ".js": 2,
+              ".json": 2,
+              ".backup": 1
+            }
+          },
+          "languageProfile": {
+            "primary": "javascript",
+            "secondary": [
+              {
+                "name": "express",
+                "confidence": 33.33333333333333
+              }
+            ],
+            "frameworks": [
+              {
+                "name": "express",
+                "confidence": 33.33333333333333
+              }
+            ],
+            "techStack": {
+              "primary": "javascript",
+              "frameworks": [
+                {
+                  "name": "express",
+                  "confidence": 33.33333333333333
+                }
+              ]
+            },
+            "confidence": 81,
+            "detectionSources": [
+              "base-detection"
+            ],
+            "languageStats": {},
+            "ecosystem": "javascript"
+          }
+        }
+      },
+      "completedAt": "2025-09-11T14:51:20.311Z",
+      "docsDirectory": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp/mg_kiro"
+    },
+    "step2": {
+      "todoList": {
+        "success": true,
+        "todoList": {
+          "projectPath": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
+          "totalTasks": 70,
+          "currentTask": {
+            "id": "file_1_1",
+            "type": "file_processing",
+            "status": "pending",
+            "title": "处理文件: index.js",
+            "description": "分析并生成 index.js 的文档",
+            "file": {
+              "relativePath": "index.js",
+              "name": "index.js",
+              "category": "entry",
+              "importance": 60,
+              "needsTrimming": true
+            },
+            "instructions": {
+              "action": "get_file_content",
+              "targetFile": "index.js",
+              "expectedOutput": "index.js.md",
+              "focusAreas": [
+                "应用启动流程",
+                "核心配置",
+                "主要路由"
+              ],
+              "qualityChecks": [
+                "确保文档结构清晰",
+                "添加必要的代码示例",
+                "说明重要的配置选项",
+                "包含错误处理说明"
+              ]
+            },
+            "priority": 60,
+            "batchNumber": 1,
+            "batchPosition": 1,
+            "estimatedTime": "5-8分钟",
+            "createdAt": "2025-09-11T14:51:52.243Z",
+            "updatedAt": null,
+            "completedAt": null
+          },
+          "progress": {
+            "percentage": 0,
+            "estimatedTimeRemaining": null,
+            "currentPhase": "preparation",
+            "nextMilestone": null
+          },
+          "aiGuidance": {
+            "currentInstruction": "准备开始文件处理，请调用 get_next_task 获取第一个任务",
+            "processingStrategy": "按重要性顺序逐个处理文件，每个文件完成后标记为已完成",
+            "qualityStandards": [
+              "确保代码文档完整",
+              "保持文档结构一致",
+              "添加必要的使用示例"
+            ]
+          },
+          "tasks": {
+            "fileProcessing": [
+              {
+                "id": "file_1_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: index.js",
+                "description": "分析并生成 index.js 的文档",
+                "file": {
+                  "relativePath": "index.js",
+                  "name": "index.js",
+                  "category": "entry",
+                  "importance": 60,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "index.js",
+                  "expectedOutput": "index.js.md",
+                  "focusAreas": [
+                    "应用启动流程",
+                    "核心配置",
+                    "主要路由"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 60,
+                "batchNumber": 1,
+                "batchPosition": 1,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_1_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: package.json",
+                "description": "分析并生成 package.json 的文档",
+                "file": {
+                  "relativePath": "package.json",
+                  "name": "package.json",
+                  "category": "config",
+                  "importance": 60,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "package.json",
+                  "expectedOutput": "package.json.md",
+                  "focusAreas": [
+                    "配置项说明",
+                    "环境变量",
+                    "默认值"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 60,
+                "batchNumber": 1,
+                "batchPosition": 2,
+                "estimatedTime": "4-6分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_1_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: CLAUDE.md",
+                "description": "分析并生成 CLAUDE.md 的文档",
+                "file": {
+                  "relativePath": "CLAUDE.md",
+                  "name": "CLAUDE.md",
+                  "category": "other",
+                  "importance": 20,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "CLAUDE.md",
+                  "expectedOutput": "CLAUDE.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 20,
+                "batchNumber": 1,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_2_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: README.md",
+                "description": "分析并生成 README.md 的文档",
+                "file": {
+                  "relativePath": "README.md",
+                  "name": "README.md",
+                  "category": "documentation",
+                  "importance": 20,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "README.md",
+                  "expectedOutput": "README.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 20,
+                "batchNumber": 2,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_2_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: Requirement.md",
+                "description": "分析并生成 Requirement.md 的文档",
+                "file": {
+                  "relativePath": "Requirement.md",
+                  "name": "Requirement.md",
+                  "category": "other",
+                  "importance": 20,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "Requirement.md",
+                  "expectedOutput": "Requirement.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 20,
+                "batchNumber": 2,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_2_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: 项目深度分析报告.md",
+                "description": "分析并生成 项目深度分析报告.md 的文档",
+                "file": {
+                  "relativePath": "项目深度分析报告.md",
+                  "name": "项目深度分析报告.md",
+                  "category": "other",
+                  "importance": 20,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "项目深度分析报告.md",
+                  "expectedOutput": "项目深度分析报告.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 20,
+                "batchNumber": 2,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_3_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: test-service-registry.js",
+                "description": "分析并生成 scripts/test-service-registry.js 的文档",
+                "file": {
+                  "relativePath": "scripts/test-service-registry.js",
+                  "name": "test-service-registry.js",
+                  "category": "service",
+                  "importance": 15,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "scripts/test-service-registry.js",
+                  "expectedOutput": "test-service-registry.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 15,
+                "batchNumber": 3,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_3_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: settings.local.json",
+                "description": "分析并生成 .claude/settings.local.json 的文档",
+                "file": {
+                  "relativePath": ".claude/settings.local.json",
+                  "name": "settings.local.json",
+                  "category": "other",
+                  "importance": 15,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": ".claude/settings.local.json",
+                  "expectedOutput": "settings.local.json.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 15,
+                "batchNumber": 3,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_3_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: mcp.config.json",
+                "description": "分析并生成 config/mcp.config.json 的文档",
+                "file": {
+                  "relativePath": "config/mcp.config.json",
+                  "name": "mcp.config.json",
+                  "category": "other",
+                  "importance": 15,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "config/mcp.config.json",
+                  "expectedOutput": "mcp.config.json.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 15,
+                "batchNumber": 3,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_4_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: modes.config.json",
+                "description": "分析并生成 config/modes.config.json 的文档",
+                "file": {
+                  "relativePath": "config/modes.config.json",
+                  "name": "modes.config.json",
+                  "category": "other",
+                  "importance": 15,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "config/modes.config.json",
+                  "expectedOutput": "modes.config.json.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 15,
+                "batchNumber": 4,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_4_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: template-system.config.json",
+                "description": "分析并生成 config/template-system.config.json 的文档",
+                "file": {
+                  "relativePath": "config/template-system.config.json",
+                  "name": "template-system.config.json",
+                  "category": "other",
+                  "importance": 15,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "config/template-system.config.json",
+                  "expectedOutput": "template-system.config.json.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 15,
+                "batchNumber": 4,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_4_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: templates.config.json",
+                "description": "分析并生成 config/templates.config.json 的文档",
+                "file": {
+                  "relativePath": "config/templates.config.json",
+                  "name": "templates.config.json",
+                  "category": "other",
+                  "importance": 15,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "config/templates.config.json",
+                  "expectedOutput": "templates.config.json.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 15,
+                "batchNumber": 4,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_5_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: workflows.config.json",
+                "description": "分析并生成 config/workflows.config.json 的文档",
+                "file": {
+                  "relativePath": "config/workflows.config.json",
+                  "name": "workflows.config.json",
+                  "category": "other",
+                  "importance": 15,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "config/workflows.config.json",
+                  "expectedOutput": "workflows.config.json.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 15,
+                "batchNumber": 5,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_5_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: init-state.json",
+                "description": "分析并生成 mg_kiro/init-state.json 的文档",
+                "file": {
+                  "relativePath": "mg_kiro/init-state.json",
+                  "name": "init-state.json",
+                  "category": "other",
+                  "importance": 15,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "mg_kiro/init-state.json",
+                  "expectedOutput": "init-state.json.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 15,
+                "batchNumber": 5,
+                "batchPosition": 2,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_5_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: ai-todo-manager.js",
+                "description": "分析并生成 server/services/ai-todo-manager.js 的文档",
+                "file": {
+                  "relativePath": "server/services/ai-todo-manager.js",
+                  "name": "ai-todo-manager.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/ai-todo-manager.js",
+                  "expectedOutput": "ai-todo-manager.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 5,
+                "batchPosition": 3,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_6_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: complete-task-monitor.js",
+                "description": "分析并生成 server/services/complete-task-monitor.js 的文档",
+                "file": {
+                  "relativePath": "server/services/complete-task-monitor.js",
+                  "name": "complete-task-monitor.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/complete-task-monitor.js",
+                  "expectedOutput": "complete-task-monitor.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 6,
+                "batchPosition": 1,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_6_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: config-service.js",
+                "description": "分析并生成 server/services/config-service.js 的文档",
+                "file": {
+                  "relativePath": "server/services/config-service.js",
+                  "name": "config-service.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/config-service.js",
+                  "expectedOutput": "config-service.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 6,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_6_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: file-query-service.js",
+                "description": "分析并生成 server/services/file-query-service.js 的文档",
+                "file": {
+                  "relativePath": "server/services/file-query-service.js",
+                  "name": "file-query-service.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/file-query-service.js",
+                  "expectedOutput": "file-query-service.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 6,
+                "batchPosition": 3,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_7_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: language-intelligence-service.js",
+                "description": "分析并生成 server/services/language-intelligence-service.js 的文档",
+                "file": {
+                  "relativePath": "server/services/language-intelligence-service.js",
+                  "name": "language-intelligence-service.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/language-intelligence-service.js",
+                  "expectedOutput": "language-intelligence-service.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 7,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_7_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: project-overview-generator.js",
+                "description": "分析并生成 server/services/project-overview-generator.js 的文档",
+                "file": {
+                  "relativePath": "server/services/project-overview-generator.js",
+                  "name": "project-overview-generator.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/project-overview-generator.js",
+                  "expectedOutput": "project-overview-generator.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 7,
+                "batchPosition": 2,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_7_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: response-service.js",
+                "description": "分析并生成 server/services/response-service.js 的文档",
+                "file": {
+                  "relativePath": "server/services/response-service.js",
+                  "name": "response-service.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/response-service.js",
+                  "expectedOutput": "response-service.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 7,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_8_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: service-bus.js",
+                "description": "分析并生成 server/services/service-bus.js 的文档",
+                "file": {
+                  "relativePath": "server/services/service-bus.js",
+                  "name": "service-bus.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/service-bus.js",
+                  "expectedOutput": "service-bus.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 8,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_8_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: service-registry.js",
+                "description": "分析并生成 server/services/service-registry.js 的文档",
+                "file": {
+                  "relativePath": "server/services/service-registry.js",
+                  "name": "service-registry.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/service-registry.js",
+                  "expectedOutput": "service-registry.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 8,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_8_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: smart-content-trimmer.js",
+                "description": "分析并生成 server/services/smart-content-trimmer.js 的文档",
+                "file": {
+                  "relativePath": "server/services/smart-content-trimmer.js",
+                  "name": "smart-content-trimmer.js",
+                  "category": "service",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/smart-content-trimmer.js",
+                  "expectedOutput": "smart-content-trimmer.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 8,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_9_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: init.md",
+                "description": "分析并生成 .claude/commands/init.md 的文档",
+                "file": {
+                  "relativePath": ".claude/commands/init.md",
+                  "name": "init.md",
+                  "category": "other",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": ".claude/commands/init.md",
+                  "expectedOutput": "init.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 9,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_9_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: jest.config.js",
+                "description": "分析并生成 jest.config.js 的文档",
+                "file": {
+                  "relativePath": "jest.config.js",
+                  "name": "jest.config.js",
+                  "category": "other",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "jest.config.js",
+                  "expectedOutput": "jest.config.js.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 9,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_9_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: package-lock.json",
+                "description": "分析并生成 package-lock.json 的文档",
+                "file": {
+                  "relativePath": "package-lock.json",
+                  "name": "package-lock.json",
+                  "category": "other",
+                  "importance": 10,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "package-lock.json",
+                  "expectedOutput": "package-lock.json.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 9,
+                "batchPosition": 3,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_10_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: detector.js",
+                "description": "分析并生成 server/language/detector.js 的文档",
+                "file": {
+                  "relativePath": "server/language/detector.js",
+                  "name": "detector.js",
+                  "category": "other",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/language/detector.js",
+                  "expectedOutput": "detector.js.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 10,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_10_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: prompt-intelligence.js",
+                "description": "分析并生成 server/language/prompt-intelligence.js 的文档",
+                "file": {
+                  "relativePath": "server/language/prompt-intelligence.js",
+                  "name": "prompt-intelligence.js",
+                  "category": "other",
+                  "importance": 10,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/language/prompt-intelligence.js",
+                  "expectedOutput": "prompt-intelligence.js.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 10,
+                "batchNumber": 10,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_10_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: FileAnalysisModule.js",
+                "description": "分析并生成 server/services/file-analysis/FileAnalysisModule.js 的文档",
+                "file": {
+                  "relativePath": "server/services/file-analysis/FileAnalysisModule.js",
+                  "name": "FileAnalysisModule.js",
+                  "category": "service",
+                  "importance": 5,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/file-analysis/FileAnalysisModule.js",
+                  "expectedOutput": "FileAnalysisModule.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 10,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_11_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: TaskStateManager.js",
+                "description": "分析并生成 server/services/task-management/TaskStateManager.js 的文档",
+                "file": {
+                  "relativePath": "server/services/task-management/TaskStateManager.js",
+                  "name": "TaskStateManager.js",
+                  "category": "service",
+                  "importance": 5,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/task-management/TaskStateManager.js",
+                  "expectedOutput": "TaskStateManager.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 11,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_11_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: UnifiedTaskManager.js",
+                "description": "分析并生成 server/services/task-management/UnifiedTaskManager.js 的文档",
+                "file": {
+                  "relativePath": "server/services/task-management/UnifiedTaskManager.js",
+                  "name": "UnifiedTaskManager.js",
+                  "category": "service",
+                  "importance": 5,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/task-management/UnifiedTaskManager.js",
+                  "expectedOutput": "UnifiedTaskManager.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 11,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_11_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: UnifiedTaskValidator.js",
+                "description": "分析并生成 server/services/task-management/UnifiedTaskValidator.js 的文档",
+                "file": {
+                  "relativePath": "server/services/task-management/UnifiedTaskValidator.js",
+                  "name": "UnifiedTaskValidator.js",
+                  "category": "service",
+                  "importance": 5,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/task-management/UnifiedTaskValidator.js",
+                  "expectedOutput": "UnifiedTaskValidator.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 11,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_12_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: master-template-service.js",
+                "description": "分析并生成 server/services/unified/master-template-service.js 的文档",
+                "file": {
+                  "relativePath": "server/services/unified/master-template-service.js",
+                  "name": "master-template-service.js",
+                  "category": "service",
+                  "importance": 5,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/unified/master-template-service.js",
+                  "expectedOutput": "master-template-service.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 12,
+                "batchPosition": 1,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_12_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: mode-template-service.js",
+                "description": "分析并生成 server/services/unified/mode-template-service.js 的文档",
+                "file": {
+                  "relativePath": "server/services/unified/mode-template-service.js",
+                  "name": "mode-template-service.js",
+                  "category": "service",
+                  "importance": 5,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/unified/mode-template-service.js",
+                  "expectedOutput": "mode-template-service.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 12,
+                "batchPosition": 2,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_12_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: template-config-manager.js",
+                "description": "分析并生成 server/services/unified/template-config-manager.js 的文档",
+                "file": {
+                  "relativePath": "server/services/unified/template-config-manager.js",
+                  "name": "template-config-manager.js",
+                  "category": "service",
+                  "importance": 5,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/unified/template-config-manager.js",
+                  "expectedOutput": "template-config-manager.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 12,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_13_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: system-architecture-generation.md",
+                "description": "分析并生成 prompts/generation/architecture/system-architecture-generation.md 的文档",
+                "file": {
+                  "relativePath": "prompts/generation/architecture/system-architecture-generation.md",
+                  "name": "system-architecture-generation.md",
+                  "category": "other",
+                  "importance": 5,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/generation/architecture/system-architecture-generation.md",
+                  "expectedOutput": "system-architecture-generation.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 13,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_13_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: default.md",
+                "description": "分析并生成 prompts/shared/common/default.md 的文档",
+                "file": {
+                  "relativePath": "prompts/shared/common/default.md",
+                  "name": "default.md",
+                  "category": "utility",
+                  "importance": 5,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/shared/common/default.md",
+                  "expectedOutput": "default.md.md",
+                  "focusAreas": [
+                    "工具函数",
+                    "参数说明",
+                    "返回值"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 13,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_13_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: common.json",
+                "description": "分析并生成 prompts/shared/variables/common.json 的文档",
+                "file": {
+                  "relativePath": "prompts/shared/variables/common.json",
+                  "name": "common.json",
+                  "category": "utility",
+                  "importance": 5,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/shared/variables/common.json",
+                  "expectedOutput": "common.json.md",
+                  "focusAreas": [
+                    "工具函数",
+                    "参数说明",
+                    "返回值"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 5,
+                "batchNumber": 13,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_14_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: CombinedFileBatchStrategy.js",
+                "description": "分析并生成 server/services/file-analysis/batch-strategies/CombinedFileBatchStrategy.js 的文档",
+                "file": {
+                  "relativePath": "server/services/file-analysis/batch-strategies/CombinedFileBatchStrategy.js",
+                  "name": "CombinedFileBatchStrategy.js",
+                  "category": "service",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/file-analysis/batch-strategies/CombinedFileBatchStrategy.js",
+                  "expectedOutput": "CombinedFileBatchStrategy.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 14,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_14_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: LargeFileMultiBatchStrategy.js",
+                "description": "分析并生成 server/services/file-analysis/batch-strategies/LargeFileMultiBatchStrategy.js 的文档",
+                "file": {
+                  "relativePath": "server/services/file-analysis/batch-strategies/LargeFileMultiBatchStrategy.js",
+                  "name": "LargeFileMultiBatchStrategy.js",
+                  "category": "service",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/file-analysis/batch-strategies/LargeFileMultiBatchStrategy.js",
+                  "expectedOutput": "LargeFileMultiBatchStrategy.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 14,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_14_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: SingleFileBatchStrategy.js",
+                "description": "分析并生成 server/services/file-analysis/batch-strategies/SingleFileBatchStrategy.js 的文档",
+                "file": {
+                  "relativePath": "server/services/file-analysis/batch-strategies/SingleFileBatchStrategy.js",
+                  "name": "SingleFileBatchStrategy.js",
+                  "category": "service",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/file-analysis/batch-strategies/SingleFileBatchStrategy.js",
+                  "expectedOutput": "SingleFileBatchStrategy.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 14,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_15_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: FunctionBoundaryDetector.js",
+                "description": "分析并生成 server/services/file-analysis/token-analysis/FunctionBoundaryDetector.js 的文档",
+                "file": {
+                  "relativePath": "server/services/file-analysis/token-analysis/FunctionBoundaryDetector.js",
+                  "name": "FunctionBoundaryDetector.js",
+                  "category": "service",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/file-analysis/token-analysis/FunctionBoundaryDetector.js",
+                  "expectedOutput": "FunctionBoundaryDetector.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 15,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_15_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: PreciseTokenCalculator.js",
+                "description": "分析并生成 server/services/file-analysis/token-analysis/PreciseTokenCalculator.js 的文档",
+                "file": {
+                  "relativePath": "server/services/file-analysis/token-analysis/PreciseTokenCalculator.js",
+                  "name": "PreciseTokenCalculator.js",
+                  "category": "service",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/file-analysis/token-analysis/PreciseTokenCalculator.js",
+                  "expectedOutput": "PreciseTokenCalculator.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 15,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_15_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: Step3FolderValidator.js",
+                "description": "分析并生成 server/services/task-management/validation-strategies/Step3FolderValidator.js 的文档",
+                "file": {
+                  "relativePath": "server/services/task-management/validation-strategies/Step3FolderValidator.js",
+                  "name": "Step3FolderValidator.js",
+                  "category": "service",
+                  "importance": 1,
+                  "needsTrimming": true
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/task-management/validation-strategies/Step3FolderValidator.js",
+                  "expectedOutput": "Step3FolderValidator.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 15,
+                "batchPosition": 3,
+                "estimatedTime": "5-8分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_16_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: Step4ModuleValidator.js",
+                "description": "分析并生成 server/services/task-management/validation-strategies/Step4ModuleValidator.js 的文档",
+                "file": {
+                  "relativePath": "server/services/task-management/validation-strategies/Step4ModuleValidator.js",
+                  "name": "Step4ModuleValidator.js",
+                  "category": "service",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/task-management/validation-strategies/Step4ModuleValidator.js",
+                  "expectedOutput": "Step4ModuleValidator.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 16,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_16_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: Step5FixedFileValidator.js",
+                "description": "分析并生成 server/services/task-management/validation-strategies/Step5FixedFileValidator.js 的文档",
+                "file": {
+                  "relativePath": "server/services/task-management/validation-strategies/Step5FixedFileValidator.js",
+                  "name": "Step5FixedFileValidator.js",
+                  "category": "service",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/task-management/validation-strategies/Step5FixedFileValidator.js",
+                  "expectedOutput": "Step5FixedFileValidator.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 16,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_16_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: Step6ArchitectureValidator.js",
+                "description": "分析并生成 server/services/task-management/validation-strategies/Step6ArchitectureValidator.js 的文档",
+                "file": {
+                  "relativePath": "server/services/task-management/validation-strategies/Step6ArchitectureValidator.js",
+                  "name": "Step6ArchitectureValidator.js",
+                  "category": "service",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "server/services/task-management/validation-strategies/Step6ArchitectureValidator.js",
+                  "expectedOutput": "Step6ArchitectureValidator.js.md",
+                  "focusAreas": [
+                    "核心功能",
+                    "依赖关系",
+                    "接口定义"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 16,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_17_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: module-overview.md",
+                "description": "分析并生成 prompts/modes/init/module-integration/module-overview.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/module-integration/module-overview.md",
+                  "name": "module-overview.md",
+                  "category": "component",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/module-integration/module-overview.md",
+                  "expectedOutput": "module-overview.md.md",
+                  "focusAreas": [
+                    "组件功能",
+                    "属性接口",
+                    "使用示例"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 17,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_17_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: relations-overview.md",
+                "description": "分析并生成 prompts/modes/init/relations-analysis/relations-overview.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/relations-analysis/relations-overview.md",
+                  "name": "relations-overview.md",
+                  "category": "component",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/relations-analysis/relations-overview.md",
+                  "expectedOutput": "relations-overview.md.md",
+                  "focusAreas": [
+                    "组件功能",
+                    "属性接口",
+                    "使用示例"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 17,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_17_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: template.md",
+                "description": "分析并生成 prompts/languages/javascript/init-variants/project-analysis/template.md 的文档",
+                "file": {
+                  "relativePath": "prompts/languages/javascript/init-variants/project-analysis/template.md",
+                  "name": "template.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/languages/javascript/init-variants/project-analysis/template.md",
+                  "expectedOutput": "template.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 17,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_18_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: template.md",
+                "description": "分析并生成 prompts/modes/create/existing-project/template.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/create/existing-project/template.md",
+                  "name": "template.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/create/existing-project/template.md",
+                  "expectedOutput": "template.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 18,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_18_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: template.md",
+                "description": "分析并生成 prompts/modes/create/existing-project-requirement/template.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/create/existing-project-requirement/template.md",
+                  "name": "template.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/create/existing-project-requirement/template.md",
+                  "expectedOutput": "template.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 18,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_18_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: template.md",
+                "description": "分析并生成 prompts/modes/create/feature-planning/template.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/create/feature-planning/template.md",
+                  "name": "template.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/create/feature-planning/template.md",
+                  "expectedOutput": "template.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 18,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_19_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: template.md",
+                "description": "分析并生成 prompts/modes/create/module-creation/template.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/create/module-creation/template.md",
+                  "name": "template.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/create/module-creation/template.md",
+                  "expectedOutput": "template.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 19,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_19_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: template.md",
+                "description": "分析并生成 prompts/modes/create/new-project/template.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/create/new-project/template.md",
+                  "name": "template.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/create/new-project/template.md",
+                  "expectedOutput": "template.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 19,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_19_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: template.md",
+                "description": "分析并生成 prompts/modes/create/new-project-requirement/template.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/create/new-project-requirement/template.md",
+                  "name": "template.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/create/new-project-requirement/template.md",
+                  "expectedOutput": "template.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 19,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_20_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: architecture-docs.md",
+                "description": "分析并生成 prompts/modes/init/architecture-generation/architecture-docs.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/architecture-generation/architecture-docs.md",
+                  "name": "architecture-docs.md",
+                  "category": "documentation",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/architecture-generation/architecture-docs.md",
+                  "expectedOutput": "architecture-docs.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 20,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_20_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: file-analysis.md",
+                "description": "分析并生成 prompts/modes/init/file-documentation/file-analysis.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/file-documentation/file-analysis.md",
+                  "name": "file-analysis.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/file-documentation/file-analysis.md",
+                  "expectedOutput": "file-analysis.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 20,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_20_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: module-files.md",
+                "description": "分析并生成 prompts/modes/init/module-integration/module-files.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/module-integration/module-files.md",
+                  "name": "module-files.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/module-integration/module-files.md",
+                  "expectedOutput": "module-files.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 20,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_21_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: module-integration.md",
+                "description": "分析并生成 prompts/modes/init/module-integration/module-integration.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/module-integration/module-integration.md",
+                  "name": "module-integration.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/module-integration/module-integration.md",
+                  "expectedOutput": "module-integration.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 21,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_21_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: project-analysis.md",
+                "description": "分析并生成 prompts/modes/init/project-analysis/project-analysis.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/project-analysis/project-analysis.md",
+                  "name": "project-analysis.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/project-analysis/project-analysis.md",
+                  "expectedOutput": "project-analysis.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 21,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_21_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: data-flows.md",
+                "description": "分析并生成 prompts/modes/init/relations-analysis/data-flows.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/relations-analysis/data-flows.md",
+                  "name": "data-flows.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/relations-analysis/data-flows.md",
+                  "expectedOutput": "data-flows.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 21,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_22_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: dependencies.md",
+                "description": "分析并生成 prompts/modes/init/relations-analysis/dependencies.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/relations-analysis/dependencies.md",
+                  "name": "dependencies.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/relations-analysis/dependencies.md",
+                  "expectedOutput": "dependencies.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 22,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_22_2",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: function-calls.md",
+                "description": "分析并生成 prompts/modes/init/relations-analysis/function-calls.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/relations-analysis/function-calls.md",
+                  "name": "function-calls.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/relations-analysis/function-calls.md",
+                  "expectedOutput": "function-calls.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 22,
+                "batchPosition": 2,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_22_3",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: relations-analysis.md",
+                "description": "分析并生成 prompts/modes/init/relations-analysis/relations-analysis.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/relations-analysis/relations-analysis.md",
+                  "name": "relations-analysis.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/relations-analysis/relations-analysis.md",
+                  "expectedOutput": "relations-analysis.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 22,
+                "batchPosition": 3,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              },
+              {
+                "id": "file_23_1",
+                "type": "file_processing",
+                "status": "pending",
+                "title": "处理文件: task-creation.md",
+                "description": "分析并生成 prompts/modes/init/task-creation/task-creation.md 的文档",
+                "file": {
+                  "relativePath": "prompts/modes/init/task-creation/task-creation.md",
+                  "name": "task-creation.md",
+                  "category": "other",
+                  "importance": 1,
+                  "needsTrimming": false
+                },
+                "instructions": {
+                  "action": "get_file_content",
+                  "targetFile": "prompts/modes/init/task-creation/task-creation.md",
+                  "expectedOutput": "task-creation.md.md",
+                  "focusAreas": [
+                    "代码功能",
+                    "使用方式",
+                    "注意事项"
+                  ],
+                  "qualityChecks": [
+                    "确保文档结构清晰",
+                    "添加必要的代码示例",
+                    "说明重要的配置选项",
+                    "包含错误处理说明"
+                  ]
+                },
+                "priority": 1,
+                "batchNumber": 23,
+                "batchPosition": 1,
+                "estimatedTime": "2-4分钟",
+                "createdAt": "2025-09-11T14:51:52.243Z",
+                "updatedAt": null,
+                "completedAt": null
+              }
+            ],
+            "analysis": [
+              {
+                "id": "analysis_module_structure",
+                "type": "analysis",
+                "status": "pending",
+                "title": "分析模块结构",
+                "description": "基于处理的文件分析项目的模块结构和依赖关系",
+                "instructions": {
+                  "action": "analyze_modules",
+                  "dependsOn": "file_processing_completion",
+                  "expectedOutput": "module-structure.md"
+                },
+                "priority": 70,
+                "estimatedTime": "10-15分钟"
+              },
+              {
+                "id": "analysis_integration_points",
+                "type": "analysis",
+                "status": "pending",
+                "title": "分析集成点",
+                "description": "识别模块间的集成点和通信模式",
+                "instructions": {
+                  "action": "analyze_integrations",
+                  "dependsOn": "analysis_module_structure",
+                  "expectedOutput": "integration-analysis.md"
+                },
+                "priority": 60,
+                "estimatedTime": "8-12分钟"
+              }
+            ],
+            "summary": [
+              {
+                "id": "summary_architecture",
+                "type": "summary",
+                "status": "pending",
+                "title": "生成架构总结",
+                "description": "基于所有分析结果生成完整的系统架构文档",
+                "instructions": {
+                  "action": "generate_architecture_summary",
+                  "dependsOn": "all_analysis_completion",
+                  "expectedOutput": "system-architecture-final.md"
+                },
+                "priority": 90,
+                "estimatedTime": "15-20分钟"
+              }
+            ],
+            "optimization": [],
+            "requirementAnalysis": [],
+            "impactAnalysis": [],
+            "architectureDesign": [],
+            "moduleCreation": [],
+            "codeImplementation": [],
+            "documentUpdate": [],
+            "testing": [],
+            "integration": []
+          }
+        },
+        "summary": {
+          "fileProcessingTasks": 67,
+          "analysisTasks": 2,
+          "summaryTasks": 1,
+          "estimatedTotalTime": "210-350分钟"
+        }
+      },
+      "processingPlan": {
+        "projectPath": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
+        "planCreatedAt": "2025-09-11T14:51:52.243Z",
+        "summary": {
+          "totalFiles": 67,
+          "totalBatches": 23,
+          "averageBatchSize": 3,
+          "estimatedTotalTime": "46-92 分钟",
+          "totalEstimatedTokens": 4772,
+          "averageTokensPerBatch": 207,
+          "largeFilesCount": 10,
+          "chunkedFilesCount": 0
+        },
+        "processingStrategy": {
+          "batchSize": 3,
+          "priorityOrder": true,
+          "tokenBasedBatching": false,
+          "maxTokensPerBatch": 100000,
+          "processingMode": "sequential-ai-collaboration",
+          "description": "AI将逐批处理文件，每批完成后再进行下一批"
+        },
+        "tokenAnalysis": {
+          "totalTokens": 4772,
+          "averageTokensPerFile": 71,
+          "recommendedModel": "gpt-4",
+          "chunkedFilesCount": 0,
+          "estimatedCost": {
+            "gpt-4": "$0.14",
+            "gpt-3.5": "$0.01",
+            "claude-3": "$0.07",
+            "note": "估算成本，实际费用可能有所不同"
+          }
+        },
+        "batches": [
+          {
+            "batchNumber": 1,
+            "estimatedTokens": 147,
+            "files": [
+              {
+                "relativePath": "index.js",
+                "name": "index.js",
+                "category": "entry",
+                "importance": 60,
+                "estimatedSize": 130095,
+                "estimatedTokens": 48,
+                "needsTrimming": true,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "package.json",
+                "name": "package.json",
+                "category": "config",
+                "importance": 60,
+                "estimatedSize": 1702,
+                "estimatedTokens": 51,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "CLAUDE.md",
+                "name": "CLAUDE.md",
+                "category": "other",
+                "importance": 20,
+                "estimatedSize": 4319,
+                "estimatedTokens": 48,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 2,
+            "estimatedTokens": 222,
+            "files": [
+              {
+                "relativePath": "README.md",
+                "name": "README.md",
+                "category": "documentation",
+                "importance": 20,
+                "estimatedSize": 9586,
+                "estimatedTokens": 50,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "Requirement.md",
+                "name": "Requirement.md",
+                "category": "other",
+                "importance": 20,
+                "estimatedSize": 3209,
+                "estimatedTokens": 52,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "项目深度分析报告.md",
+                "name": "项目深度分析报告.md",
+                "category": "other",
+                "importance": 20,
+                "estimatedSize": 16340,
+                "estimatedTokens": 120,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 3,
+            "estimatedTokens": 179,
+            "files": [
+              {
+                "relativePath": "scripts/test-service-registry.js",
+                "name": "test-service-registry.js",
+                "category": "service",
+                "importance": 15,
+                "estimatedSize": 5271,
+                "estimatedTokens": 63,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": ".claude/settings.local.json",
+                "name": "settings.local.json",
+                "category": "other",
+                "importance": 15,
+                "estimatedSize": 2412,
+                "estimatedTokens": 60,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "config/mcp.config.json",
+                "name": "mcp.config.json",
+                "category": "other",
+                "importance": 15,
+                "estimatedSize": 1946,
+                "estimatedTokens": 56,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 4,
+            "estimatedTokens": 182,
+            "files": [
+              {
+                "relativePath": "config/modes.config.json",
+                "name": "modes.config.json",
+                "category": "other",
+                "importance": 15,
+                "estimatedSize": 3734,
+                "estimatedTokens": 58,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "config/template-system.config.json",
+                "name": "template-system.config.json",
+                "category": "other",
+                "importance": 15,
+                "estimatedSize": 2488,
+                "estimatedTokens": 64,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "config/templates.config.json",
+                "name": "templates.config.json",
+                "category": "other",
+                "importance": 15,
+                "estimatedSize": 12077,
+                "estimatedTokens": 60,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 5,
+            "estimatedTokens": 181,
+            "files": [
+              {
+                "relativePath": "config/workflows.config.json",
+                "name": "workflows.config.json",
+                "category": "other",
+                "importance": 15,
+                "estimatedSize": 15362,
+                "estimatedTokens": 60,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "mg_kiro/init-state.json",
+                "name": "init-state.json",
+                "category": "other",
+                "importance": 15,
+                "estimatedSize": 42023,
+                "estimatedTokens": 57,
+                "needsTrimming": true,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/ai-todo-manager.js",
+                "name": "ai-todo-manager.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 37948,
+                "estimatedTokens": 64,
+                "needsTrimming": true,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 6,
+            "estimatedTokens": 198,
+            "files": [
+              {
+                "relativePath": "server/services/complete-task-monitor.js",
+                "name": "complete-task-monitor.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 29402,
+                "estimatedTokens": 68,
+                "needsTrimming": true,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/config-service.js",
+                "name": "config-service.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 9827,
+                "estimatedTokens": 64,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/file-query-service.js",
+                "name": "file-query-service.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 39433,
+                "estimatedTokens": 66,
+                "needsTrimming": true,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 7,
+            "estimatedTokens": 207,
+            "files": [
+              {
+                "relativePath": "server/services/language-intelligence-service.js",
+                "name": "language-intelligence-service.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 22062,
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/project-overview-generator.js",
+                "name": "project-overview-generator.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 39072,
+                "estimatedTokens": 71,
+                "needsTrimming": true,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/response-service.js",
+                "name": "response-service.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 2668,
+                "estimatedTokens": 64,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 8,
+            "estimatedTokens": 193,
+            "files": [
+              {
+                "relativePath": "server/services/service-bus.js",
+                "name": "service-bus.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 8689,
+                "estimatedTokens": 61,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/service-registry.js",
+                "name": "service-registry.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 8923,
+                "estimatedTokens": 64,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/smart-content-trimmer.js",
+                "name": "smart-content-trimmer.js",
+                "category": "service",
+                "importance": 10,
+                "estimatedSize": 11576,
+                "estimatedTokens": 68,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 9,
+            "estimatedTokens": 163,
+            "files": [
+              {
+                "relativePath": ".claude/commands/init.md",
+                "name": "init.md",
+                "category": "other",
+                "importance": 10,
+                "estimatedSize": 8333,
+                "estimatedTokens": 57,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "jest.config.js",
+                "name": "jest.config.js",
+                "category": "other",
+                "importance": 10,
+                "estimatedSize": 826,
+                "estimatedTokens": 52,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "package-lock.json",
+                "name": "package-lock.json",
+                "category": "other",
+                "importance": 10,
+                "estimatedSize": 351388,
+                "estimatedTokens": 54,
+                "needsTrimming": true,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 10,
+            "estimatedTokens": 200,
+            "files": [
+              {
+                "relativePath": "server/language/detector.js",
+                "name": "detector.js",
+                "category": "other",
+                "importance": 10,
+                "estimatedSize": 14782,
+                "estimatedTokens": 60,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/language/prompt-intelligence.js",
+                "name": "prompt-intelligence.js",
+                "category": "other",
+                "importance": 10,
+                "estimatedSize": 19744,
+                "estimatedTokens": 66,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/file-analysis/FileAnalysisModule.js",
+                "name": "FileAnalysisModule.js",
+                "category": "service",
+                "importance": 5,
+                "estimatedSize": 21223,
+                "estimatedTokens": 74,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 11,
+            "estimatedTokens": 226,
+            "files": [
+              {
+                "relativePath": "server/services/task-management/TaskStateManager.js",
+                "name": "TaskStateManager.js",
+                "category": "service",
+                "importance": 5,
+                "estimatedSize": 18773,
+                "estimatedTokens": 74,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/task-management/UnifiedTaskManager.js",
+                "name": "UnifiedTaskManager.js",
+                "category": "service",
+                "importance": 5,
+                "estimatedSize": 15739,
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/task-management/UnifiedTaskValidator.js",
+                "name": "UnifiedTaskValidator.js",
+                "category": "service",
+                "importance": 5,
+                "estimatedSize": 17915,
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 12,
+            "estimatedTokens": 218,
+            "files": [
+              {
+                "relativePath": "server/services/unified/master-template-service.js",
+                "name": "master-template-service.js",
+                "category": "service",
+                "importance": 5,
+                "estimatedSize": 38431,
+                "estimatedTokens": 73,
+                "needsTrimming": true,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/unified/mode-template-service.js",
+                "name": "mode-template-service.js",
+                "category": "service",
+                "importance": 5,
+                "estimatedSize": 31840,
+                "estimatedTokens": 72,
+                "needsTrimming": true,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/unified/template-config-manager.js",
+                "name": "template-config-manager.js",
+                "category": "service",
+                "importance": 5,
+                "estimatedSize": 19217,
+                "estimatedTokens": 73,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 13,
+            "estimatedTokens": 210,
+            "files": [
+              {
+                "relativePath": "prompts/generation/architecture/system-architecture-generation.md",
+                "name": "system-architecture-generation.md",
+                "category": "other",
+                "importance": 5,
+                "estimatedSize": 2566,
+                "estimatedTokens": 82,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/shared/common/default.md",
+                "name": "default.md",
+                "category": "utility",
+                "importance": 5,
+                "estimatedSize": 3323,
+                "estimatedTokens": 63,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/shared/variables/common.json",
+                "name": "common.json",
+                "category": "utility",
+                "importance": 5,
+                "estimatedSize": 1449,
+                "estimatedTokens": 65,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 14,
+            "estimatedTokens": 266,
+            "files": [
+              {
+                "relativePath": "server/services/file-analysis/batch-strategies/CombinedFileBatchStrategy.js",
+                "name": "CombinedFileBatchStrategy.js",
+                "category": "service",
+                "importance": 1,
+                "estimatedSize": 20174,
+                "estimatedTokens": 88,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/file-analysis/batch-strategies/LargeFileMultiBatchStrategy.js",
+                "name": "LargeFileMultiBatchStrategy.js",
+                "category": "service",
+                "importance": 1,
+                "estimatedSize": 23049,
+                "estimatedTokens": 90,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/file-analysis/batch-strategies/SingleFileBatchStrategy.js",
+                "name": "SingleFileBatchStrategy.js",
+                "category": "service",
+                "importance": 1,
+                "estimatedSize": 18276,
+                "estimatedTokens": 88,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 15,
+            "estimatedTokens": 262,
+            "files": [
+              {
+                "relativePath": "server/services/file-analysis/token-analysis/FunctionBoundaryDetector.js",
+                "name": "FunctionBoundaryDetector.js",
+                "category": "service",
+                "importance": 1,
+                "estimatedSize": 20406,
+                "estimatedTokens": 87,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/file-analysis/token-analysis/PreciseTokenCalculator.js",
+                "name": "PreciseTokenCalculator.js",
+                "category": "service",
+                "importance": 1,
+                "estimatedSize": 19252,
+                "estimatedTokens": 85,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/task-management/validation-strategies/Step3FolderValidator.js",
+                "name": "Step3FolderValidator.js",
+                "category": "service",
+                "importance": 1,
+                "estimatedSize": 28078,
+                "estimatedTokens": 90,
+                "needsTrimming": true,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 16,
+            "estimatedTokens": 275,
+            "files": [
+              {
+                "relativePath": "server/services/task-management/validation-strategies/Step4ModuleValidator.js",
+                "name": "Step4ModuleValidator.js",
+                "category": "service",
+                "importance": 1,
+                "estimatedSize": 18918,
+                "estimatedTokens": 90,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/task-management/validation-strategies/Step5FixedFileValidator.js",
+                "name": "Step5FixedFileValidator.js",
+                "category": "service",
+                "importance": 1,
+                "estimatedSize": 18720,
+                "estimatedTokens": 92,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "server/services/task-management/validation-strategies/Step6ArchitectureValidator.js",
+                "name": "Step6ArchitectureValidator.js",
+                "category": "service",
+                "importance": 1,
+                "estimatedSize": 21025,
+                "estimatedTokens": 93,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 17,
+            "estimatedTokens": 241,
+            "files": [
+              {
+                "relativePath": "prompts/modes/init/module-integration/module-overview.md",
+                "name": "module-overview.md",
+                "category": "component",
+                "importance": 1,
+                "estimatedSize": 4191,
+                "estimatedTokens": 77,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/init/relations-analysis/relations-overview.md",
+                "name": "relations-overview.md",
+                "category": "component",
+                "importance": 1,
+                "estimatedSize": 7515,
+                "estimatedTokens": 79,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/languages/javascript/init-variants/project-analysis/template.md",
+                "name": "template.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 4049,
+                "estimatedTokens": 85,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 18,
+            "estimatedTokens": 224,
+            "files": [
+              {
+                "relativePath": "prompts/modes/create/existing-project/template.md",
+                "name": "template.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 11649,
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/create/existing-project-requirement/template.md",
+                "name": "template.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 1223,
+                "estimatedTokens": 80,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/create/feature-planning/template.md",
+                "name": "template.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 7033,
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 19,
+            "estimatedTokens": 217,
+            "files": [
+              {
+                "relativePath": "prompts/modes/create/module-creation/template.md",
+                "name": "template.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 12115,
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/create/new-project/template.md",
+                "name": "template.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 18483,
+                "estimatedTokens": 69,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/create/new-project-requirement/template.md",
+                "name": "template.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 2574,
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 20,
+            "estimatedTokens": 233,
+            "files": [
+              {
+                "relativePath": "prompts/modes/init/architecture-generation/architecture-docs.md",
+                "name": "architecture-docs.md",
+                "category": "documentation",
+                "importance": 1,
+                "estimatedSize": 5936,
+                "estimatedTokens": 82,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/init/file-documentation/file-analysis.md",
+                "name": "file-analysis.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 1165,
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/init/module-integration/module-files.md",
+                "name": "module-files.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 2986,
+                "estimatedTokens": 75,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 21,
+            "estimatedTokens": 227,
+            "files": [
+              {
+                "relativePath": "prompts/modes/init/module-integration/module-integration.md",
+                "name": "module-integration.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 2226,
+                "estimatedTokens": 78,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/init/project-analysis/project-analysis.md",
+                "name": "project-analysis.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 2037,
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/init/relations-analysis/data-flows.md",
+                "name": "data-flows.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 5500,
+                "estimatedTokens": 73,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 22,
+            "estimatedTokens": 229,
+            "files": [
+              {
+                "relativePath": "prompts/modes/init/relations-analysis/dependencies.md",
+                "name": "dependencies.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 5584,
+                "estimatedTokens": 75,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/init/relations-analysis/function-calls.md",
+                "name": "function-calls.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 3523,
+                "estimatedTokens": 76,
+                "needsTrimming": false,
+                "needsChunking": false
+              },
+              {
+                "relativePath": "prompts/modes/init/relations-analysis/relations-analysis.md",
+                "name": "relations-analysis.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 3260,
+                "estimatedTokens": 78,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          },
+          {
+            "batchNumber": 23,
+            "estimatedTokens": 72,
+            "files": [
+              {
+                "relativePath": "prompts/modes/init/task-creation/task-creation.md",
+                "name": "task-creation.md",
+                "category": "other",
+                "importance": 1,
+                "estimatedSize": 3082,
+                "estimatedTokens": 72,
+                "needsTrimming": false,
+                "needsChunking": false
+              }
+            ]
+          }
+        ],
+        "recommendations": [
+          "建议AI按批次顺序处理，每批完成后标记进度",
+          "重要文件优先处理，确保核心功能文档完整",
+          "10个大文件会自动裁切",
+          "无需分片处理",
+          "使用固定批次大小",
+          "文件大小适中，可直接处理"
+        ]
+      },
+      "completedAt": "2025-09-11T14:51:52.244Z"
+    }
+  },
+  "startedAt": "2025-09-11T14:51:20.287Z",
+  "error": null,
+  "documentCount": 0,
+  "generatedDocs": []
+}

@@ -4,7 +4,48 @@
  */
 
 export class SmartContentTrimmer {
-    constructor() {
+    constructor(config = {}, dependencies = {}, serviceBus = null) {
+        // 配置合并（ServiceBus格式）
+        this.config = {
+            // 裁切策略配置
+            preserveImports: true,
+            preserveExports: true,
+            preserveComments: true,
+            preserveTypes: true,
+            maxPreserveRatio: 0.8, // 高优先级内容占最大比例
+            
+            // 文件类型策略映射
+            strategies: {
+                '.js': 'trimJavaScript',
+                '.ts': 'trimTypeScript', 
+                '.jsx': 'trimJavaScript',
+                '.tsx': 'trimTypeScript',
+                '.py': 'trimPython',
+                '.json': 'trimJson',
+                '.md': 'trimMarkdown',
+                '.txt': 'trimPlainText',
+                '.yml': 'trimYaml',
+                '.yaml': 'trimYaml'
+            },
+            
+            // 裁切标记配置
+            trimMarkers: {
+                js: '// ... (内容已裁切，完整内容请查看原文件)',
+                py: '# ... (内容已裁切，完整内容请查看原文件)',
+                md: '<!-- ... (内容已裁切，完整内容请查看原文件) -->',
+                json: '"...": "内容已裁切，完整内容请查看原文件"',
+                default: '... (内容已裁切，完整内容请查看原文件)'
+            },
+            
+            // 覆盖默认配置
+            ...config
+        };
+
+        // 依赖注入（ServiceBus格式）
+        this.serviceBus = serviceBus;
+        this.logger = dependencies.logger || console;
+        
+        // 初始化策略映射
         this.strategies = {
             '.js': this.trimJavaScript.bind(this),
             '.ts': this.trimTypeScript.bind(this),
@@ -16,6 +57,28 @@ export class SmartContentTrimmer {
             '.txt': this.trimPlainText.bind(this),
             '.yml': this.trimYaml.bind(this),
             '.yaml': this.trimYaml.bind(this)
+        };
+        
+        this.logger.info('[SmartContentTrimmer] 智能内容裁切器已初始化');
+    }
+
+    /**
+     * ServiceBus兼容方法：初始化服务
+     */
+    async initialize() {
+        // 执行任何异步初始化逻辑
+        return Promise.resolve();
+    }
+
+    /**
+     * ServiceBus兼容方法：获取服务状态
+     */
+    getStatus() {
+        return {
+            name: 'SmartContentTrimmer',
+            status: 'active',
+            supportedExtensions: Object.keys(this.strategies),
+            config: this.config
         };
     }
 
@@ -61,7 +124,7 @@ export class SmartContentTrimmer {
             const line = lines[i];
             const lineLength = line.length + 1;
             
-            if (currentLength + lineLength > maxLength * 0.8) break;
+            if (currentLength + lineLength > maxLength * this.config.maxPreserveRatio) break;
             
             if (priorities.some(pattern => pattern.test(line))) {
                 result.push(line);
@@ -83,7 +146,7 @@ export class SmartContentTrimmer {
         }
 
         if (result.length < lines.length) {
-            result.push('', '// ... (内容已裁切，完整内容请查看原文件)', '');
+            result.push('', this.config.trimMarkers.js, '');
         }
 
         return result.join('\n');

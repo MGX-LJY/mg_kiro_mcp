@@ -13,41 +13,85 @@ import { promises as fs } from 'fs';
 import { resolve, join, dirname } from 'path';
 
 export class CompleteTaskMonitor {
-    constructor() {
+    constructor(config = {}, dependencies = {}, serviceBus = null) {
+        // 配置合并（ServiceBus格式）
+        this.config = {
+            // 质量检查配置
+            minQualityScore: 70,
+            enableDetailedLogging: true,
+            saveReports: true,
+            reportsDir: 'mg_kiro/create/reports',
+            
+            // 任务类型配置
+            taskTypes: {
+                FILE_PROCESSING: 'file_processing',
+                CODE_CREATION: 'code_creation',
+                DOCUMENT_GENERATION: 'document_generation',
+                ARCHITECTURE_DESIGN: 'architecture_design',
+                MODULE_IMPLEMENTATION: 'module_implementation',
+                API_DEVELOPMENT: 'api_development',
+                TEST_CREATION: 'test_creation'
+            },
+            
+            // 质量检查类型
+            qualityChecks: {
+                COMPLETENESS: 'completeness',
+                CODE_QUALITY: 'code_quality',
+                DOCUMENTATION: 'documentation',
+                FUNCTIONALITY: 'functionality',
+                STANDARDS_COMPLIANCE: 'standards_compliance',
+                ERROR_HANDLING: 'error_handling'
+            },
+            
+            // 覆盖默认配置
+            ...config
+        };
+
+        // 依赖注入（ServiceBus格式）
+        this.serviceBus = serviceBus;
+        this.logger = dependencies.logger || console;
+        
+        // 核心状态
         this.taskExecutions = new Map(); // 任务执行记录
         this.qualityStandards = new Map(); // 质量标准
         this.executionMetrics = new Map(); // 执行指标
         
-        this.taskTypes = {
-            FILE_PROCESSING: 'file_processing',
-            CODE_CREATION: 'code_creation',
-            DOCUMENT_GENERATION: 'document_generation',
-            ARCHITECTURE_DESIGN: 'architecture_design',
-            MODULE_IMPLEMENTATION: 'module_implementation',
-            API_DEVELOPMENT: 'api_development',
-            TEST_CREATION: 'test_creation'
-        };
-
-        this.qualityChecks = {
-            COMPLETENESS: 'completeness',
-            CODE_QUALITY: 'code_quality',
-            DOCUMENTATION: 'documentation',
-            FUNCTIONALITY: 'functionality',
-            STANDARDS_COMPLIANCE: 'standards_compliance',
-            ERROR_HANDLING: 'error_handling'
-        };
+        // 使用配置中的枚举（向后兼容）
+        this.taskTypes = this.config.taskTypes;
+        this.qualityChecks = this.config.qualityChecks;
 
         // 初始化质量标准
         this.initializeQualityStandards();
         
-        console.log('[TaskMonitor] 任务完成监控服务已初始化');
+        this.logger.info('[TaskMonitor] 任务完成监控服务已初始化');
+    }
+
+    /**
+     * ServiceBus兼容方法：初始化服务
+     */
+    async initialize() {
+        // 执行任何异步初始化逻辑
+        return Promise.resolve();
+    }
+
+    /**
+     * ServiceBus兼容方法：获取服务状态
+     */
+    getStatus() {
+        return {
+            name: 'CompleteTaskMonitor',
+            status: 'active',
+            taskExecutions: this.taskExecutions.size,
+            qualityStandards: this.qualityStandards.size,
+            config: this.config
+        };
     }
 
     /**
      * 开始监控任务执行
      */
     async startTaskMonitoring(taskId, taskData, options = {}) {
-        console.log(`[TaskMonitor] 开始监控任务: ${taskId}`);
+        this.logger.info(`[TaskMonitor] 开始监控任务: ${taskId}`);
 
         const execution = {
             taskId,
@@ -110,7 +154,7 @@ export class CompleteTaskMonitor {
      * 验证任务完成
      */
     async validateTaskCompletion(taskId, completionData, options = {}) {
-        console.log(`[TaskMonitor] 验证任务完成: ${taskId}`);
+        this.logger.info(`[TaskMonitor] 验证任务完成: ${taskId}`);
 
         const execution = this.taskExecutions.get(taskId);
         
@@ -169,7 +213,7 @@ export class CompleteTaskMonitor {
      * 执行任务验证
      */
     async performTaskValidation(execution, completionData, options) {
-        console.log(`[TaskMonitor] 执行任务验证: ${execution.taskType}`);
+        this.logger.info(`[TaskMonitor] 执行任务验证: ${execution.taskType}`);
 
         const validationResult = {
             passed: true,
@@ -205,7 +249,7 @@ export class CompleteTaskMonitor {
             );
 
             // 如果分数低于阈值，标记为未通过
-            const minQualityScore = options.minQualityScore || 70;
+            const minQualityScore = options.minQualityScore || this.config.minQualityScore;
             if (validationResult.qualityScore < minQualityScore) {
                 validationResult.passed = false;
                 validationResult.issues.push(
@@ -214,7 +258,7 @@ export class CompleteTaskMonitor {
             }
 
         } catch (error) {
-            console.error('[TaskMonitor] 任务验证失败:', error);
+            this.logger.error('[TaskMonitor] 任务验证失败:', error);
             validationResult.passed = false;
             validationResult.issues.push(`验证执行失败: ${error.message}`);
         }
@@ -270,7 +314,7 @@ export class CompleteTaskMonitor {
                                checkResult.score >= (standard.minScore || standard.maxScore * 0.7);
 
         } catch (error) {
-            console.error(`[TaskMonitor] 质量检查失败 ${standard.name}:`, error);
+            this.logger.error(`[TaskMonitor] 质量检查失败 ${standard.name}:`, error);
             checkResult.issues.push(`检查执行失败: ${error.message}`);
         }
 
@@ -713,16 +757,20 @@ export class CompleteTaskMonitor {
     }
 
     async saveCompletionReport(projectPath, report) {
+        if (!this.config.saveReports) {
+            return; // 如果配置禁用保存报告，直接返回
+        }
+        
         try {
-            const reportsDir = resolve(projectPath, 'mg_kiro', 'create', 'reports');
+            const reportsDir = resolve(projectPath, this.config.reportsDir);
             await fs.mkdir(reportsDir, { recursive: true });
             
             const reportFile = join(reportsDir, `task-${report.taskId}-report.json`);
             await fs.writeFile(reportFile, JSON.stringify(report, null, 2));
             
-            console.log(`[TaskMonitor] 完成报告已保存: ${reportFile}`);
+            this.logger.info(`[TaskMonitor] 完成报告已保存: ${reportFile}`);
         } catch (error) {
-            console.error('[TaskMonitor] 保存完成报告失败:', error);
+            this.logger.error('[TaskMonitor] 保存完成报告失败:', error);
         }
     }
 
