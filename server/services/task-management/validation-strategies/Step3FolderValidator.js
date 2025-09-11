@@ -207,7 +207,7 @@ export class Step3FolderValidator {
                             {
                                 action: 'run_step3',
                                 description: '运行Step3文件处理流程',
-                                tools: ['init_step3_get_next_task', 'init_step3_get_file_content', 'init_step3_complete_task']
+                                tools: ['init_step3_get_next_task', 'init_step3_get_file_content', 'init_step3_check_task_completion']
                             }
                         ]
                     }

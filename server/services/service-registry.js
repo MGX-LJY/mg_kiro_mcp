@@ -12,8 +12,6 @@ import LanguageDetector from '../language/detector.js';
 import LanguageIntelligenceService from './language-intelligence-service.js';
 import { ProjectOverviewGenerator } from './project-overview-generator.js';
 import { FileQueryService } from './file-query-service.js';
-// 已删除: import InitStateService from './init-state-service.js';
-// 已删除: import { ClaudeCodeInitService } from './claude-code-init-service.js';
 
 // 新的统一模板系统
 import MasterTemplateService from './unified/master-template-service.js';
@@ -42,8 +40,6 @@ export function registerServices(configDir = './config') {
     // 基础服务层（无依赖）
     serviceBus
         .register('configService', ConfigService, configDir, []);
-        // 已删除: .register('initState', InitStateService, {}, [])
-        // 已删除: .register('claudeCodeInit', ClaudeCodeInitService, {}, [])
 
     // 新的统一模板系统（基础层）
     serviceBus
@@ -180,8 +176,6 @@ export function getServices() {
         templateConfigManager: serviceBus.get('templateConfigManager'),
         
         // 其他核心服务
-        // 已删除: initState: serviceBus.get('initState'),
-        // 已删除: claudeCodeInit: serviceBus.get('claudeCodeInit'),
         languageDetector: serviceBus.get('languageDetector'),
         languageIntelligence: serviceBus.get('languageIntelligence'),
         configService: serviceBus.get('configService'),

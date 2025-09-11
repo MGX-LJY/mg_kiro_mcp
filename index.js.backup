@@ -340,6 +340,34 @@ async function startServer() {
           }
         },
         {
+          name: "init_step3_complete_task",
+          description: "🚫 [已废弃] 此工具已被 init_step3_check_task_completion 替代！新的验证机制提供自动完成和分层验证策略。请使用新工具！",
+          inputSchema: {
+            type: "object",
+            properties: {
+              projectPath: {
+                type: "string",
+                description: "项目根目录路径"
+              },
+              taskId: {
+                type: "string",
+                description: "任务ID（从任务响应中获取）"
+              },
+              step: {
+                type: "string",
+                description: "步骤类型: file-processing | module-integration | overview-generation | module-connections",
+                default: "file-processing"
+              },
+              notes: {
+                type: "string",
+                description: "完成备注（可选）",
+                default: null
+              }
+            },
+            required: ["projectPath", "taskId"]
+          }
+        },
+        {
           name: "init_step3_check_task_completion",
           description: "🎯 [自动验证] 检查当前任务完成状态 - 系统自动验证文件生成并完成任务。支持分层验证策略：Step3文件夹检查、Step4模块文件夹检查、Step5/6固定文件检查。文件存在即自动完成，减少手动操作！",
           inputSchema: {
@@ -1900,7 +1928,236 @@ async function startServer() {
           }
         }
         
+        case "init_step3_complete_task": {
+          // 🚫 工具已废弃，引导用户使用新的验证机制
+          const { projectPath } = args;
+          
+          return {
+            content: [{
+              type: "text",
+              text: JSON.stringify({
+                error: true,
+                tool: name,
+                status: "deprecated",
+                message: "🚫 此工具已废弃！请使用新的验证机制",
+                
+                migration_guide: {
+                  old_tool: "init_step3_complete_task",
+                  new_tool: "init_step3_check_task_completion", 
+                  why_changed: "新的验证机制支持分层验证策略和自动完成",
+                  benefits: [
+                    "✅ 自动检测文件存在性",
+                    "✅ 支持Step3-6所有步骤验证",
+                    "✅ 自动完成任务，减少手动操作",
+                    "✅ 统一任务管理器集成"
+                  ]
+                },
+                
+                suggested_action: {
+                  tool: "init_step3_check_task_completion",
+                  params: {
+                    projectPath: projectPath || "[请提供项目路径]",
+                    stepType: "step3" 
+                  },
+                  description: "使用新的验证工具自动检查任务完成状态"
+                },
+                
+                workflow_info: {
+                  step3_new_flow: [
+                    "1. init_step3_get_next_task - 获取任务",
+                    "2. init_step3_get_file_content - 获取文件内容", 
+                    "3. init_step3_generate_analysis - 生成分析文档",
+                    "4. init_step3_check_task_completion - 验证完成（新）"
+                  ]
+                },
+                
+                timestamp: new Date().toISOString()
+              }, null, 2)
+            }]
+          };
+        }
         
+        case "init_step3_complete_task_legacy": {
+          // 保留原实现作为备用（重命名避免调用）
+          let { projectPath, taskId, documentContent, notes } = args;
+          
+          if (!projectPath) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
+          }
+
+          // 🔥 自动参数补全：从上下文获取taskId
+          const taskContext = getCurrentTaskContext(projectPath);
+          if (!taskId && taskContext) {
+            taskId = taskContext.taskId;
+            console.log(`[Auto-Param] 从上下文自动获取 taskId: ${taskId}`);
+          }
+
+          // 🔥 参数映射：优先使用任务上下文中的分析文档
+          if (!documentContent && taskContext?.analysisContent) {
+            documentContent = taskContext.analysisContent;
+            console.log(`[Param-Mapping] 从任务上下文自动获取分析文档内容`);
+          }
+          // 🔥 参数映射：支持notes -> documentContent（向后兼容）
+          else if (!documentContent && notes) {
+            documentContent = notes;
+            console.log(`[Param-Mapping] 将 notes 参数映射为 documentContent`);
+          }
+          
+          if (!taskId) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ 
+                  error: true, 
+                  message: "任务ID不能为空。请提供taskId参数或先调用get_next_task获取任务上下文", 
+                  contextAvailable: !!taskContext,
+                  contextInfo: taskContext ? { taskId: taskContext.taskId, fileName: taskContext.fileName } : null,
+                  tool: name 
+                }, null, 2)
+              }]
+            };
+          }
+
+          
+          console.log(`[MCP-Init-Step3] 完成任务 - ${projectPath} 任务:${taskId}`);
+          
+          const initState = getProjectState(projectPath);
+          
+          if (initState.currentStep < 3) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ 
+                  error: true,
+                  message: "🚫 工作流顺序错误：尝试跳过必需步骤",
+                  tool: name,
+                  details: {
+                    current_state: `系统当前状态: step${initState.currentStep}`,
+                    attempted_action: `调用 ${name}`,
+                    why_failed: "此工具要求系统必须先进入step3状态",
+                    
+                    required_action: {
+                      step: "1️⃣ 首先调用",
+                      tool: "init_step3_get_next_task", 
+                      reason: "启动文件处理流程，系统进入step3状态",
+                      expected_result: "获得第一个任务ID(如file_1_1)",
+                      params_needed: { projectPath: projectPath }
+                    },
+                    
+                    correct_workflow: [
+                      "1️⃣ init_step3_get_next_task  (获取任务，进入step3) ← 🎯 你应该先调用这个",
+                      "2️⃣ init_step3_get_file_content (处理文件内容)", 
+                      "3️⃣ init_step3_generate_analysis (生成分析文档)",
+                      "4️⃣ init_step3_check_task_completion (验证任务完成) ← 新的验证机制"
+                    ],
+                    
+                    ai_hint: "❌ 不要直接调用complete_task！必须按1→2→3顺序执行。AI请按工作流执行！",
+                    fix_instruction: "请立即调用 init_step3_get_next_task 工具开始正确的工作流程"
+                  }
+                }, null, 2)
+              }]
+            };
+          }
+          
+          // 完成任务并保存文档
+          /** @type {Object|null} completionResult - 任务完成结果 */
+          const completionResult = await (fileQueryService && fileQueryService['completeTask'] 
+            ? fileQueryService['completeTask'](resolve(projectPath), taskId, documentContent) 
+            : Promise.resolve({ success: false })) || { success: false };
+          
+          // 更新项目状态
+          initState.documentCount = (initState.documentCount || 0) + 1;
+          if (!initState.generatedDocs) {
+            initState.generatedDocs = [];
+          }
+          initState.generatedDocs.push({
+            taskId: taskId,
+            fileName: completionResult?.fileName || '未知文件',
+            docPath: completionResult?.docPath || '未知路径',
+            completedAt: new Date().toISOString()
+          });
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  currentStep: 3,
+                  stepName: 'file-documentation',
+                  status: "task_completed",
+                  
+                  // 完成结果
+                  completionResults: {
+                    taskId: taskId,
+                    fileName: completionResult?.fileName || '未知文件',
+                    documentPath: completionResult?.docPath || '未知路径',
+                    totalProcessed: initState.documentCount,
+                    remainingTasks: completionResult?.remainingTasks || 0
+                  },
+                  
+                  // 下一步指导
+                  workflow: {
+                    current_step: "3/6 - 文件文档生成（继续处理）",
+                    status: (completionResult?.remainingTasks || 0) > 0 ? "continue_processing" : "step_completed",
+                    next_steps: (completionResult?.remainingTasks || 0) > 0 ? [{
+                      tool: "init_step3_get_next_task",
+                      description: "继续处理下一个文件任务",
+                      suggested_params: {
+                        projectPath: resolve(projectPath)
+                      },
+                      why: `还有 ${completionResult?.remainingTasks || 0} 个文件等待处理`
+                    }] : [{
+                      tool: "init_step4_module_integration",
+                      description: "开始模块化整合",
+                      suggested_params: {
+                        projectPath: resolve(projectPath)
+                      },
+                      why: "所有文件文档已完成，可以进入模块整合阶段"
+                    }],
+                    progress: {
+                      completed: (completionResult?.remainingTasks || 0) > 0 ? 3 : 4,
+                      total: 6,
+                      percentage: Math.round(((completionResult?.remainingTasks || 0) > 0 ? 3 : 4)/6 * 100)
+                    }
+                  },
+                  
+                  // 🎯 AI状态可视化 - 任务完成后的状态指导
+                  workflow_status: {
+                    current_step: 3,
+                    step_name: "文件处理循环", 
+                    progress: `任务${taskId}已完成 (${initState.documentCount}个文件已处理)`,
+                    task_completed: true,
+                    remaining_tasks: completionResult?.remainingTasks || 0,
+                    
+                    // 根据剩余任务数量决定下一步
+                    allowed_next_tools: (completionResult?.remainingTasks || 0) > 0 ? 
+                      ["init_step3_get_next_task"] : 
+                      ["init_step4_module_integration"],
+                    forbidden_tools: (completionResult?.remainingTasks || 0) > 0 ? 
+                      ["init_step4_module_integration"] :
+                      ["init_step3_get_next_task", "init_step3_get_file_content"],
+                    
+                    // 🧠 AI认知提示
+                    ai_context: (completionResult?.remainingTasks || 0) > 0 ? 
+                      `✅ 任务${taskId}已完成，还有${completionResult?.remainingTasks}个文件待处理，需要继续循环` :
+                      "✅ 所有文件处理完成，可以进入模块整合阶段",
+                    ai_instruction: (completionResult?.remainingTasks || 0) > 0 ? 
+                      "🎯 下一步：调用 init_step3_get_next_task 处理下一个文件" :
+                      "🎯 下一步：调用 init_step4_module_integration 开始模块整合"
+                  },
+                  
+                  success: true,
+                  message: `Step3: 任务 ${taskId} 已完成，文档已保存到 ${completionResult?.docPath || '未知路径'}`
+                }, null, 2)
+              }
+            ]
+          };
+        }
         
         case "init_step3_check_task_completion": {
           const { projectPath, taskId, stepType } = args;
@@ -3104,7 +3361,7 @@ ${docsDir}/
           return {
             content: [{
               type: "text",
-              text: JSON.stringify({ error: true, message: `未知的工具: ${name}. 可用工具: workflow_guide, init_step1_project_analysis, init_step2_create_todos, init_step2_file_analysis, init_step3_get_next_task, init_step3_get_file_content, init_step3_generate_analysis, init_step3_check_task_completion, init_step4_module_integration, init_step5_module_relations, init_step6_architecture_docs, get_init_status, reset_init`, tool: name }, null, 2)
+              text: JSON.stringify({ error: true, message: `未知的工具: ${name}. 可用工具: workflow_guide, init_step1_project_analysis, init_step2_create_todos, init_step2_file_analysis, init_step3_get_next_task, init_step3_get_file_content, init_step3_generate_analysis, init_step3_complete_task, init_step3_check_task_completion, init_step4_module_integration, init_step5_module_relations, init_step6_architecture_docs, get_init_status, reset_init`, tool: name }, null, 2)
             }]
           };
       }

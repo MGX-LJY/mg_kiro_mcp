@@ -107,7 +107,7 @@
           "id": "file_processing",
           "step": 3,
           "name": "文件文档生成",
-          "tools": ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_generate_analysis", "init_step3_complete_task"],
+          "tools": ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_generate_analysis", "init_step3_check_task_completion"],
           "description": "循环处理所有文件，AI生成每个文件的详细markdown文档",
           "required": true,
           "prerequisites": ["create_todos"],
@@ -318,18 +318,18 @@
     },
     "init_step3_generate_analysis": {
       "prerequisites": ["init_step3_get_file_content"],
-      "leads_to": ["init_step3_complete_task"],
+      "leads_to": ["init_step3_check_task_completion"],
       "requires": ["file_content"],
       "provides": ["analysis_content", "documentation_guidance"]
     },
-    "init_step3_complete_task": {
+    "init_step3_check_task_completion": {
       "prerequisites": ["init_step3_generate_analysis"],
       "leads_to": ["init_step3_get_next_task", "init_step4_module_integration"],
       "requires": ["analysis_content"],
       "provides": ["file_documentation"]
     },
     "init_step4_module_integration": {
-      "prerequisites": ["init_step3_complete_task"],
+      "prerequisites": ["init_step3_check_task_completion"],
       "leads_to": ["init_step5_module_relations"],
       "requires": ["file_documentation"],
       "provides": ["module_integration", "module_overview"]

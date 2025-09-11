@@ -24,7 +24,7 @@
           {
             "step": 3,
             "name": "文件文档循环生成",
-            "tools": ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_generate_analysis", "init_step3_complete_task"],
+            "tools": ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_generate_analysis", "init_step3_check_task_completion"],
             "description": "基于FileAnalysisModule协调的文档生成循环"
           },
           {
