@@ -14,6 +14,7 @@
     "test:unit": "jest --testPathPattern=unit",
     "test:config": "node tests/config-integration.test.js",
     "test:system": "node test-integration.js",
+    "validate:refactoring": "node scripts/validate-refactoring.js",
     "daemon": "nohup node index.js > logs/mg_kiro.log 2>&1 &"
   },
   "keywords": [

@@ -24,7 +24,8 @@ import { promises as fs } from 'fs';
 import { join, resolve, dirname } from 'path';
 
 export class UnifiedTaskValidator {
-    constructor(config = {}) {
+    constructor(config = {}, dependencies = {}, serviceBus = null) {
+        // 配置合并（ServiceBus格式）
         this.config = {
             enableAutoCompletion: true,     // 启用自动完成
             detailedErrorReporting: true,   // 详细错误报告
@@ -33,10 +34,11 @@ export class UnifiedTaskValidator {
             ...config
         };
 
-        // 依赖注入
-        this.unifiedTaskManager = null;
-        this.taskStateManager = null;
-        this.fileAnalysisModule = null;  // FileAnalysisModule 用于获取任务定义
+        // 依赖注入（ServiceBus格式：config, dependencies, serviceBus）
+        this.unifiedTaskManager = null; // 将在后续通过injectDependencies设置
+        this.taskStateManager = dependencies.taskStateManager;
+        this.fileAnalysisModule = dependencies.fileAnalysisModule;
+        this.serviceBus = serviceBus;
 
         // 步骤验证器映射
         this.stepValidators = {

@@ -13,11 +13,12 @@ import fs from 'fs/promises';
 import path from 'path';
 
 export class UnifiedTaskManager {
-    constructor(dependencies = {}) {
-        // 依赖注入
-        this.taskValidator = dependencies.taskValidator;  // UnifiedTaskValidator
+    constructor(config = {}, dependencies = {}, serviceBus = null) {
+        // 依赖注入（ServiceBus格式：config, dependencies, serviceBus）
+        this.taskValidator = dependencies.unifiedTaskValidator;  // UnifiedTaskValidator
         this.taskStateManager = dependencies.taskStateManager;
         this.logger = dependencies.logger || console;
+        this.serviceBus = serviceBus;
         
         // 任务管理状态
         this.currentTasks = new Map();

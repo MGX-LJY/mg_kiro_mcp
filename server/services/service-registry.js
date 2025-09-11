@@ -79,7 +79,8 @@ export function registerServices(configDir = './config') {
     // 任务管理模块（依赖文件分析模块）
     serviceBus
         .register('unifiedTaskValidator', UnifiedTaskValidator, {}, [
-            'fileAnalysisModule'
+            'fileAnalysisModule',
+            'taskStateManager'
         ])
         .register('unifiedTaskManager', UnifiedTaskManager, {}, [
             'taskStateManager',
@@ -137,6 +138,27 @@ export async function initializeServices(configDir = './config') {
     if (modeTemplateService && languageIntelligence) {
         // ModeTemplateService 目前不需要设置交叉依赖，依赖注入已处理
         console.log('[ServiceRegistry] ModeTemplateService 依赖关系设置完成');
+    }
+    
+    // 设置统一任务管理器的循环依赖关系
+    const unifiedTaskManager = serviceBus.get('unifiedTaskManager');
+    const unifiedTaskValidator = serviceBus.get('unifiedTaskValidator');
+    const taskStateManager = serviceBus.get('taskStateManager');
+    const fileAnalysisModule = serviceBus.get('fileAnalysisModule');
+    
+    if (unifiedTaskValidator && unifiedTaskManager && taskStateManager && fileAnalysisModule) {
+        // 为UnifiedTaskValidator注入所有依赖
+        unifiedTaskValidator.injectDependencies({
+            unifiedTaskManager,
+            taskStateManager,
+            fileAnalysisModule,
+            // 步骤验证器稍后注入（如果需要）
+            step3Validator: null,
+            step4Validator: null,
+            step5Validator: null,
+            step6Validator: null
+        });
+        console.log('[ServiceRegistry] UnifiedTaskValidator 交叉依赖关系设置完成');
     }
     
     const stats = serviceBus.getStats();

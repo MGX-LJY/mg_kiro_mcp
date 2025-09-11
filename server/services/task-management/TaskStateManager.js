@@ -13,10 +13,11 @@ import fs from 'fs/promises';
 import path from 'path';
 
 export class TaskStateManager {
-    constructor(dependencies = {}) {
-        // 依赖注入
+    constructor(config = {}, dependencies = {}, serviceBus = null) {
+        // 依赖注入（ServiceBus格式：config, dependencies, serviceBus）
         this.logger = dependencies.logger || console;
-        this.storagePath = dependencies.storagePath || 'temp';
+        this.storagePath = config.storagePath || dependencies.storagePath || 'temp';
+        this.serviceBus = serviceBus;
         
         // 状态管理
         this.stateFile = path.join(this.storagePath, 'task_states.json');

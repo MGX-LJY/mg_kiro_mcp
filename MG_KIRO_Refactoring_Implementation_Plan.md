@@ -46,7 +46,7 @@ file-analysis/
 ```
 task-management/
 ├── UnifiedTaskManager.js          # 统一任务管理器（重构版）
-├── SimplifiedTaskValidator.js     # 简化任务验证器
+├── UnifiedTaskValidator.js.js     # 简化任务验证器
 ├── TaskStateManager.js            # 任务状态管理器
 └── validation-strategies/
     ├── Step3FolderValidator.js     # Step3文件夹验证
@@ -145,9 +145,9 @@ task-management/
 
 ## 🎯 第四阶段：重构验证机制
 
-### 🔨 4.1 实现 SimplifiedTaskValidator
+### 🔨 4.1 实现 UnifiedTaskValidator.js
 
-**新文件**: `server/services/task-management/SimplifiedTaskValidator.js`
+**新文件**: `server/services/task-management/UnifiedTaskValidator.js.js`
 
 **核心方法重构**:
 1. **checkTaskCompletion()** - 替代原来的 validateAndCompleteTask()
@@ -206,7 +206,7 @@ task-management/
 **重构要点**:
 - 所有Step3工具都要与FileAnalysisModule协调
 - 支持三种不同的批次处理模式
-- 使用SimplifiedTaskValidator进行验证
+- 使用UnifiedTaskValidator.js进行验证
 - 实现自动任务完成机制
 
 ### 🔨 5.3 扩展 Step4-6 统一任务管理
@@ -228,9 +228,9 @@ task-management/
 
 ---
 
-## 📡 第六阶段：MCP工具接口更新
+## 📡 第六阶段：MCP工具接口更新 ✅ **已完成**
 
-### 🔨 6.1 新增工具接口定义
+### 🔨 6.1 新增工具接口定义 ✅
 
 **修改文件**: `index.js` 工具定义部分
 
@@ -238,61 +238,120 @@ task-management/
 ```javascript
 {
   name: "init_step2_file_analysis", 
-  description: "Step2: 文件分析模块 - 智能Token分析和批次规划"
+  description: "Step2: 文件分析模块 - 智能Token分析和批次规划，使用FileAnalysisModule作为系统大脑进行精确的文件分析和智能批次分配"
 }
 ```
 
-**修改现有工具**:
-- 更新所有工具的描述，反映新的工作流程
-- 调整参数要求，适配新的验证机制
-- 更新工具之间的依赖关系
+**修改现有工具** ✅:
+- ✅ 更新Step4-6工具描述，反映统一任务管理器和新验证机制
+- ✅ init_step3_check_task_completion 支持stepType参数
+- ✅ 标记init_step3_complete_task为废弃工具
 
-### 🔨 6.2 更新工具执行逻辑
+### 🔨 6.2 更新工具执行逻辑 ✅
 
 **重大修改点**:
-1. **init_step3_complete_task** → **init_step3_check_task_completion**
-   - 新增 stepType 参数
-   - 使用分层验证策略
-   - 实现自动完成机制
+1. **init_step3_complete_task** → **init_step3_check_task_completion** ✅
+   - ✅ 新增 stepType 参数支持Step3-6验证
+   - ✅ 使用分层验证策略（UnifiedTaskValidator）
+   - ✅ 实现自动完成机制
+   - ✅ 废弃旧工具并提供迁移指导
 
-2. **所有Step工具**:
-   - 集成 UnifiedTaskManager
-   - 使用 SimplifiedTaskValidator
-   - 统一错误处理和响应格式
+2. **所有Step工具** ✅:
+   - ✅ Step4-6集成 UnifiedTaskManager
+   - ✅ 使用 UnifiedTaskValidator 进行验证
+   - ✅ 统一错误处理和响应格式
+   - ✅ 更新next_steps指向新验证工具
+
+**完成状态**:
+- ✅ 工具接口定义更新完成
+- ✅ 废弃工具标记和迁移指导完成  
+- ✅ 所有工具描述更新完成
+- ✅ 错误消息中工具列表更新完成
 
 ---
 
-## 🧪 第七阶段：服务注册和集成
+## 🧪 第七阶段：服务注册和集成 ✅ **已完成**
 
-### 🔨 7.1 更新服务注册
+### 🔨 7.1 更新服务注册 ✅
 
 **修改文件**: `server/services/service-registry.js`
 
-**新增服务注册**:
+**新增服务注册** ✅:
 ```javascript
-// 文件分析模块
-serviceBus.register('fileAnalysisModule', FileAnalysisModule, config);
-serviceBus.register('preciseTokenCalculator', PreciseTokenCalculator, config);
-serviceBus.register('combinedFileBatchStrategy', CombinedFileBatchStrategy, config);
-serviceBus.register('singleFileBatchStrategy', SingleFileBatchStrategy, config);
-serviceBus.register('largeFileMultiBatchStrategy', LargeFileMultiBatchStrategy, config);
+// 文件分析模块层（依赖基础服务）
+serviceBus
+    .register('preciseTokenCalculator', PreciseTokenCalculator, {}, [])
+    .register('combinedFileBatchStrategy', CombinedFileBatchStrategy, {}, [])
+    .register('singleFileBatchStrategy', SingleFileBatchStrategy, {}, [])
+    .register('largeFileMultiBatchStrategy', LargeFileMultiBatchStrategy, {}, [])
+    .register('taskStateManager', TaskStateManager, {}, []);
 
-// 任务管理模块
-serviceBus.register('unifiedTaskManager', UnifiedTaskManager, config);
-serviceBus.register('simplifiedTaskValidator', SimplifiedTaskValidator, config);
+// 文件分析模块核心（依赖Token计算器和批次策略）
+serviceBus
+    .register('fileAnalysisModule', FileAnalysisModule, {}, [
+        'preciseTokenCalculator',
+        'combinedFileBatchStrategy',
+        'singleFileBatchStrategy',
+        'largeFileMultiBatchStrategy'
+    ]);
+
+// 任务管理模块（依赖文件分析模块）
+serviceBus
+    .register('unifiedTaskValidator', UnifiedTaskValidator, {}, [
+        'fileAnalysisModule',
+        'taskStateManager'
+    ])
+    .register('unifiedTaskManager', UnifiedTaskManager, {}, [
+        'taskStateManager',
+        'unifiedTaskValidator'
+    ]);
 ```
 
-### 🔨 7.2 更新服务容器
+### 🔨 7.2 更新服务容器 ✅
 
 **修改文件**: `index.js` 的 getServiceContainer 函数
 
-**新增服务引用**:
+**新增服务引用** ✅:
 ```javascript
-// 新的文件分析模块
+// 新的文件分析模块和任务管理服务
 fileAnalysisModule: serviceBus.get('fileAnalysisModule'),
 unifiedTaskManager: serviceBus.get('unifiedTaskManager'),
-simplifiedTaskValidator: serviceBus.get('simplifiedTaskValidator'),
+unifiedTaskValidator: serviceBus.get('unifiedTaskValidator'),
+taskStateManager: serviceBus.get('taskStateManager'),
+
+// 文件分析模块组件（可选直接访问）
+preciseTokenCalculator: serviceBus.get('preciseTokenCalculator'),
+combinedFileBatchStrategy: serviceBus.get('combinedFileBatchStrategy'),
+singleFileBatchStrategy: serviceBus.get('singleFileBatchStrategy'),
+largeFileMultiBatchStrategy: serviceBus.get('largeFileMultiBatchStrategy'),
 ```
+
+### 🔨 7.3 依赖注入修正 ✅
+
+**修正构造函数签名** ✅:
+- ✅ UnifiedTaskManager: 修正为ServiceBus格式 `(config, dependencies, serviceBus)`
+- ✅ UnifiedTaskValidator: 修正为ServiceBus格式 `(config, dependencies, serviceBus)`
+- ✅ FileAnalysisModule: 修正为ServiceBus格式 `(config, dependencies, serviceBus)`
+- ✅ TaskStateManager: 修正为ServiceBus格式 `(config, dependencies, serviceBus)`
+
+**循环依赖解决** ✅:
+- ✅ 在`service-registry.js`中通过`injectDependencies`设置循环依赖
+- ✅ UnifiedTaskValidator获得UnifiedTaskManager引用
+
+### 🔨 7.4 验证测试 ✅
+
+**创建测试脚本** ✅: `scripts/test-service-registry.js`
+- ✅ 验证所有18个服务正确初始化
+- ✅ 验证依赖注入正确工作
+- ✅ 验证循环依赖正确解决
+- ✅ 验证功能方法正常工作
+
+**完成状态**:
+- ✅ 服务注册配置完成
+- ✅ 服务容器更新完成
+- ✅ 依赖注入修正完成
+- ✅ 循环依赖解决完成
+- ✅ 测试验证全部通过
 
 ---
 
@@ -389,7 +448,7 @@ tests/file-analysis/
 
 ### 🔥 高优先级（必须实现）
 1. FileAnalysisModule 核心功能
-2. SimplifiedTaskValidator 验证机制
+2. UnifiedTaskValidator.js 验证机制
 3. Step3 验证流程重构
 4. 三种批次策略实现
 

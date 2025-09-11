@@ -20,7 +20,8 @@
  */
 
 export class FileAnalysisModule {
-    constructor(config = {}) {
+    constructor(config = {}, dependencies = {}, serviceBus = null) {
+        // 配置合并（ServiceBus格式）
         this.config = {
             smallFileThreshold: 15000,    // 15K tokens
             largeFileThreshold: 20000,    // 20K tokens
@@ -29,17 +30,76 @@ export class FileAnalysisModule {
             ...config
         };
 
-        // 依赖注入延迟初始化
-        this.tokenCalculator = null;
-        this.codeStructureAnalyzer = null;
-        this.boundaryDetector = null;
+        // 依赖注入（ServiceBus格式：config, dependencies, serviceBus）
+        this.tokenCalculator = dependencies.preciseTokenCalculator;
+        this.codeStructureAnalyzer = null; // 如果需要的话稍后注入
+        this.boundaryDetector = null; // 如果需要的话稍后注入
         this.batchStrategies = {
-            combined: null,
-            single: null,
-            largeMulti: null
+            combined: dependencies.combinedFileBatchStrategy,
+            single: dependencies.singleFileBatchStrategy,
+            largeMulti: dependencies.largeFileMultiBatchStrategy
         };
-        this.taskGenerator = null;
-        this.progressTracker = null;
+        this.taskGenerator = {
+            generateTaskDefinitions: async (batchPlans, projectMetadata, config) => {
+                const taskDefinitions = [];
+                let taskCounter = 1;
+                
+                // 处理综合批次
+                for (const batch of batchPlans.combinedBatches || []) {
+                    taskDefinitions.push({
+                        id: `task_${taskCounter}_${Date.now().toString().slice(-6)}`,
+                        type: 'file_batch',
+                        strategy: 'combined',
+                        files: batch.files.map(f => f.path),
+                        estimatedTokens: batch.estimatedTokens,
+                        metadata: {
+                            batchId: batch.id,
+                            strategy: 'combined',
+                            fileCount: batch.files.length
+                        }
+                    });
+                    taskCounter++;
+                }
+                
+                // 处理单文件批次
+                for (const batch of batchPlans.singleBatches || []) {
+                    taskDefinitions.push({
+                        id: `task_${taskCounter}_${Date.now().toString().slice(-6)}`,
+                        type: 'single_file',
+                        strategy: 'single',
+                        files: batch.files.map(f => f.path),
+                        estimatedTokens: batch.estimatedTokens,
+                        metadata: {
+                            batchId: batch.id,
+                            strategy: 'single',
+                            fileCount: batch.files.length
+                        }
+                    });
+                    taskCounter++;
+                }
+                
+                // 处理多批次大文件
+                for (const batch of batchPlans.multiBatches || []) {
+                    taskDefinitions.push({
+                        id: `task_${taskCounter}_${Date.now().toString().slice(-6)}`,
+                        type: 'large_file_multi',
+                        strategy: 'largeMulti',
+                        files: batch.files.map(f => f.path),
+                        estimatedTokens: batch.estimatedTokens,
+                        metadata: {
+                            batchId: batch.id,
+                            strategy: 'largeMulti',
+                            fileCount: batch.files.length
+                        }
+                    });
+                    taskCounter++;
+                }
+                
+                return taskDefinitions;
+            }
+        };
+        this.progressTracker = null; // 暂时不需要
+        this.serviceBus = serviceBus;
         
         // 任务定义存储
         this.taskDefinitionStorage = new Map(); // taskId -> taskDefinition
@@ -157,12 +217,18 @@ export class FileAnalysisModule {
                     projectMetadata.languageProfile
                 );
                 
-                // 分析代码结构
-                const codeStructure = await this.codeStructureAnalyzer.analyze(
-                    file.path,
-                    file.content || null,
-                    projectMetadata.languageProfile
-                );
+                // 分析代码结构 - 使用简化版本
+                const codeStructure = this.codeStructureAnalyzer ? 
+                    await this.codeStructureAnalyzer.analyze(
+                        file.path,
+                        file.content || null,
+                        projectMetadata.languageProfile
+                    ) : {
+                        complexity: 1,
+                        functions: [],
+                        classes: [],
+                        imports: []
+                    };
                 
                 fileAnalyses.push({
                     ...file,
@@ -230,7 +296,7 @@ export class FileAnalysisModule {
         // 综合文件批次策略
         if (fileCategories.small.length > 0) {
             plans.combinedBatches = await this.batchStrategies.combined.generateBatches(
-                fileCategories.small,
+                fileCategories.small, 
                 this.config
             );
         }

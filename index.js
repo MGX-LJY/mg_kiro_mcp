@@ -58,6 +58,12 @@ function getServiceContainer(serviceBus) {
     unifiedTaskValidator: serviceBus.get('unifiedTaskValidator'),
     taskStateManager: serviceBus.get('taskStateManager'),
     
+    // 文件分析模块组件（可选直接访问）
+    preciseTokenCalculator: serviceBus.get('preciseTokenCalculator'),
+    combinedFileBatchStrategy: serviceBus.get('combinedFileBatchStrategy'),
+    singleFileBatchStrategy: serviceBus.get('singleFileBatchStrategy'),
+    largeFileMultiBatchStrategy: serviceBus.get('largeFileMultiBatchStrategy'),
+    
     // 向后兼容的别名（指向新服务）
     promptService: serviceBus.get('masterTemplateService'),
     unifiedTemplateService: serviceBus.get('masterTemplateService'),
@@ -335,7 +341,7 @@ async function startServer() {
         },
         {
           name: "init_step3_complete_task",
-          description: "✅ [必须第四步] 完成当前任务并处理下一个 - ⚠️ 前置条件：必须先调用get_next_task+get_file_content+generate_analysis！✅ 严格调用顺序：get_next_task→get_file_content→generate_analysis→[此工具]。🚫 直接调用此工具会失败！AI请按顺序执行！",
+          description: "🚫 [已废弃] 此工具已被 init_step3_check_task_completion 替代！新的验证机制提供自动完成和分层验证策略。请使用新工具！",
           inputSchema: {
             type: "object",
             properties: {
@@ -362,8 +368,32 @@ async function startServer() {
           }
         },
         {
+          name: "init_step3_check_task_completion",
+          description: "🎯 [自动验证] 检查当前任务完成状态 - 系统自动验证文件生成并完成任务。支持分层验证策略：Step3文件夹检查、Step4模块文件夹检查、Step5/6固定文件检查。文件存在即自动完成，减少手动操作！",
+          inputSchema: {
+            type: "object",
+            properties: {
+              projectPath: {
+                type: "string",
+                description: "项目根目录路径"
+              },
+              taskId: {
+                type: "string",
+                description: "任务ID（可选，系统可自动获取）"
+              },
+              stepType: {
+                type: "string",
+                description: "步骤类型，决定验证策略：step3|step4|step5|step6",
+                enum: ["step3", "step4", "step5", "step6"],
+                default: "step3"
+              }
+            },
+            required: ["projectPath"]
+          }
+        },
+        {
           name: "init_step4_module_integration",
-          description: "Step4: 模块整合 - 将模块内的多个文件整合在一起，添加模块相关功能，生成模块总览文档",
+          description: "Step4: 模块整合 - 使用统一任务管理器创建模块整合任务，AI完成后使用 init_step3_check_task_completion 自动验证",
           inputSchema: {
             type: "object",
             properties: {
@@ -377,7 +407,7 @@ async function startServer() {
         },
         {
           name: "init_step5_module_relations",
-          description: "Step5: 模块关联分析 - 详细阐述每个文件之间的关联，分析哪个函数被多个模块调用，生成详细的依赖关系图",
+          description: "Step5: 模块关联分析 - 使用统一任务管理器创建关联分析任务，AI完成后使用 init_step3_check_task_completion 自动验证",
           inputSchema: {
             type: "object",
             properties: {
@@ -391,7 +421,7 @@ async function startServer() {
         },
         {
           name: "init_step6_architecture_docs",
-          description: "Step6: 架构文档生成 - 生成README、架构图、项目总览等最终文档（最终步骤）",
+          description: "Step6: 架构文档生成 - 使用统一任务管理器创建架构文档生成任务，AI完成后使用 init_step3_check_task_completion 自动验证（最终步骤）",
           inputSchema: {
             type: "object",
             properties: {
@@ -1882,12 +1912,12 @@ async function startServer() {
                     current_step: 3,
                     step_name: "文件处理循环", 
                     progress: `已生成${taskContext?.fileName || '文件'}分析，准备完成任务`,
-                    allowed_next_tools: ["init_step3_complete_task"],
+                    allowed_next_tools: ["init_step3_check_task_completion"],
                     forbidden_tools: ["init_step3_get_next_task", "init_step3_get_file_content", "init_step4_module_integration"],
                     
                     // 🧠 AI认知提示
-                    ai_context: "✅ 分析文档已生成并保存到任务上下文，现在必须调用complete_task完成当前任务并保存文档",
-                    ai_instruction: `🎯 下一步：调用 init_step3_complete_task 完成任务${taskId}（分析文档会自动传递）`,
+                    ai_context: "✅ 分析文档已生成并保存，现在使用新的验证机制自动检查任务完成情况",
+                    ai_instruction: `🎯 下一步：调用 init_step3_check_task_completion 自动验证任务${taskId}的完成状态`,
                     analysis_ready: true
                   },
                   
@@ -1899,7 +1929,56 @@ async function startServer() {
         }
         
         case "init_step3_complete_task": {
-          // 🔥 修复：支持多种参数映射方式，支持从上下文自动获取taskId
+          // 🚫 工具已废弃，引导用户使用新的验证机制
+          const { projectPath } = args;
+          
+          return {
+            content: [{
+              type: "text",
+              text: JSON.stringify({
+                error: true,
+                tool: name,
+                status: "deprecated",
+                message: "🚫 此工具已废弃！请使用新的验证机制",
+                
+                migration_guide: {
+                  old_tool: "init_step3_complete_task",
+                  new_tool: "init_step3_check_task_completion", 
+                  why_changed: "新的验证机制支持分层验证策略和自动完成",
+                  benefits: [
+                    "✅ 自动检测文件存在性",
+                    "✅ 支持Step3-6所有步骤验证",
+                    "✅ 自动完成任务，减少手动操作",
+                    "✅ 统一任务管理器集成"
+                  ]
+                },
+                
+                suggested_action: {
+                  tool: "init_step3_check_task_completion",
+                  params: {
+                    projectPath: projectPath || "[请提供项目路径]",
+                    stepType: "step3" 
+                  },
+                  description: "使用新的验证工具自动检查任务完成状态"
+                },
+                
+                workflow_info: {
+                  step3_new_flow: [
+                    "1. init_step3_get_next_task - 获取任务",
+                    "2. init_step3_get_file_content - 获取文件内容", 
+                    "3. init_step3_generate_analysis - 生成分析文档",
+                    "4. init_step3_check_task_completion - 验证完成（新）"
+                  ]
+                },
+                
+                timestamp: new Date().toISOString()
+              }, null, 2)
+            }]
+          };
+        }
+        
+        case "init_step3_complete_task_legacy": {
+          // 保留原实现作为备用（重命名避免调用）
           let { projectPath, taskId, documentContent, notes } = args;
           
           if (!projectPath) {
@@ -1973,7 +2052,8 @@ async function startServer() {
                     correct_workflow: [
                       "1️⃣ init_step3_get_next_task  (获取任务，进入step3) ← 🎯 你应该先调用这个",
                       "2️⃣ init_step3_get_file_content (处理文件内容)", 
-                      "3️⃣ init_step3_complete_task   (完成任务) ← 你想调用的工具"
+                      "3️⃣ init_step3_generate_analysis (生成分析文档)",
+                      "4️⃣ init_step3_check_task_completion (验证任务完成) ← 新的验证机制"
                     ],
                     
                     ai_hint: "❌ 不要直接调用complete_task！必须按1→2→3顺序执行。AI请按工作流执行！",
@@ -2059,8 +2139,8 @@ async function startServer() {
                       ["init_step3_get_next_task"] : 
                       ["init_step4_module_integration"],
                     forbidden_tools: (completionResult?.remainingTasks || 0) > 0 ? 
-                      ["init_step4_module_integration", "init_step3_get_file_content", "init_step3_complete_task"] :
-                      ["init_step3_get_next_task", "init_step3_get_file_content", "init_step3_complete_task"],
+                      ["init_step4_module_integration"] :
+                      ["init_step3_get_next_task", "init_step3_get_file_content"],
                     
                     // 🧠 AI认知提示
                     ai_context: (completionResult?.remainingTasks || 0) > 0 ? 
@@ -2079,6 +2159,125 @@ async function startServer() {
           };
         }
         
+        case "init_step3_check_task_completion": {
+          const { projectPath, taskId, stepType } = args;
+          
+          if (!projectPath) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({ error: true, message: "项目路径不能为空", tool: name }, null, 2)
+              }]
+            };
+          }
+          
+          console.log(`[MCP-Init-Step3] 检查任务完成状态 - ${projectPath} 任务:${taskId || '自动获取'} 类型:${stepType || 'step3'}`);
+          
+          try {
+            // 获取当前任务上下文，支持自动获取taskId
+            const taskContext = getCurrentTaskContext(projectPath);
+            const actualTaskId = taskId || taskContext?.taskId;
+            const actualStepType = stepType || 'step3';
+            
+            if (!actualTaskId && actualStepType === 'step3') {
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({
+                    error: true,
+                    message: "没有找到当前任务，请先调用 get_next_task",
+                    tool: name,
+                    contextAvailable: !!taskContext,
+                    suggestion: "请先调用 init_step3_get_next_task 获取任务"
+                  }, null, 2)
+                }]
+              };
+            }
+            
+            // 使用 UnifiedTaskValidator 进行分层验证
+            const { unifiedTaskValidator } = serviceContainer;
+            if (!unifiedTaskValidator) {
+              throw new Error('UnifiedTaskValidator 服务未找到');
+            }
+            
+            // 构造任务定义（简化版）
+            const taskDefinition = {
+              taskId: actualTaskId,
+              step: actualStepType,
+              projectPath: resolve(projectPath),
+              stepType: actualStepType
+            };
+            
+            // 执行验证
+            const validation = await unifiedTaskValidator.checkTaskCompletion(taskDefinition, resolve(projectPath));
+            
+            console.log(`[TaskValidation] 验证结果:`, {
+              success: validation.success,
+              autoCompleted: validation.autoCompleted,
+              strategy: validation.validationStrategy,
+              message: validation.message
+            });
+            
+            if (validation.success && validation.autoCompleted) {
+              // ✅ 任务自动完成
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({
+                    success: true,
+                    taskCompleted: true,
+                    taskId: actualTaskId,
+                    method: 'auto',
+                    stepType: actualStepType,
+                    message: validation.message,
+                    validationStrategy: validation.validationStrategy,
+                    nextAction: validation.nextAction,
+                    details: validation.details,
+                    workflow: {
+                      current_step: `${actualStepType}/6 - 任务自动完成`,
+                      status: "auto_completed",
+                      next_action: validation.nextAction
+                    }
+                  }, null, 2)
+                }]
+              };
+            } else {
+              // ⚠️ 任务未完成，返回缺失文件信息
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({
+                    success: false,
+                    taskCompleted: false,
+                    taskId: actualTaskId,
+                    stepType: actualStepType,
+                    message: validation.message,
+                    validationStrategy: validation.validationStrategy,
+                    nextAction: validation.nextAction,
+                    missingInfo: validation.details,
+                    aiInstruction: `请生成缺失的文档或文件，然后再次调用此工具检查完成状态`,
+                    retryAdvice: "生成文件后请再次调用 init_step3_check_task_completion"
+                  }, null, 2)
+                }]
+              };
+            }
+            
+          } catch (error) {
+            console.error(`[TaskValidation] 验证失败: ${error.message}`);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: `任务验证失败: ${error.message}`,
+                  tool: name,
+                  suggestion: "请检查项目状态或重试操作"
+                }, null, 2)
+              }]
+            };
+          }
+        }
+        
         case "init_step4_module_integration": {
           const { projectPath } = args;
           
@@ -2093,18 +2292,40 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step4] 模块整合 - ${projectPath}`);
           
-          // 使用增强的验证逻辑
-          const validation = validateStepPrerequisites(projectPath, 4);
-          if (!validation.valid) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
-              }]
-            };
-          }
+          try {
+            // 使用 UnifiedTaskManager 创建 Step4 任务
+            const { unifiedTaskManager, unifiedTaskValidator } = serviceContainer;
+            if (!unifiedTaskManager) {
+              throw new Error('UnifiedTaskManager 服务未找到');
+            }
+            
+            // 检查 Step3 是否完成
+            const validation = validateStepPrerequisites(projectPath, 4);
+            if (!validation.valid) {
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
+                }]
+              };
+            }
           
-          const initState = getProjectStateEnhanced(projectPath);
+            const initState = getProjectStateEnhanced(projectPath);
+            
+            // 创建Step4任务
+            const taskDefinition = {
+              id: `step4_module_integration_${Date.now()}`,
+              type: 'module_integration',
+              description: '模块整合任务',
+              files: [], // Step4不基于特定文件，而是整合已有文档
+              metadata: {
+                docsDirectory: join(resolve(projectPath), 'mg_kiro'),
+                outputPath: join(resolve(projectPath), 'mg_kiro/modules/'),
+                stepNumber: 4
+              }
+            };
+            
+            const task = await unifiedTaskManager.createTask(taskDefinition, projectPath, 'step4');
           
           initState.currentStep = 4;
           const docsDir = join(resolve(projectPath), 'mg_kiro');
@@ -2176,7 +2397,23 @@ async function startServer() {
                 text: JSON.stringify({
                   currentStep: 4,
                   stepName: 'module-integration',
-                  status: "prompt_ready",
+                  status: "task_created",
+                  
+                  // 统一任务管理器信息
+                  taskManager: {
+                    taskId: task.id,
+                    taskStatus: task.status,
+                    taskType: 'module_integration',
+                    createdAt: task.createdAt,
+                    validation: {
+                      tool: 'init_step3_check_task_completion',
+                      params: {
+                        taskId: task.id,
+                        projectPath: resolve(projectPath),
+                        stepType: 'step4'
+                      }
+                    }
+                  },
                   
                   // Step4 AI指导提示词
                   aiInstructions: integrationPrompt.trim(),
@@ -2191,14 +2428,16 @@ async function startServer() {
                   // 下一步指导
                   workflow: {
                     current_step: "4/6 - 模块整合",
-                    status: "ready_for_ai",
+                    status: "task_ready",
                     next_steps: [{
-                      tool: "init_step5_module_relations",
-                      description: "分析模块间的关联和依赖关系",
+                      tool: "init_step3_check_task_completion",
+                      description: "检查模块整合任务完成情况",
                       suggested_params: {
-                        projectPath: resolve(projectPath)
+                        taskId: task.id,
+                        projectPath: resolve(projectPath),
+                        stepType: 'step4'
                       },
-                      why: "模块整合完成后，需要分析模块间的关联关系"
+                      why: "完成模块整合后，需要验证并自动进入下一步骤"
                     }],
                     progress: {
                       completed: 4,
@@ -2208,11 +2447,27 @@ async function startServer() {
                   },
                   
                   success: true,
-                  message: "Step4: 模块整合指导已生成，请按照提示完成模块整合"
+                  message: "Step4: 模块整合任务已创建，请按照提示完成后使用验证工具检查"
                 }, null, 2)
               }
             ]
           };
+          } catch (error) {
+            console.error(`[Step4] UnifiedTaskManager 集成失败: ${error.message}`);
+            // 回退到传统实现作为备选方案
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: `Step4 统一任务管理失败: ${error.message}`,
+                  fallback: "使用传统模式处理",
+                  tool: name,
+                  suggestion: "请检查 UnifiedTaskManager 服务状态"
+                }, null, 2)
+              }]
+            };
+          }
         }
         
         case "init_step5_module_relations": {
@@ -2229,18 +2484,46 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step5] 模块关联分析 - ${projectPath}`);
           
-          // 使用增强的验证逻辑
-          const validation = validateStepPrerequisites(projectPath, 5);
-          if (!validation.valid) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
-              }]
+          try {
+            // 使用 UnifiedTaskManager 创建 Step5 任务
+            const { unifiedTaskManager, unifiedTaskValidator } = serviceContainer;
+            if (!unifiedTaskManager) {
+              throw new Error('UnifiedTaskManager 服务未找到');
+            }
+            
+            // 使用增强的验证逻辑
+            const validation = validateStepPrerequisites(projectPath, 5);
+            if (!validation.valid) {
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
+                }]
+              };
+            }
+            
+            const initState = getProjectStateEnhanced(projectPath);
+            
+            // 创建Step5任务
+            const taskDefinition = {
+              id: `step5_module_relations_${Date.now()}`,
+              type: 'module_relations',
+              description: '模块关联分析任务',
+              files: [], // Step5基于已有的文档和模块分析结果
+              metadata: {
+                docsDirectory: join(resolve(projectPath), 'mg_kiro'),
+                outputPath: join(resolve(projectPath), 'mg_kiro/relations/'),
+                stepNumber: 5,
+                expectedOutputs: [
+                  'function-calls.md',
+                  'module-dependencies.md',
+                  'data-flows.md',
+                  'overview.md'
+                ]
+              }
             };
-          }
-          
-          const initState = getProjectStateEnhanced(projectPath);
+            
+            const task = await unifiedTaskManager.createTask(taskDefinition, projectPath, 'step5');
           
           initState.currentStep = 5;
           const docsDir = join(resolve(projectPath), 'mg_kiro');
@@ -2345,7 +2628,23 @@ async function startServer() {
                 text: JSON.stringify({
                   currentStep: 5,
                   stepName: 'module-relations',
-                  status: "prompt_ready",
+                  status: "task_created",
+                  
+                  // 统一任务管理器信息
+                  taskManager: {
+                    taskId: task.id,
+                    taskStatus: task.status,
+                    taskType: 'module_relations',
+                    createdAt: task.createdAt,
+                    validation: {
+                      tool: 'init_step3_check_task_completion',
+                      params: {
+                        taskId: task.id,
+                        projectPath: resolve(projectPath),
+                        stepType: 'step5'
+                      }
+                    }
+                  },
                   
                   // Step5 AI指导提示词
                   aiInstructions: relationsPrompt.trim(),
@@ -2369,14 +2668,16 @@ async function startServer() {
                   // 下一步指导
                   workflow: {
                     current_step: "5/6 - 模块关联分析",
-                    status: "ready_for_ai",
+                    status: "task_ready",
                     next_steps: [{
-                      tool: "init_step6_architecture_docs",
-                      description: "生成架构文档和项目总览",
+                      tool: "init_step3_check_task_completion",
+                      description: "检查模块关联分析任务完成情况",
                       suggested_params: {
-                        projectPath: resolve(projectPath)
+                        taskId: task.id,
+                        projectPath: resolve(projectPath),
+                        stepType: 'step5'
                       },
-                      why: "模块关联分析完成后，需要生成最终的架构文档"
+                      why: "完成模块关联分析后，需要验证并自动进入下一步骤"
                     }],
                     progress: {
                       completed: 5,
@@ -2386,11 +2687,27 @@ async function startServer() {
                   },
                   
                   success: true,
-                  message: "Step5: 模块关联分析指导已准备，请按照提示完成关联分析"
+                  message: "Step5: 模块关联分析任务已创建，请按照提示完成后使用验证工具检查"
                 }, null, 2)
               }
             ]
           };
+          } catch (error) {
+            console.error(`[Step5] UnifiedTaskManager 集成失败: ${error.message}`);
+            // 回退到传统实现作为备选方案
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: `Step5 统一任务管理失败: ${error.message}`,
+                  fallback: "使用传统模式处理",
+                  tool: name,
+                  suggestion: "请检查 UnifiedTaskManager 服务状态"
+                }, null, 2)
+              }]
+            };
+          }
         }
         
         case "init_step6_architecture_docs": {
@@ -2407,18 +2724,45 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step6] 架构文档生成 - ${projectPath}`);
           
-          // 使用增强的验证逻辑
-          const validation = validateStepPrerequisites(projectPath, 6);
-          if (!validation.valid) {
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
-              }]
+          try {
+            // 使用 UnifiedTaskManager 创建 Step6 任务
+            const { unifiedTaskManager, unifiedTaskValidator } = serviceContainer;
+            if (!unifiedTaskManager) {
+              throw new Error('UnifiedTaskManager 服务未找到');
+            }
+            
+            // 使用增强的验证逻辑
+            const validation = validateStepPrerequisites(projectPath, 6);
+            if (!validation.valid) {
+              return {
+                content: [{
+                  type: "text",
+                  text: JSON.stringify({ error: true, message: validation.error, tool: name }, null, 2)
+                }]
+              };
+            }
+            
+            const initState = getProjectStateEnhanced(projectPath);
+            
+            // 创建Step6任务
+            const taskDefinition = {
+              id: `step6_architecture_docs_${Date.now()}`,
+              type: 'architecture_docs',
+              description: '架构文档生成任务',
+              files: [], // Step6基于所有已生成的文档
+              metadata: {
+                docsDirectory: join(resolve(projectPath), 'mg_kiro'),
+                outputPath: resolve(projectPath), // 根目录输出
+                stepNumber: 6,
+                expectedOutputs: [
+                  'README.md',
+                  'architecture.md',
+                  'development.md'
+                ]
+              }
             };
-          }
-          
-          const initState = getProjectStateEnhanced(projectPath);
+            
+            const task = await unifiedTaskManager.createTask(taskDefinition, projectPath, 'step6');
           
           initState.currentStep = 6;
           const docsDir = join(resolve(projectPath), 'mg_kiro');
@@ -2599,7 +2943,24 @@ ${docsDir}/
                 text: JSON.stringify({
                   currentStep: 6,
                   stepName: 'architecture-docs',
-                  status: "final_step",
+                  status: "task_created",
+                  
+                  // 统一任务管理器信息
+                  taskManager: {
+                    taskId: task.id,
+                    taskStatus: task.status,
+                    taskType: 'architecture_docs',
+                    createdAt: task.createdAt,
+                    validation: {
+                      tool: 'init_step3_check_task_completion',
+                      params: {
+                        taskId: task.id,
+                        projectPath: resolve(projectPath),
+                        stepType: 'step6'
+                      }
+                    },
+                    isFinalStep: true
+                  },
                   
                   // Step6 AI指导提示词 (最终步骤)
                   aiInstructions: architecturePrompt.trim(),
@@ -2620,12 +2981,22 @@ ${docsDir}/
                   // 完成状态
                   workflow: {
                     current_step: "6/6 - 架构文档生成 (最终步骤)",
-                    status: "final_instructions_ready",
+                    status: "task_ready",
+                    next_steps: [{
+                      tool: "init_step3_check_task_completion",
+                      description: "检查架构文档生成任务完成情况",
+                      suggested_params: {
+                        taskId: task.id,
+                        projectPath: resolve(projectPath),
+                        stepType: 'step6'
+                      },
+                      why: "完成架构文档生成后，验证并完成整个初始化流程"
+                    }],
                     completion: {
                       message: "🎉 Init工作流即将完成！",
                       totalSteps: 6,
-                      allStepsCompleted: true,
-                      finalTask: "完成架构文档生成后，整个初始化流程将全部完成"
+                      allStepsCompleted: false, // 任务创建完成，但还需要验证
+                      finalTask: "完成架构文档生成并通过验证后，整个初始化流程将全部完成"
                     },
                     progress: {
                       completed: 6,
@@ -2646,11 +3017,27 @@ ${docsDir}/
                   },
                   
                   success: true,
-                  message: "Step6: 架构文档生成指导已准备，完成后init工作流将全部完成！"
+                  message: "Step6: 架构文档生成任务已创建，请按照提示完成后使用验证工具检查"
                 }, null, 2)
               }
             ]
           };
+          } catch (error) {
+            console.error(`[Step6] UnifiedTaskManager 集成失败: ${error.message}`);
+            // 回退到传统实现作为备选方案
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: `Step6 统一任务管理失败: ${error.message}`,
+                  fallback: "使用传统模式处理",
+                  tool: name,
+                  suggestion: "请检查 UnifiedTaskManager 服务状态"
+                }, null, 2)
+              }]
+            };
+          }
         }
         
         case "workflow_guide": {
@@ -2712,7 +3099,7 @@ ${docsDir}/
                     sub_tools: [
                       "init_step3_get_next_task - 获取下一个文件任务",
                       "init_step3_get_file_content - 获取文件内容",
-                      "init_step3_complete_task - 完成任务并保存文档"
+                      "init_step3_check_task_completion - 验证任务完成状态（新验证机制）"
                     ],
                     expected_output: "每个源码文件的详细技术文档",
                     why: "为每个重要文件生成详细分析，建立代码库文档基础"
@@ -2864,7 +3251,7 @@ ${docsDir}/
                       "init_step2_create_todos - 创建AI任务列表",
                       "init_step3_get_next_task - 获取下一个文件任务",
                       "init_step3_get_file_content - 获取文件内容",
-                      "init_step3_complete_task - 完成文件处理任务",
+                      "init_step3_check_task_completion - 验证文件处理任务完成",
                       "init_step4_module_integration - 模块整合",
                       "init_step5_module_relations - 模块关联分析",
                       "init_step6_architecture_docs - 架构文档生成",
@@ -2974,7 +3361,7 @@ ${docsDir}/
           return {
             content: [{
               type: "text",
-              text: JSON.stringify({ error: true, message: `未知的工具: ${name}. 可用工具: workflow_guide, init_step1_project_analysis, init_step2_create_todos, init_step3_get_next_task, init_step3_get_file_content, init_step3_generate_analysis, init_step3_complete_task, init_step4_module_integration, init_step5_module_relations, init_step6_architecture_docs, get_init_status, reset_init`, tool: name }, null, 2)
+              text: JSON.stringify({ error: true, message: `未知的工具: ${name}. 可用工具: workflow_guide, init_step1_project_analysis, init_step2_create_todos, init_step2_file_analysis, init_step3_get_next_task, init_step3_get_file_content, init_step3_generate_analysis, init_step3_complete_task, init_step3_check_task_completion, init_step4_module_integration, init_step5_module_relations, init_step6_architecture_docs, get_init_status, reset_init`, tool: name }, null, 2)
             }]
           };
       }
