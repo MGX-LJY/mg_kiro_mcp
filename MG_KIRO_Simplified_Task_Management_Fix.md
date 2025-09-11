@@ -33,63 +33,45 @@ export class SimplifiedTaskValidator {
     }
 
     /**
-     * 🎯 核心方法：简化的任务验证
-     * 只检查预期文件是否存在，存在即自动完成任务
+     * 🎯 核心方法：分层验证策略
+     * 根据步骤类型采用不同的验证策略
      */
-    async validateAndCompleteTask(taskDefinition, projectPath) {
-        console.log(`[TaskValidator] 验证任务: ${taskDefinition.taskId}`);
+    async checkTaskCompletion(taskDefinition, projectPath) {
+        console.log(`[TaskValidator] 检查任务完成状态: ${taskDefinition.taskId}`);
+        
+        const stepType = this.detectStepType(taskDefinition);
+        console.log(`[TaskValidator] 检测到步骤类型: ${stepType}`);
         
         const validation = {
             taskId: taskDefinition.taskId,
+            stepType: stepType,
             success: false,
             autoCompleted: false,
-            expectedFiles: taskDefinition.expectedOutputs || [],
-            existingFiles: [],
-            missingFiles: [],
+            validationStrategy: '',
             message: '',
-            nextAction: ''
+            nextAction: '',
+            details: {}
         };
 
         try {
-            // 1. 检查每个预期文件是否存在
-            for (const expectedFile of validation.expectedFiles) {
-                const filePath = this.resolveFilePath(expectedFile, projectPath, taskDefinition);
-                const exists = await this.checkFileExists(filePath);
-                
-                if (exists) {
-                    validation.existingFiles.push({
-                        name: expectedFile,
-                        path: filePath,
-                        size: await this.getFileSize(filePath)
-                    });
-                } else {
-                    validation.missingFiles.push({
-                        name: expectedFile,
-                        expectedPath: filePath
-                    });
-                }
+            switch (stepType) {
+                case 'step3':
+                    return await this.validateStep3Folder(taskDefinition, projectPath, validation);
+                    
+                case 'step4':
+                    return await this.validateStep4ModuleFolder(taskDefinition, projectPath, validation);
+                    
+                case 'step5':
+                    return await this.validateStep5FixedFiles(taskDefinition, projectPath, validation);
+                    
+                case 'step6':
+                    return await this.validateStep6FixedFiles(taskDefinition, projectPath, validation);
+                    
+                default:
+                    validation.message = `未支持的步骤类型: ${stepType}`;
+                    validation.nextAction = 'check_step_configuration';
+                    return validation;
             }
-
-            // 2. 判断任务是否完成
-            if (validation.missingFiles.length === 0) {
-                // 🎉 所有文件都存在，自动完成任务
-                validation.success = true;
-                validation.autoCompleted = true;
-                validation.message = `任务 ${taskDefinition.taskId} 自动完成：所有 ${validation.existingFiles.length} 个文件已生成`;
-                validation.nextAction = 'proceed_to_next_task';
-                
-                // 自动更新任务状态
-                await this.autoCompleteTask(taskDefinition);
-                
-            } else {
-                // ⚠️ 有文件缺失，任务未完成
-                validation.success = false;
-                validation.message = `任务 ${taskDefinition.taskId} 未完成：${validation.missingFiles.length} 个文件缺失`;
-                validation.nextAction = 'regenerate_missing_files';
-            }
-
-            console.log(`[TaskValidator] 验证完成: ${validation.success ? '成功' : '失败'} (${validation.existingFiles.length}/${validation.expectedFiles.length})`);
-            return validation;
             
         } catch (error) {
             console.error(`[TaskValidator] 验证失败: ${error.message}`);
@@ -97,6 +79,144 @@ export class SimplifiedTaskValidator {
             validation.nextAction = 'retry_validation';
             return validation;
         }
+    }
+
+    /**
+     * 检测步骤类型
+     */
+    detectStepType(taskDefinition) {
+        const taskId = taskDefinition.taskId;
+        
+        if (taskId.startsWith('task_') && !taskId.includes('module_') && !taskId.includes('relations_') && !taskId.includes('architecture_')) {
+            return 'step3';
+        } else if (taskId.includes('module_integration_task_')) {
+            return 'step4';
+        } else if (taskId.includes('relations_analysis_task_')) {
+            return 'step5';
+        } else if (taskId.includes('architecture_task_')) {
+            return 'step6';
+        }
+        
+        return 'unknown';
+    }
+
+    /**
+     * Step 3 验证：文件夹检查
+     */
+    async validateStep3Folder(taskDefinition, projectPath, validation) {
+        validation.validationStrategy = 'folder_check';
+        const targetFolder = join(projectPath, 'mg_kiro', 'generated_docs');
+        
+        if (!await this.checkDirectoryExists(targetFolder)) {
+            validation.message = `任务 ${taskDefinition.taskId} 未完成：文档文件夹不存在`;
+            validation.nextAction = 'regenerate_documents';
+            return validation;
+        }
+        
+        const files = await this.getMarkdownFiles(targetFolder);
+        
+        if (files.length === 0) {
+            validation.message = `任务 ${taskDefinition.taskId} 未完成：文档文件夹为空`;
+            validation.nextAction = 'regenerate_documents';
+            return validation;
+        }
+        
+        // 任务管理器自动完成任务
+        validation.success = true;
+        validation.autoCompleted = true;
+        validation.message = `任务 ${taskDefinition.taskId} 自动完成：文档文件夹包含 ${files.length} 个文件`;
+        validation.nextAction = 'proceed_to_next_task';
+        validation.details = { fileCount: files.length, files: files };
+        
+        await this.autoCompleteTask(taskDefinition);
+        return validation;
+    }
+
+    /**
+     * Step 4 验证：模块文档文件夹检查
+     */
+    async validateStep4ModuleFolder(taskDefinition, projectPath, validation) {
+        validation.validationStrategy = 'module_folder_check';
+        const moduleFolder = join(projectPath, 'mg_kiro', 'module_docs');
+        
+        if (!await this.checkDirectoryExists(moduleFolder)) {
+            validation.message = `任务 ${taskDefinition.taskId} 未完成：模块文档文件夹不存在`;
+            validation.nextAction = 'regenerate_module_docs';
+            return validation;
+        }
+        
+        const files = await this.getMarkdownFiles(moduleFolder);
+        
+        if (files.length === 0) {
+            validation.message = `任务 ${taskDefinition.taskId} 未完成：模块文档文件夹为空`;
+            validation.nextAction = 'regenerate_module_docs';
+            return validation;
+        }
+        
+        // 任务管理器自动完成任务
+        validation.success = true;
+        validation.autoCompleted = true;
+        validation.message = `任务 ${taskDefinition.taskId} 自动完成：模块文档文件夹包含 ${files.length} 个文件`;
+        validation.nextAction = 'proceed_to_next_task';
+        validation.details = { fileCount: files.length, files: files };
+        
+        await this.autoCompleteTask(taskDefinition);
+        return validation;
+    }
+
+    /**
+     * Step 5 验证：固定文件检查
+     */
+    async validateStep5FixedFiles(taskDefinition, projectPath, validation) {
+        validation.validationStrategy = 'fixed_files_check';
+        const relationsFile = join(projectPath, 'mg_kiro', 'relations.md');
+        
+        if (!await this.checkFileExists(relationsFile)) {
+            validation.message = `任务 ${taskDefinition.taskId} 未完成：relations.md 文件缺失`;
+            validation.nextAction = 'regenerate_relations';
+            return validation;
+        }
+        
+        // 任务管理器自动完成任务
+        validation.success = true;
+        validation.autoCompleted = true;
+        validation.message = `任务 ${taskDefinition.taskId} 自动完成：relations.md 文件已生成`;
+        validation.nextAction = 'proceed_to_next_task';
+        
+        await this.autoCompleteTask(taskDefinition);
+        return validation;
+    }
+
+    /**
+     * Step 6 验证：固定架构文档检查
+     */
+    async validateStep6FixedFiles(taskDefinition, projectPath, validation) {
+        validation.validationStrategy = 'architecture_files_check';
+        const requiredFiles = ['README.md', 'architecture.md'];
+        const missingFiles = [];
+        
+        for (const fileName of requiredFiles) {
+            const filePath = join(projectPath, 'mg_kiro', fileName);
+            if (!await this.checkFileExists(filePath)) {
+                missingFiles.push(fileName);
+            }
+        }
+        
+        if (missingFiles.length > 0) {
+            validation.message = `任务 ${taskDefinition.taskId} 未完成：${missingFiles.join(', ')} 文件缺失`;
+            validation.nextAction = 'regenerate_architecture_docs';
+            validation.details = { missingFiles };
+            return validation;
+        }
+        
+        // 任务管理器自动完成任务
+        validation.success = true;
+        validation.autoCompleted = true;
+        validation.message = `任务 ${taskDefinition.taskId} 自动完成：所有架构文档已生成`;
+        validation.nextAction = 'workflow_completed';
+        
+        await this.autoCompleteTask(taskDefinition);
+        return validation;
     }
 
     /**
@@ -108,6 +228,30 @@ export class SimplifiedTaskValidator {
             return true;
         } catch {
             return false;
+        }
+    }
+
+    /**
+     * 检查目录是否存在
+     */
+    async checkDirectoryExists(dirPath) {
+        try {
+            const stats = await fs.stat(dirPath);
+            return stats.isDirectory();
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * 获取目录中的 Markdown 文件列表
+     */
+    async getMarkdownFiles(dirPath) {
+        try {
+            const files = await fs.readdir(dirPath);
+            return files.filter(file => file.endsWith('.md'));
+        } catch {
+            return [];
         }
     }
 

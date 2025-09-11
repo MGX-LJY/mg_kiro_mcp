@@ -247,53 +247,166 @@ if (taskType === 'multi') {
 - ✅ **精确反馈**: 文件缺失时明确告知 AI 哪些文件未生成
 - ✅ **减少操作**: 系统自动管理任务状态，AI专注内容生成
 
-**简化验证逻辑**:
+**分层验证逻辑**:
 ```javascript
-// 简化验证逻辑：只检查文件存在性
-async function checkTaskCompletion(taskId, projectPath) {
-  const expectedFiles = fileAnalysisModule.getExpectedFiles(taskId);
+// 分层验证逻辑：根据步骤类型采用不同验证策略
+async function checkTaskCompletion(taskId, projectPath, stepType) {
   const validation = {
     taskId,
+    stepType,
     success: false,
     autoCompleted: false,
-    existingFiles: [],
-    missingFiles: []
+    validationStrategy: '',
+    details: {}
   };
 
-  // 检查文件存在性
-  for (const fileName of expectedFiles) {
-    const filePath = path.join(projectPath, 'mg_kiro', getFileDir(fileName), fileName);
-    if (fs.existsSync(filePath)) {
-      validation.existingFiles.push(fileName);
-    } else {
-      validation.missingFiles.push(fileName);
-    }
+  switch (stepType) {
+    case 'step3':
+      // Step 3: 检查文件夹是否有文件
+      return await validateStep3Folder(taskId, projectPath, validation);
+      
+    case 'step4':
+      // Step 4: 检查模块文档文件夹是否有文件
+      return await validateStep4ModuleFolder(taskId, projectPath, validation);
+      
+    case 'step5':
+      // Step 5: 检查固定文件 relations.md
+      return await validateStep5FixedFiles(taskId, projectPath, validation);
+      
+    case 'step6':
+      // Step 6: 检查固定文件 README.md, architecture.md
+      return await validateStep6FixedFiles(taskId, projectPath, validation);
+      
+    default:
+      throw new Error(`未支持的步骤类型: ${stepType}`);
   }
+}
 
-  // 自动完成逻辑
-  if (validation.missingFiles.length === 0) {
-    // 🎉 所有文件存在，自动完成任务
-    validation.success = true;
-    validation.autoCompleted = true;
-    await autoCompleteTask(taskId);
-    
-    return {
-      taskCompleted: true,
-      method: 'auto',
-      message: `任务 ${taskId} 自动完成：${validation.existingFiles.length} 个文件已生成`,
-      nextAction: 'proceed_to_next_task'
-    };
-  } else {
-    // ⚠️ 文件缺失，需要重新生成
+// Step 3 验证：文件夹检查
+async function validateStep3Folder(taskId, projectPath, validation) {
+  validation.validationStrategy = 'folder_check';
+  const targetFolder = path.join(projectPath, 'mg_kiro', 'generated_docs');
+  
+  if (!fs.existsSync(targetFolder)) {
     return {
       taskCompleted: false,
-      message: `任务 ${taskId} 未完成：${validation.missingFiles.length} 个文件缺失`,
-      missingFiles: validation.missingFiles,
-      existingFiles: validation.existingFiles,
-      aiInstruction: `请生成以下缺失文件：${validation.missingFiles.join(', ')}`,
-      nextAction: 'regenerate_missing_files'
+      message: `任务 ${taskId} 未完成：文档文件夹不存在`,
+      aiInstruction: '请生成项目文档',
+      nextAction: 'regenerate_documents'
     };
   }
+  
+  const files = fs.readdirSync(targetFolder).filter(f => f.endsWith('.md'));
+  
+  if (files.length === 0) {
+    return {
+      taskCompleted: false,
+      message: `任务 ${taskId} 未完成：文档文件夹为空`,
+      aiInstruction: '请生成项目文档',
+      nextAction: 'regenerate_documents'
+    };
+  }
+  
+  // 任务管理器自动完成任务
+  await autoCompleteTask(taskId);
+  return {
+    taskCompleted: true,
+    method: 'auto',
+    message: `任务 ${taskId} 自动完成：文档文件夹包含 ${files.length} 个文件`,
+    nextAction: 'proceed_to_next_task'
+  };
+}
+
+// Step 4 验证：模块文档文件夹检查
+async function validateStep4ModuleFolder(taskId, projectPath, validation) {
+  validation.validationStrategy = 'module_folder_check';
+  const moduleFolder = path.join(projectPath, 'mg_kiro', 'module_docs');
+  
+  if (!fs.existsSync(moduleFolder)) {
+    return {
+      taskCompleted: false,
+      message: `任务 ${taskId} 未完成：模块文档文件夹不存在`,
+      aiInstruction: '请生成模块文档',
+      nextAction: 'regenerate_module_docs'
+    };
+  }
+  
+  const files = fs.readdirSync(moduleFolder).filter(f => f.endsWith('.md'));
+  
+  if (files.length === 0) {
+    return {
+      taskCompleted: false,
+      message: `任务 ${taskId} 未完成：模块文档文件夹为空`,
+      aiInstruction: '请生成模块文档',
+      nextAction: 'regenerate_module_docs'
+    };
+  }
+  
+  // 任务管理器自动完成任务
+  await autoCompleteTask(taskId);
+  return {
+    taskCompleted: true,
+    method: 'auto',
+    message: `任务 ${taskId} 自动完成：模块文档文件夹包含 ${files.length} 个文件`,
+    nextAction: 'proceed_to_next_task'
+  };
+}
+
+// Step 5 验证：固定文件检查
+async function validateStep5FixedFiles(taskId, projectPath, validation) {
+  validation.validationStrategy = 'fixed_files_check';
+  const relationsFile = path.join(projectPath, 'mg_kiro', 'relations.md');
+  
+  if (!fs.existsSync(relationsFile)) {
+    return {
+      taskCompleted: false,
+      message: `任务 ${taskId} 未完成：relations.md 文件缺失`,
+      aiInstruction: '请生成 relations.md 文件',
+      nextAction: 'regenerate_relations'
+    };
+  }
+  
+  // 任务管理器自动完成任务
+  await autoCompleteTask(taskId);
+  return {
+    taskCompleted: true,
+    method: 'auto',
+    message: `任务 ${taskId} 自动完成：relations.md 文件已生成`,
+    nextAction: 'proceed_to_next_task'
+  };
+}
+
+// Step 6 验证：固定架构文档检查
+async function validateStep6FixedFiles(taskId, projectPath, validation) {
+  validation.validationStrategy = 'architecture_files_check';
+  const requiredFiles = ['README.md', 'architecture.md'];
+  const missingFiles = [];
+  
+  for (const fileName of requiredFiles) {
+    const filePath = path.join(projectPath, 'mg_kiro', fileName);
+    if (!fs.existsSync(filePath)) {
+      missingFiles.push(fileName);
+    }
+  }
+  
+  if (missingFiles.length > 0) {
+    return {
+      taskCompleted: false,
+      message: `任务 ${taskId} 未完成：${missingFiles.join(', ')} 文件缺失`,
+      missingFiles,
+      aiInstruction: `请生成以下文件：${missingFiles.join(', ')}`,
+      nextAction: 'regenerate_architecture_docs'
+    };
+  }
+  
+  // 任务管理器自动完成任务
+  await autoCompleteTask(taskId);
+  return {
+    taskCompleted: true,
+    method: 'auto',
+    message: `任务 ${taskId} 自动完成：所有架构文档已生成`,
+    nextAction: 'workflow_completed'
+  };
 }
 ```
 
@@ -504,23 +617,23 @@ interface BatchConfiguration {
 }
 ```
 
-##### init_step3_complete_task (重构)
+##### init_step3_check_task_completion (重构)
 ```json
 {
-  "name": "init_step3_complete_task", 
-  "description": "完成任务并验证文档生成（基于文件分析模块验证）",
+  "name": "init_step3_check_task_completion", 
+  "description": "检查任务完成状态（基于文件夹检查或固定文件检查）",
   "inputSchema": {
     "type": "object",
     "properties": {
       "projectPath": {"type": "string"},
       "taskId": {"type": "string"},
-      "generatedFiles": {
-        "type": "array",
-        "description": "AI声明已生成的文件列表",
-        "items": {"type": "string"}
+      "stepType": {
+        "type": "string",
+        "enum": ["step3", "step4", "step5", "step6"],
+        "description": "步骤类型，决定验证策略"
       }
     },
-    "required": ["projectPath", "taskId"]
+    "required": ["projectPath", "taskId", "stepType"]
   }
 }
 ```

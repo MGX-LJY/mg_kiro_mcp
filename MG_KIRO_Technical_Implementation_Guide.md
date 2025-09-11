@@ -724,7 +724,7 @@ export class UnifiedTaskManager {
         // 1. 检查所有待处理任务，自动完成已生成文件的任务
         for (const task of stepTasks) {
             if (task.status === this.taskStates.PENDING) {
-                const validation = await this.validator.validateAndCompleteTask(task, projectPath);
+                const validation = await this.validator.checkTaskCompletion(task, projectPath);
                 if (validation.autoCompleted) {
                     console.log(`[TaskManager] 任务 ${task.taskId} 已自动完成`);
                 }
@@ -762,7 +762,7 @@ export class UnifiedTaskManager {
             return { autoCompleted: false, reason: '任务状态不符合' };
         }
 
-        const validation = await this.validator.validateAndCompleteTask(task, projectPath);
+        const validation = await this.validator.checkTaskCompletion(task, projectPath);
         
         return {
             taskId,
@@ -807,8 +807,8 @@ export class UnifiedTaskManager {
             throw new Error(`任务 ${taskId} 不存在`);
         }
 
-        // 使用简化验证器
-        const validation = await this.validator.validateAndCompleteTask(task, this.getProjectPathFromTask(task));
+        // 使用分层验证策略
+        const validation = await this.validator.checkTaskCompletion(task, this.getProjectPathFromTask(task));
         
         return {
             valid: validation.success,
