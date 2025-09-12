@@ -12,7 +12,11 @@
  * - 质量保证：确保分析深度和准确性
  * - 简洁高效：最简单的批次策略，减少复杂性
  * - 灵活处理：可以独立重试和优化每个文件
+ * 
+ * @version 2.0.0 - 使用统一BatchResult接口
  */
+
+import { BatchResultFactory } from '../../interfaces/BatchResult.js';
 
 export class SingleFileBatchStrategy {
     constructor(config = {}) {
@@ -115,31 +119,46 @@ export class SingleFileBatchStrategy {
         const sizeCategory = this._determineSizeCategory(file.tokenCount);
         const analysisDepth = this.analysisDepths[sizeCategory] || 'comprehensive';
         
-        const batch = {
-            type: 'single_file',
-            batchId: `single_batch_${batchIndex}`,
-            file: {
-                path: file.path,
-                tokenCount: file.tokenCount,
-                originalIndex: file.originalIndex || batchIndex - 1,
-                codeStructure: file.codeStructure,
-                importance: this._calculateFileImportance(file),
-                complexity: this._calculateFileComplexity(file)
-            },
-            estimatedTokens: file.tokenCount,
-            fileCount: 1,
-            strategy: 'single',
-            sizeCategory,
-            analysisDepth,
-            efficiency: this._calculateBatchEfficiency(file.tokenCount),
-            description: this._generateBatchDescription(file),
-            metadata: this._generateBatchMetadata(file),
-            processingHints: this._generateProcessingHints(file, analysisDepth),
-            qualityScore: this._calculateQualityScore(file),
+        // 创建统一的BatchFile格式
+        const batchFile = {
+            path: file.path,
+            tokenCount: BatchResultFactory._extractTokenCount(file.tokenCount), // 统一提取Token数量
+            size: file.size || 0,
+            language: file.language || 'javascript',
+            originalIndex: file.originalIndex || batchIndex - 1,
+            priority: this._calculateFileImportance(file) // 使用重要性作为优先级
+        };
+
+        const batchId = `single_batch_${batchIndex}`;
+        const estimatedTokens = batchFile.tokenCount;
+        const efficiency = this._calculateBatchEfficiency(estimatedTokens);
+
+        // 使用BatchResultFactory创建统一格式的批次结果
+        const batchResult = BatchResultFactory.createSingleBatch(
+            batchId,
+            batchFile,
+            estimatedTokens,
+            {
+                description: this._generateBatchDescription(file),
+                efficiency: efficiency
+            }
+        );
+
+        // 添加额外的处理提示和元数据（保留原有功能）
+        batchResult.metadata.sizeCategory = sizeCategory;
+        batchResult.metadata.analysisDepth = analysisDepth;
+        batchResult.metadata.qualityScore = this._calculateQualityScore(file);
+        batchResult.metadata.processingHints = {
+            ...batchResult.metadata.processingHints,
+            ...this._generateProcessingHints(file, analysisDepth),
+            codeStructure: file.codeStructure,
+            importance: this._calculateFileImportance(file),
+            complexity: this._calculateFileComplexity(file),
             contextInfo: config.addContextInfo ? this._generateContextInfo(file) : null
         };
 
-        return batch;
+        console.log(`[SingleFileBatchStrategy] 创建统一格式单文件批次: ${batchId} (${estimatedTokens}tokens, ${sizeCategory})`);
+        return batchResult;
     }
 
     /**

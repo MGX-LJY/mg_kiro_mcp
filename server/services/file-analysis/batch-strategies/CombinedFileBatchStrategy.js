@@ -12,7 +12,11 @@
  * - 智能分组：相关文件放在同一批次，提升AI理解
  * - 灵活调整：根据文件特性动态调整批次大小
  * - 质量保证：确保每个批次都有足够的上下文信息
+ * 
+ * @version 2.0.0 - 使用统一BatchResult接口
  */
+
+import { BatchResultFactory } from '../../interfaces/BatchResult.js';
 
 export class CombinedFileBatchStrategy {
     constructor(config = {}) {
@@ -88,7 +92,11 @@ export class CombinedFileBatchStrategy {
             baseName: this._getBaseName(file.path),
             extension: this._getExtension(file.path),
             module: this._getModule(file.path),
-            sizeCategory: this._getSizeCategory(file.tokenCount),
+            sizeCategory: this._getSizeCategory(
+                file.tokenCount?.totalTokens || 
+                file.tokenCount?.safeTokenCount || 
+                (typeof file.tokenCount === 'number' ? file.tokenCount : 0)
+            ),
             dependencies: this._extractDependencies(file),
             priority: this._calculateFilePriority(file)
         }));
@@ -156,14 +164,19 @@ export class CombinedFileBatchStrategy {
             .sort((a, b) => b.relationshipScore - a.relationshipScore);
 
         // 选择最相关的文件
-        let currentTokens = targetFile.tokenCount;
+        let currentTokens = targetFile.tokenCount?.totalTokens || 
+                           targetFile.tokenCount?.safeTokenCount || 
+                           (typeof targetFile.tokenCount === 'number' ? targetFile.tokenCount : 0);
         
         for (const { file, relationshipScore } of candidates) {
             if (relatedFiles.length >= maxRelatedFiles) break;
-            if (currentTokens + file.tokenCount > this.config.maxBatchSize) break;
+            const fileTokens = file.tokenCount?.totalTokens || 
+                              file.tokenCount?.safeTokenCount || 
+                              (typeof file.tokenCount === 'number' ? file.tokenCount : 0);
+            if (currentTokens + fileTokens > this.config.maxBatchSize) break;
 
             relatedFiles.push(file);
-            currentTokens += file.tokenCount;
+            currentTokens += fileTokens;
         }
 
         return relatedFiles;
@@ -202,7 +215,13 @@ export class CombinedFileBatchStrategy {
         }
 
         // 相似大小
-        if (this._isSimilarSize(file1.tokenCount, file2.tokenCount)) {
+        const file1Tokens = file1.tokenCount?.totalTokens || 
+                           file1.tokenCount?.safeTokenCount || 
+                           (typeof file1.tokenCount === 'number' ? file1.tokenCount : 0);
+        const file2Tokens = file2.tokenCount?.totalTokens || 
+                           file2.tokenCount?.safeTokenCount || 
+                           (typeof file2.tokenCount === 'number' ? file2.tokenCount : 0);
+        if (this._isSimilarSize(file1Tokens, file2Tokens)) {
             score += this.relationshipWeights.similarSize;
         }
 
@@ -234,11 +253,22 @@ export class CombinedFileBatchStrategy {
         let currentTokenCount = 0;
 
         // 按Token数排序（小文件优先）
-        const sortedFiles = [...files].sort((a, b) => a.tokenCount - b.tokenCount);
+        const sortedFiles = [...files].sort((a, b) => {
+            const aTokens = a.tokenCount?.totalTokens || 
+                          a.tokenCount?.safeTokenCount || 
+                          (typeof a.tokenCount === 'number' ? a.tokenCount : 0);
+            const bTokens = b.tokenCount?.totalTokens || 
+                          b.tokenCount?.safeTokenCount || 
+                          (typeof b.tokenCount === 'number' ? b.tokenCount : 0);
+            return aTokens - bTokens;
+        });
 
         for (const file of sortedFiles) {
             // 检查是否可以添加到当前批次
-            const wouldExceedSize = currentTokenCount + file.tokenCount > config.maxBatchSize;
+            const fileTokens = file.tokenCount?.totalTokens || 
+                             file.tokenCount?.safeTokenCount || 
+                             (typeof file.tokenCount === 'number' ? file.tokenCount : 0);
+            const wouldExceedSize = currentTokenCount + fileTokens > config.maxBatchSize;
             const wouldExceedCount = currentBatch.length >= config.maxFilesPerBatch;
             const shouldCreateNewBatch = wouldExceedSize || wouldExceedCount;
 
@@ -248,11 +278,11 @@ export class CombinedFileBatchStrategy {
                 
                 // 开始新批次
                 currentBatch = [file];
-                currentTokenCount = file.tokenCount;
+                currentTokenCount = fileTokens;
             } else {
                 // 添加到当前批次
                 currentBatch.push(file);
-                currentTokenCount += file.tokenCount;
+                currentTokenCount += fileTokens;
             }
         }
 
@@ -269,36 +299,53 @@ export class CombinedFileBatchStrategy {
      * @private
      */
     _createBatchFromFiles(files, batchIndex) {
-        const totalTokens = files.reduce((sum, file) => sum + file.tokenCount, 0);
+        const totalTokens = files.reduce((sum, file) => {
+            // 正确提取tokenCount对象中的实际token数量
+            const actualTokens = file.tokenCount?.totalTokens || 
+                               file.tokenCount?.safeTokenCount || 
+                               (typeof file.tokenCount === 'number' ? file.tokenCount : 0);
+            return sum + actualTokens;
+        }, 0);
         const fileNames = files.map(f => f.path.split('/').pop()).join(', ');
 
-        return {
-            type: 'combined_files',
-            batchId: `batch_${batchIndex}`,
-            files: files.map(f => ({
-                path: f.path,
-                tokenCount: f.tokenCount,
-                originalIndex: f.originalIndex,
-                priority: f.priority
-            })),
-            estimatedTokens: totalTokens,
-            fileCount: files.length,
-            strategy: 'combined',
-            efficiency: this._calculateBatchEfficiency(totalTokens, files.length),
-            description: `合并批次 - ${files.length} 个文件 (${fileNames})`,
-            metadata: {
-                avgTokensPerFile: Math.round(totalTokens / files.length),
-                directories: [...new Set(files.map(f => f.directory))],
-                extensions: [...new Set(files.map(f => f.extension))],
-                modules: [...new Set(files.map(f => f.module))]
-            },
-            processingHints: {
-                analysisDepth: 'comprehensive',
-                contextAware: true,
-                crossFileReferences: true,
-                preserveRelationships: true
+        // 转换为统一的BatchFile格式
+        const batchFiles = files.map(f => ({
+            path: f.path,
+            tokenCount: BatchResultFactory._extractTokenCount(f.tokenCount), // 统一提取Token数量
+            size: f.size || 0,
+            language: f.language || 'javascript',
+            originalIndex: f.originalIndex,
+            priority: f.priority
+        }));
+
+        const batchId = `combined_batch_${batchIndex}`;
+        const efficiency = this._calculateBatchEfficiency(totalTokens, files.length);
+
+        // 使用BatchResultFactory创建统一格式的批次结果
+        const batchResult = BatchResultFactory.createCombinedBatch(
+            batchId,
+            batchFiles,
+            totalTokens,
+            {
+                description: `组合批次包含${files.length}个文件: ${fileNames}`,
+                efficiency: efficiency
             }
+        );
+
+        // 添加额外的处理提示和元数据（保留原有功能）
+        batchResult.metadata.processingHints = {
+            analysisDepth: 'comprehensive',
+            contextAware: true,
+            crossFileReferences: true,
+            preserveRelationships: true,
+            avgTokensPerFile: Math.round(totalTokens / files.length),
+            directories: [...new Set(files.map(f => f.directory || 'root'))],
+            extensions: [...new Set(files.map(f => f.extension || f.path.split('.').pop()))],
+            modules: [...new Set(files.map(f => f.module || 'unknown'))]
         };
+
+        console.log(`[CombinedFileBatchStrategy] 创建统一格式批次: ${batchId} (${files.length}个文件, ${totalTokens}tokens)`);
+        return batchResult;
     }
 
     /**

@@ -12,9 +12,12 @@
  * - 上下文保持：确保每个切片都有足够的上下文信息
  * - 逻辑完整性：避免破坏函数、类等代码单元
  * - 可重组性：分割后的文档能够重新组合成完整理解
+ * 
+ * @version 2.0.0 - 使用统一BatchResult接口
  */
 
 import FunctionBoundaryDetector from '../token-analysis/FunctionBoundaryDetector.js';
+import { BatchResultFactory } from '../../interfaces/BatchResult.js';
 
 export class LargeFileMultiBatchStrategy {
     constructor(config = {}) {
@@ -73,7 +76,7 @@ export class LargeFileMultiBatchStrategy {
             
             for (let i = 0; i < validFiles.length; i++) {
                 const file = validFiles[i];
-                console.log(`[LargeFileMultiBatchStrategy] 处理大文件: ${file.path} (${file.tokenCount} tokens)`);
+                console.log(`[LargeFileMultiBatchStrategy] 处理大文件: ${file.path} (${file.tokenCount?.totalTokens || file.tokenCount || 0} tokens)`);
                 
                 const fileBatches = await this._processLargeFile(file, i + 1, finalConfig, projectPath);
                 allBatches.push(...fileBatches);
@@ -101,19 +104,28 @@ export class LargeFileMultiBatchStrategy {
         const rejectedFiles = [];
 
         for (const file of files) {
-            if (file.tokenCount >= config.minTokenSize) {
+            // Fix: tokenCount is an object, not a number
+            const actualTokenCount = file.tokenCount?.totalTokens || file.tokenCount?.safeTokenCount || file.tokenCount || 0;
+            
+            if (actualTokenCount >= config.minTokenSize) {
                 validFiles.push(file);
             } else {
                 rejectedFiles.push({
                     file,
-                    reason: 'too_small'
+                    reason: 'too_small',
+                    actualTokenCount
                 });
             }
         }
 
         if (rejectedFiles.length > 0) {
             console.warn(`[LargeFileMultiBatchStrategy] ${rejectedFiles.length} 个文件不需要分割处理:`, 
-                        rejectedFiles.map(r => `${r.file.path} (${r.file.tokenCount} tokens)`));
+                        rejectedFiles.map(r => {
+                            const tokens = r.file.tokenCount?.totalTokens || 
+                                         r.file.tokenCount?.safeTokenCount || 
+                                         (typeof r.file.tokenCount === 'number' ? r.file.tokenCount : 0);
+                            return `${r.file.path} (${tokens} tokens)`;
+                        }));
         }
 
         return validFiles;
@@ -163,12 +175,16 @@ export class LargeFileMultiBatchStrategy {
      */
     async _readFileContent(filePath, projectPath) {
         try {
-            // 这里应该从文件系统读取，简化实现
+            // Fix: Use proper path joining instead of string concatenation
             const fs = await import('fs/promises');
-            const fullPath = projectPath ? `${projectPath}/${filePath}` : filePath;
-            return await fs.readFile(fullPath, 'utf8');
+            const path = await import('path');
+            const fullPath = projectPath ? path.join(projectPath, filePath) : filePath;
+            console.log(`[LargeFileMultiBatchStrategy] 尝试读取文件: ${fullPath}`);
+            const content = await fs.readFile(fullPath, 'utf8');
+            console.log(`[LargeFileMultiBatchStrategy] 成功读取文件: ${fullPath} (${content.length} 字符)`);
+            return content;
         } catch (error) {
-            console.warn(`[LargeFileMultiBatchStrategy] 读取文件内容失败: ${filePath}`);
+            console.warn(`[LargeFileMultiBatchStrategy] 读取文件内容失败: ${filePath}, 错误: ${error.message}`);
             return ''; // 返回空内容，后续会创建fallback批次
         }
     }
@@ -197,35 +213,56 @@ export class LargeFileMultiBatchStrategy {
     _createMultiBatch(file, chunk, fileIndex, chunkIndex, totalChunks, config) {
         const batchId = `large_file_${fileIndex}_${chunkIndex}`;
         
-        const batch = {
-            type: 'large_file_chunk',
+        // 创建统一的BatchFile格式
+        const batchFile = {
+            path: file.path,
+            tokenCount: chunk.estimatedTokens || 0, // 使用chunk的token数量
+            size: chunk.content ? chunk.content.length : 0, // 使用chunk内容长度
+            language: file.language || 'javascript',
+            originalIndex: file.originalIndex || fileIndex - 1,
+            priority: file.priority || 1
+        };
+
+        // 创建ChunkInfo
+        const chunkInfo = {
+            chunkIndex,
+            totalChunks,
+            startLine: chunk.startLine,
+            endLine: chunk.endLine,
+            content: chunk.content,
+            type: chunk.type || 'code_chunk'
+        };
+
+        // 创建ParentFileInfo
+        const parentFileInfo = {
+            path: file.path,
+            totalTokens: BatchResultFactory._extractTokenCount(file.tokenCount),
+            originalIndex: file.originalIndex || fileIndex - 1
+        };
+
+        // 使用BatchResultFactory创建统一格式的批次结果
+        const batchResult = BatchResultFactory.createLargeFileChunk(
             batchId,
-            parentFileInfo: {
-                path: file.path,
-                totalTokens: file.tokenCount,
-                originalIndex: file.originalIndex || fileIndex - 1
-            },
-            chunkInfo: {
-                chunkIndex,
-                totalChunks,
-                startLine: chunk.startLine,
-                endLine: chunk.endLine,
-                estimatedTokens: chunk.estimatedTokens,
-                content: chunk.content,
-                type: chunk.type || 'code_chunk'
-            },
-            estimatedTokens: chunk.estimatedTokens,
-            fileCount: 1,
-            strategy: 'large_file_split',
-            splitQuality: this._assessSplitQuality(chunk),
-            description: this._generateChunkDescription(file, chunk, chunkIndex, totalChunks),
-            metadata: this._generateChunkMetadata(file, chunk),
-            processingHints: this._generateChunkProcessingHints(file, chunk, chunkIndex, totalChunks),
+            batchFile,
+            chunkInfo,
+            parentFileInfo,
+            {
+                description: this._generateChunkDescription(file, chunk, chunkIndex, totalChunks),
+                efficiency: this._assessSplitQuality(chunk)
+            }
+        );
+
+        // 添加额外的处理提示和元数据（保留原有功能）
+        batchResult.metadata.splitQuality = this._assessSplitQuality(chunk);
+        batchResult.metadata.processingHints = {
+            ...batchResult.metadata.processingHints,
+            ...this._generateChunkProcessingHints(file, chunk, chunkIndex, totalChunks),
             contextInfo: this._generateChunkContextInfo(file, chunk, chunkIndex, totalChunks),
             reconstructionInfo: this._generateReconstructionInfo(chunk, chunkIndex, totalChunks)
         };
 
-        return batch;
+        console.log(`[LargeFileMultiBatchStrategy] 创建统一格式分片: ${batchId} (${chunkIndex}/${totalChunks}, ${chunk.estimatedTokens}tokens)`);
+        return batchResult;
     }
 
     /**
@@ -412,7 +449,7 @@ export class LargeFileMultiBatchStrategy {
                 directory: pathParts.join('/'),
                 extension: this._getFileExtension(file.path),
                 language: this._detectLanguage(file.path),
-                totalTokens: file.tokenCount
+                totalTokens: file.tokenCount?.totalTokens || file.tokenCount?.safeTokenCount || file.tokenCount || 0
             },
             chunk: {
                 hasImports: chunk.content ? chunk.content.includes('import') : false,
@@ -601,7 +638,8 @@ export class LargeFileMultiBatchStrategy {
         console.warn(`[LargeFileMultiBatchStrategy] 为 ${file.path} 创建备用分割`);
 
         const batches = [];
-        const estimatedChunks = Math.ceil(file.tokenCount / config.targetChunkSize);
+        const actualTokenCount = file.tokenCount?.totalTokens || file.tokenCount?.safeTokenCount || file.tokenCount || 0;
+        const estimatedChunks = Math.ceil(actualTokenCount / config.targetChunkSize);
         const linesPerChunk = content ? Math.ceil(content.split('\n').length / estimatedChunks) : 100;
 
         for (let i = 0; i < estimatedChunks; i++) {
@@ -610,7 +648,7 @@ export class LargeFileMultiBatchStrategy {
             const endLine = Math.min((i + 1) * linesPerChunk, content ? content.split('\n').length : 1000);
             
             const estimatedTokens = Math.min(
-                file.tokenCount - (i * config.targetChunkSize),
+                actualTokenCount - (i * config.targetChunkSize),
                 config.targetChunkSize
             );
 

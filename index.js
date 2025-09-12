@@ -945,9 +945,32 @@ async function startServer() {
               }
             );
 
-            // 解构分析结果以避免IDE未解析变量警告
-            const { fileAnalysis, batchStrategy, taskManagement } = analysisResult;
-            const { tokenSummary } = fileAnalysis || {};
+            // 解构分析结果 - 修复数据结构访问
+            const { analysisResult: analysisData } = analysisResult;
+            const { fileAnalyses, batchPlans, taskDefinitions, strategySummary } = analysisData || {};
+            
+            // 构建统计信息
+            const fileAnalysis = {
+                totalFiles: fileAnalyses?.length || 0,
+                analyzedFiles: fileAnalyses?.filter(f => !f.analysisError)?.length || 0
+            };
+            
+            const batchStrategy = {
+                totalBatches: (batchPlans?.combinedBatches?.length || 0) + 
+                             (batchPlans?.singleBatches?.length || 0) + 
+                             (batchPlans?.multiBatches?.length || 0)
+            };
+            
+            const taskManagement = {
+                totalTasks: taskDefinitions?.length || 0
+            };
+            
+            const tokenSummary = {
+                totalTokens: fileAnalyses?.reduce((sum, file) => {
+                    const tokens = file.tokenCount?.totalTokens || file.tokenCount?.safeTokenCount || file.tokenCount || 0;
+                    return sum + tokens;
+                }, 0) || 0
+            };
             
             // 使用UnifiedTaskManager创建批次任务
             console.log(`[MCP-Init-Step2] 使用UnifiedTaskManager创建任务...`);
@@ -1084,8 +1107,10 @@ async function startServer() {
           const analysisInput = {
             projectPath: resolve(projectPath),
             fileList: step1Results.fileAnalysisInput?.fileList || [],
-            projectMetadata: step1Results.projectMetadata,
-            languageProfile: step1Results.languageProfile,
+            projectMetadata: {
+              ...step1Results.projectMetadata,
+              languageProfile: step1Results.languageProfile
+            },
             options: {
               smallFileThreshold: 15000,
               largeFileThreshold: 20000,
@@ -1121,16 +1146,36 @@ async function startServer() {
             const analysisResult = await fileAnalysisModule.analyzeProject(
               analysisInput.projectPath,
               analysisInput.fileList,
-              {
-                projectMetadata: analysisInput.projectMetadata,
-                languageProfile: analysisInput.languageProfile,
-                options: analysisInput.options
-              }
+              analysisInput.projectMetadata,
+              analysisInput.options
             );
 
-            // 解构分析结果以避免IDE未解析变量警告
-            const { fileAnalysis, batchStrategy, taskManagement } = analysisResult;
-            const { tokenSummary } = fileAnalysis || {};
+            // 解构分析结果 - 修复数据结构访问
+            const { analysisResult: analysisData } = analysisResult;
+            const { fileAnalyses, batchPlans, taskDefinitions, strategySummary } = analysisData || {};
+            
+            // 构建统计信息
+            const fileAnalysis = {
+                totalFiles: fileAnalyses?.length || 0,
+                analyzedFiles: fileAnalyses?.filter(f => !f.analysisError)?.length || 0
+            };
+            
+            const batchStrategy = {
+                totalBatches: (batchPlans?.combinedBatches?.length || 0) + 
+                             (batchPlans?.singleBatches?.length || 0) + 
+                             (batchPlans?.multiBatches?.length || 0)
+            };
+            
+            const taskManagement = {
+                totalTasks: taskDefinitions?.length || 0
+            };
+            
+            const tokenSummary = {
+                totalTokens: fileAnalyses?.reduce((sum, file) => {
+                    const tokens = file.tokenCount?.totalTokens || file.tokenCount?.safeTokenCount || file.tokenCount || 0;
+                    return sum + tokens;
+                }, 0) || 0
+            };
             
             console.log(`[MCP-Init-Step2] FileAnalysisModule 分析完成:`, {
               success: analysisResult.success,
@@ -1265,6 +1310,24 @@ async function startServer() {
           }
 
           try {
+            // ✅ 修复：在获取任务前，先检查并加载taskDefinitions
+            const taskStatus = await unifiedTaskManager.getTaskStatus();
+            if (taskStatus.success && taskStatus.overview.currentTasks.length === 0) {
+              // UnifiedTaskManager中没有任务，需要从init-state.json加载taskDefinitions
+              console.log('[MCP-Init-Step3] 检测到UnifiedTaskManager无任务，正在从Step2结果加载...');
+              
+              if (initState.stepResults?.step2?.analysisResult?.analysisResult?.taskDefinitions) {
+                const taskDefinitions = initState.stepResults.step2.analysisResult.analysisResult.taskDefinitions;
+                console.log(`[MCP-Init-Step3] 找到${taskDefinitions.length}个任务定义，正在创建任务...`);
+                
+                // 批量创建任务到UnifiedTaskManager
+                const batchResult = await unifiedTaskManager.createBatchTasks(taskDefinitions, resolve(projectPath), 'step3');
+                console.log(`[MCP-Init-Step3] 成功创建${batchResult.count}个任务`);
+              } else {
+                console.warn('[MCP-Init-Step3] Step2结果中未找到taskDefinitions');
+              }
+            }
+            
             // 使用UnifiedTaskManager获取下一个任务
             const nextTask = await unifiedTaskManager.getNextTask(resolve(projectPath), 'step3');
             
@@ -1321,15 +1384,31 @@ async function startServer() {
             
             // ✅ 设置增强的任务上下文，包含预分析数据
             const taskMetadata = nextTask.metadata || {};
+            
+            // ✅ 修复批次任务路径问题 - 正确从metadata中提取
+            let relativePath, fileName;
+            if (taskMetadata.type === 'file_batch' && taskMetadata.files && taskMetadata.files.length > 0) {
+              // 对于批次任务，使用第一个文件作为主要路径
+              relativePath = taskMetadata.files[0];
+              fileName = path.basename(relativePath);
+              console.log(`[Fix] 批次任务 ${nextTask.id} 使用第一个文件: ${relativePath}`);
+            } else {
+              // 对于单文件任务，使用原有逻辑
+              relativePath = taskMetadata.relativePath || nextTask.relativePath || 'unknown';
+              fileName = taskMetadata.fileName || path.basename(relativePath);
+            }
+            
             const contextData = {
               taskId: nextTask.id,
-              relativePath: taskMetadata.relativePath || 'unknown',
-              fileName: taskMetadata.fileName || path.basename(taskMetadata.relativePath || 'unknown'),
+              relativePath: relativePath,
+              fileName: fileName,
               fileSize: taskMetadata.fileSize || 0,
               priority: taskMetadata.priority || 0,
               estimatedTime: taskMetadata.estimatedTime || '未知',
-              title: `处理文件: ${taskMetadata.fileName || 'unknown'}`,
-              description: taskMetadata.description || '文件内容分析和文档生成',
+              title: `处理文件: ${fileName}`,
+              description: taskMetadata.type === 'file_batch' ? 
+                `批次任务: 处理${taskMetadata.files?.length || 0}个文件` : 
+                (taskMetadata.description || '文件内容分析和文档生成'),
               step: 'get_next_task_completed',
               // ✅ 新增: 传递完整的元数据（包括预分析数据）
               metadata: {
@@ -1339,7 +1418,7 @@ async function startServer() {
                 estimatedFileTokens: taskMetadata.estimatedFileTokens || taskMetadata.estimatedTokens,
                 language: taskMetadata.language,
                 strategy: taskMetadata.strategy,
-                allFiles: taskMetadata.allFiles // 用于多文件批次
+                allFiles: taskMetadata.allFiles || taskMetadata.files // 用于多文件批次
               }
             };
             
@@ -1356,7 +1435,7 @@ async function startServer() {
                   // 当前任务信息（新架构格式）
                   currentTask: {
                     taskId: nextTask.id,
-                    filePath: taskMetadata.relativePath || 'unknown',
+                    filePath: relativePath, // 使用修复后的relativePath
                     fileName: contextData.fileName,
                     fileSize: contextData.fileSize,
                     priority: contextData.priority,
@@ -1364,7 +1443,14 @@ async function startServer() {
                     title: contextData.title,
                     description: contextData.description,
                     stepType: nextTask.stepType,
-                    status: nextTask.status
+                    status: nextTask.status,
+                    // ✅ 新增：批次任务信息
+                    batchInfo: taskMetadata.type === 'file_batch' ? {
+                      type: 'file_batch',
+                      strategy: taskMetadata.strategy,
+                      totalFiles: taskMetadata.files?.length || 0,
+                      allFiles: taskMetadata.files || []
+                    } : null
                   },
                   
                   // 进度信息（来自UnifiedTaskManager统计）
@@ -3332,25 +3418,34 @@ function generateExpectedFilePath(taskId, batchStrategy, fileName, projectPath) 
         return name.substring(0, name.lastIndexOf('.')) || name;
     }
     
+    // 将文件路径转换为安全的文件名（替换路径分隔符）
+    function sanitizeFileName(filePath) {
+        return filePath.replace(/[\/\\]/g, '_').replace(/[^a-zA-Z0-9_.-]/g, '_');
+    }
+    
     let expectedFileName;
-    const baseName = fileName ? getFileBaseName(fileName) : '';
+    const baseName = fileName ? getFileBaseName(fileName) : 'unknown_file';
     
     switch (batchStrategy) {
         case 'CombinedFileBatch':
-            expectedFileName = `${taskId}_combined_analysis.md`;
+            expectedFileName = `${sanitizeFileName(baseName)}_combined_analysis.md`;
             break;
         case 'SingleFileBatch':
-            expectedFileName = `${taskId}_${baseName}_analysis.md`;
+            expectedFileName = `${sanitizeFileName(baseName)}_analysis.md`;
             break;
         case 'LargeFileMultiBatch':
             // 从taskId中提取子批次编号 (task_3_1, task_3_2)
             const subBatchMatch = taskId.match(/_(\d+)$/);
             const subBatchId = subBatchMatch ? subBatchMatch[1] : '1';
-            expectedFileName = `${taskId}_${subBatchId}_${baseName}_analysis.md`;
+            expectedFileName = `${sanitizeFileName(baseName)}_part${subBatchId}_analysis.md`;
+            break;
+        case 'combined':
+            // 对于批次任务，使用第一个文件的名称
+            expectedFileName = `${sanitizeFileName(baseName)}_batch_analysis.md`;
             break;
         default:
-            // 通用格式
-            expectedFileName = `${taskId}_analysis.md`;
+            // 通用格式：基于实际文件名
+            expectedFileName = `${sanitizeFileName(baseName)}_analysis.md`;
             break;
     }
     
