@@ -1488,8 +1488,13 @@ async function startServer() {
                     progress: `处理 ${nextTask.id} (${(taskStats.statistics?.completed || 0) + 1}/${taskStats.statistics?.total || 0})`,
                     allowed_next_tools: ["init_step3_get_file_content"],
                     forbidden_tools: ["init_step3_complete_task", "init_step4_module_integration"],
-                    ai_context: "✅ 系统已进入step3，任务上下文已设置",
-                    ai_instruction: "🎯 下一步：调用 init_step3_get_file_content",
+                    ai_context: taskMetadata.type === 'file_batch' ? 
+                      `✅ 系统已进入step3，批次任务已设置 (${taskMetadata.files?.length || 0}个文件)` : 
+                      "✅ 系统已进入step3，任务上下文已设置",
+                    ai_instruction: taskMetadata.type === 'file_batch' ? 
+                      `🔄 批次任务：需处理${taskMetadata.files?.length || 0}个文件 [${(taskMetadata.files || []).join(', ')}]
+🎯 下一步：调用 init_step3_get_file_content 开始处理第1个文件: ${relativePath}` :
+                      "🎯 下一步：调用 init_step3_get_file_content",
                     current_task_ready: true
                   },
                   
@@ -1714,9 +1719,15 @@ async function startServer() {
                 allowed_next_tools: ["init_step3_generate_analysis"],
                 forbidden_tools: ["init_step3_get_next_task", "init_step3_complete_task", "init_step4_module_integration"],
                 
-                // 🧠 AI认知提示
-                ai_context: "✅ 文件内容已获取，任务上下文已更新，现在必须调用generate_analysis生成分析文档",
-                ai_instruction: `🎯 下一步：调用 init_step3_generate_analysis 基于文件内容生成分析文档`,
+                // 🧠 AI认知提示 - 增强批次感知
+                ai_context: taskMetadata.allFiles && taskMetadata.allFiles.length > 1 ?
+                  `✅ 文件内容已获取，批次任务进行中 (处理${taskMetadata.allFiles.length}个文件中的: ${fileName})` :
+                  "✅ 文件内容已获取，任务上下文已更新，现在必须调用generate_analysis生成分析文档",
+                ai_instruction: taskMetadata.allFiles && taskMetadata.allFiles.length > 1 ?
+                  `📋 批次进度：处理第${taskMetadata.allFiles.indexOf(relativePath) + 1}/${taskMetadata.allFiles.length}个文件
+🔄 当前文件：${fileName}
+🎯 下一步：调用 init_step3_generate_analysis 生成此文件的分析文档` :
+                  `🎯 下一步：调用 init_step3_generate_analysis 基于文件内容生成分析文档`,
                 content_ready: true
               }
             };
@@ -1944,7 +1955,14 @@ async function startServer() {
                     
                     // 🧠 AI指导信息 - 完整的文件创建工作流
                     ai_guidance: {
-                      instruction: "请基于提供的模板和文件信息，生成详细的文件分析文档",
+                      instruction: "🔬 代码技术分析任务：基于提供的模板和文件内容，生成**极其详细**的代码技术分析。专注于：\n" +
+                        "1. **函数实现详解**：逐个分析每个函数的具体实现逻辑、算法思路、处理流程\n" +
+                        "2. **调用关系分析**：详细分析函数之间的调用链、数据传递、执行顺序\n" +
+                        "3. **数据流分析**：追踪数据在函数间的流动、变换、存储机制\n" +
+                        "4. **算法逻辑剖析**：深入分析关键算法的实现细节、时间复杂度、空间复杂度\n" +
+                        "5. **依赖关系分析**：详细说明模块导入、导出、相互依赖的技术细节\n" +
+                        "6. **代码结构分析**：分析类定义、函数定义、变量作用域、代码组织方式\n" +
+                        "7. **技术实现解析**：分析设计模式、错误处理、性能实现、状态管理等技术细节",
                       template_usage: "使用模板中的结构，替换{{变量}}为实际内容",
                       next_action: "再次调用 init_step3_generate_analysis，提供 analysisContent 参数",
                       
@@ -1990,7 +2008,15 @@ async function startServer() {
                       forbidden_tools: ["init_step3_complete_task", "init_step3_get_next_task"],
                       
                       ai_context: "✅ 已提供文档模板和文件信息，AI需要基于模板生成分析文档",
-                      ai_instruction: `🎯 请基于模板生成${fileName}的详细分析，然后再次调用 init_step3_generate_analysis 提供 analysisContent`,
+                      ai_instruction: `🔬 代码技术分析任务：为${fileName}生成**极其详细**的代码分析文档
+📋 分析重点：
+• 逐个分析每个函数的具体实现逻辑、算法流程、处理细节
+• 详细追踪函数间调用关系、数据传递、执行顺序
+• 深入分析数据结构、数据流动、状态变化
+• 解析关键算法的实现原理、复杂度、边界处理
+• 分析模块导入导出、依赖关系、接口设计
+• 解释设计模式运用、错误处理机制、性能实现
+🚀 完成后调用 init_step3_generate_analysis 提供 analysisContent`,
                       template_ready: true
                     },
                     
@@ -2223,8 +2249,16 @@ async function startServer() {
                     validationStrategy: validation.validationStrategy,
                     nextAction: validation.nextAction,
                     missingInfo: validation.details,
-                    aiInstruction: `请生成缺失的文档或文件，然后再次调用此工具检查完成状态`,
-                    retryAdvice: "生成文件后请再次调用 init_step3_check_task_completion"
+                    // 🧠 增强批次感知反馈
+                    aiInstruction: taskContext?.metadata?.allFiles && taskContext.metadata.allFiles.length > 1 ?
+                      `📋 批次任务未完成 (${taskContext.metadata.allFiles.length}个文件)：
+🔍 检查批次中所有文件是否都已生成分析文档
+📁 批次文件列表：${taskContext.metadata.allFiles.join(', ')}
+🎯 请确保每个文件都有对应的 *_analysis.md 文档，然后再次调用此工具验证` :
+                      `请生成缺失的文档或文件，然后再次调用此工具检查完成状态`,
+                    retryAdvice: taskContext?.metadata?.allFiles && taskContext.metadata.allFiles.length > 1 ?
+                      "确保批次中所有文件都已生成分析文档后再次验证" :
+                      "生成文件后请再次调用 init_step3_check_task_completion"
                   }, null, 2)
                 }]
               };

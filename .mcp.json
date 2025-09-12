@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mg_kiro": {
+      "command": "node",
+      "args": ["index.js"],
+      "description": "mg_kiro MCP Server - 项目初始化和文档生成工具"
+    }
+  }
+}
