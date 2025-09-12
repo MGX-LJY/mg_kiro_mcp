@@ -1,8 +1,5 @@
 #!/usr/bin/env node
 
-/* eslint-disable no-unreachable */
-/* eslint-disable no-throw-literal */
-
 /**
  * mg_kiro MCP Server
  * 统一入口点 - MCP协议服务器 + Express API + WebSocket
@@ -437,10 +434,8 @@ async function startServer() {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     
-    // 使用共享的serviceBus获取服务实例（修复：不再创建新实例）
-    // 移除动态导入，改为使用serviceBus中已注册的服务
-    
-    // eslint-disable-next-line no-unused-vars - 全局错误处理
+    // 获取服务容器实例
+    const serviceContainer = getServiceContainer(serviceBus);
     
     // 全局状态管理 - 持久化到文件系统
     const projectStates = new Map();
@@ -914,9 +909,6 @@ async function startServer() {
           // 更新当前步骤
           updateProjectState(projectPath, { currentStep: 2 });
           
-          // 获取Step1的结果
-          const step1Results = initState.stepResults.step1.projectOverview;
-          
           // 初始化文件查询服务
           await fileQueryService.initializeProject(resolve(projectPath));
           
@@ -1046,6 +1038,22 @@ async function startServer() {
             }
           };
 
+          // 检查服务可用性
+          const { fileAnalysisModule } = serviceContainer;
+          if (!fileAnalysisModule) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: 'FileAnalysisModule 服务未找到',
+                  tool: name,
+                  step: 2
+                }, null, 2)
+              }]
+            };
+          }
+
           try {
             // 使用真实的 FileAnalysisModule 进行分析
             console.log(`[MCP-Init-Step2] FileAnalysisModule 分析开始:`, {
@@ -1053,11 +1061,6 @@ async function startServer() {
               projectName: analysisInput.projectMetadata?.name,
               language: analysisInput.languageProfile?.primary
             });
-            
-            const { fileAnalysisModule } = serviceContainer;
-            if (!fileAnalysisModule) {
-              throw new Error('FileAnalysisModule 服务未找到');
-            }
 
             // 调用 FileAnalysisModule 进行智能分析和批次规划
             const analysisResult = await fileAnalysisModule.analyzeProject(
@@ -1070,11 +1073,15 @@ async function startServer() {
               }
             );
 
+            // 解构分析结果以避免IDE未解析变量警告
+            const { fileAnalysis, batchStrategy, taskManagement } = analysisResult;
+            const { tokenSummary } = fileAnalysis || {};
+            
             console.log(`[MCP-Init-Step2] FileAnalysisModule 分析完成:`, {
               success: analysisResult.success,
-              totalFiles: analysisResult.fileAnalysis?.totalFiles || 0,
-              totalBatches: analysisResult.batchStrategy?.totalBatches || 0,
-              totalTasks: analysisResult.taskManagement?.totalTasks || 0
+              totalFiles: fileAnalysis?.totalFiles || 0,
+              totalBatches: batchStrategy?.totalBatches || 0,
+              totalTasks: taskManagement?.totalTasks || 0
             });
 
             // 存储Step2结果
@@ -1108,11 +1115,11 @@ async function startServer() {
                     
                     // 分析结果摘要
                     analysisResults: {
-                      totalFiles: analysisResult.fileAnalysis.totalFiles,
-                      analyzedFiles: analysisResult.fileAnalysis.analyzedFiles,
-                      totalTokens: analysisResult.fileAnalysis.tokenSummary.totalTokens,
-                      totalBatches: analysisResult.batchStrategy.totalBatches,
-                      totalTasks: analysisResult.taskManagement.totalTasks
+                      totalFiles: fileAnalysis?.totalFiles || 0,
+                      analyzedFiles: fileAnalysis?.analyzedFiles || 0,
+                      totalTokens: tokenSummary?.totalTokens || 0,
+                      totalBatches: batchStrategy?.totalBatches || 0,
+                      totalTasks: taskManagement?.totalTasks || 0
                     },
                     
                     // 下一步指导
@@ -1531,7 +1538,6 @@ async function startServer() {
             const fileName = fileDetails.file.name;
             const fileExtension = fileDetails.file.extension.replace('.', '');
             const fileContent = fileDetails.content;
-            const fileSize = fileDetails.file.size;
             const docsDir = ensureDocsDirectory(resolve(projectPath));
             const filesDir = join(docsDir, 'files');
             if (!fs.existsSync(filesDir)) {
@@ -1638,7 +1644,17 @@ async function startServer() {
               const fullFilePath = resolve(projectPath, relativePath);
               
               if (!fs.existsSync(fullFilePath)) {
-                throw new Error(`文件不存在: ${relativePath}`);
+                return {
+                  content: [{
+                    type: "text",
+                    text: JSON.stringify({ 
+                      error: true, 
+                      message: `文件不存在: ${relativePath}`, 
+                      tool: name, 
+                      step: 3 
+                    }, null, 2)
+                  }]
+                };
               }
               
               let basicContent = fs.readFileSync(fullFilePath, 'utf8');
@@ -1771,6 +1787,12 @@ async function startServer() {
               const fileSize = fileContent.length;
               const lineCount = fileContent.split('\n').length;
               
+              // 🔥 新增：计算期望的文件路径和名称
+              const batchStrategy = taskContext?.batchStrategy || 'Unknown';
+              const { expectedFilePath, expectedFileName } = generateExpectedFilePath(
+                taskId, batchStrategy, fileName, projectPath
+              );
+              
               return {
                 content: [{
                   type: "text",
@@ -1780,11 +1802,27 @@ async function startServer() {
                     mode: "template_provided",
                     taskId: taskId,
                     
-                    // 🧠 AI指导信息
+                    // 🧠 AI指导信息 - 完整的文件创建工作流
                     ai_guidance: {
                       instruction: "请基于提供的模板和文件信息，生成详细的文件分析文档",
                       template_usage: "使用模板中的结构，替换{{变量}}为实际内容",
-                      next_action: "再次调用 init_step3_generate_analysis，提供 analysisContent 参数"
+                      next_action: "再次调用 init_step3_generate_analysis，提供 analysisContent 参数",
+                      
+                      // 🔥 新增：明确的文件创建指导
+                      file_creation_workflow: {
+                        step1: "基于模板生成分析内容",
+                        step2: "调用 init_step3_generate_analysis 提供 analysisContent",
+                        step3: "使用 Write 工具创建文件",
+                        step4: "调用 init_step3_check_task_completion 验证完成"
+                      },
+                      
+                      file_creation_details: {
+                        tool_required: "Write",
+                        file_path: expectedFilePath,
+                        relative_path: `mg_kiro/files/${expectedFileName}`,
+                        file_name: expectedFileName,
+                        content_source: "AI生成的分析文档内容"
+                      }
                     },
                     
                     // 📋 文档生成模板
@@ -1848,17 +1886,26 @@ async function startServer() {
               };
             }
           } else {
-            // 模式2：AI提供了分析内容，保存到上下文
-            console.log(`[MCP-Init-Step3] 保存AI生成的分析文档 - ${projectPath} 任务:${taskId}`);
+            // 模式2：AI提供了分析内容，保存到上下文并指导文件创建
+            console.log(`[MCP-Init-Step3] 接收AI生成的分析文档 - ${projectPath} 任务:${taskId}`);
             
-            // 🔥 保存AI生成的分析文档到任务上下文
+            // 🔥 计算文件路径信息
+            const batchStrategy = taskContext?.batchStrategy || 'Unknown';
+            const fileName = taskContext?.fileName || '未知文件';
+            const { expectedFilePath, expectedFileName } = generateExpectedFilePath(
+              taskId, batchStrategy, fileName, projectPath
+            );
+            
+            // 🔥 保存AI生成的分析文档到任务上下文，包含文件路径信息
             if (taskContext) {
               setCurrentTaskContext(projectPath, {
                 ...taskContext,
-                step: 'generate_analysis_completed',
+                step: 'analysis_ready_for_file_creation',
                 analysisContent: analysisContent,
                 analysisStyle: analysisStyle || 'comprehensive',
-                includeCodeExamples: includeCodeExamples !== false
+                includeCodeExamples: includeCodeExamples !== false,
+                expectedFilePath,
+                expectedFileName
               });
             }
             
@@ -1869,8 +1916,8 @@ async function startServer() {
                 text: JSON.stringify({
                   currentStep: 3,
                   stepName: 'file-documentation', 
-                  mode: "analysis_saved",
-                  status: "analysis_generated_ready_to_complete",
+                  mode: "analysis_content_received",
+                  status: "ready_to_create_file",
                   taskId: taskId,
                   analysisReceived: {
                     length: analysisContent.length,
@@ -1879,21 +1926,49 @@ async function startServer() {
                   },
                   success: true,
                   
-                  // 🎯 AI状态可视化 - 分析文档已生成，现在必须完成任务
+                  // 🎯 AI状态可视化 - 分析内容已准备，现在必须创建文件
                   workflow_status: {
                     current_step: 3,
-                    step_name: "文件处理循环", 
-                    progress: `已生成${taskContext?.fileName || '文件'}分析，准备完成任务`,
-                    allowed_next_tools: ["init_step3_check_task_completion"],
+                    step_name: "文档文件创建", 
+                    progress: `已接收${taskContext?.fileName || '文件'}分析内容，现在需要创建文档文件`,
+                    
+                    // 🚨 关键修正：明确下一步是创建文件，而不是直接验证
+                    allowed_next_tools: ["Write"],
+                    required_actions: [
+                      {
+                        action: "create_file",
+                        tool: "Write", 
+                        file_path: expectedFilePath,
+                        relative_path: `mg_kiro/files/${expectedFileName}`,
+                        content: "analysisContent from context",
+                        description: `创建文件 ${expectedFileName}`
+                      },
+                      {
+                        action: "verify_completion",
+                        tool: "init_step3_check_task_completion",
+                        condition: "after file creation",
+                        description: "验证文件创建完成"
+                      }
+                    ],
                     forbidden_tools: ["init_step3_get_next_task", "init_step3_get_file_content", "init_step4_module_integration"],
                     
-                    // 🧠 AI认知提示
-                    ai_context: "✅ 分析文档已生成并保存，现在使用新的验证机制自动检查任务完成情况",
-                    ai_instruction: `🎯 下一步：调用 init_step3_check_task_completion 自动验证任务${taskId}的完成状态`,
-                    analysis_ready: true
+                    // 🧠 修正的AI认知提示
+                    ai_context: "✅ 分析内容已准备完毕，但文件尚未创建到磁盘",
+                    ai_instruction: `🎯 下一步：使用 Write 工具创建文件 ${expectedFilePath}，内容为刚才提供的 analysisContent`,
+                    file_creation_pending: true
                   },
                   
-                  message: "Step3: 分析文档已生成，任务上下文已更新，准备完成任务"
+                  // 🔥 新增：明确的文件创建指导
+                  file_creation_required: {
+                    tool: "Write",
+                    file_path: expectedFilePath,
+                    relative_path: `mg_kiro/files/${expectedFileName}`,
+                    file_name: expectedFileName,
+                    content_variable: "analysisContent",
+                    why: "MCP工具只提供提示词，实际文件需要AI通过Write工具创建"
+                  },
+                  
+                  message: `Step3: 分析内容已接收，请使用 Write 工具创建文件 ${expectedFileName}`
                 }, null, 2)
               }]
             };
@@ -1916,6 +1991,22 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step3] 检查任务完成状态 - ${projectPath} 任务:${taskId || '自动获取'} 类型:${stepType || 'step3'}`);
           
+          // 检查服务可用性
+          const { unifiedTaskValidator } = serviceContainer;
+          if (!unifiedTaskValidator) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: 'UnifiedTaskValidator 服务未找到',
+                  tool: name,
+                  step: 3
+                }, null, 2)
+              }]
+            };
+          }
+
           try {
             // 获取当前任务上下文，支持自动获取taskId
             const taskContext = getCurrentTaskContext(projectPath);
@@ -1935,12 +2026,6 @@ async function startServer() {
                   }, null, 2)
                 }]
               };
-            }
-            
-            // 使用 UnifiedTaskValidator 进行分层验证
-            const { unifiedTaskValidator } = serviceContainer;
-            if (!unifiedTaskValidator) {
-              throw new Error('UnifiedTaskValidator 服务未找到');
             }
             
             // 构造任务定义（简化版）
@@ -2035,12 +2120,23 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step4] 模块整合 - ${projectPath}`);
           
+          // 检查服务可用性
+          const { unifiedTaskManager } = serviceContainer;
+          if (!unifiedTaskManager) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: 'UnifiedTaskManager 服务未找到',
+                  tool: name,
+                  step: 4
+                }, null, 2)
+              }]
+            };
+          }
+
           try {
-            // 使用 UnifiedTaskManager 创建 Step4 任务
-            const { unifiedTaskManager, unifiedTaskValidator } = serviceContainer;
-            if (!unifiedTaskManager) {
-              throw new Error('UnifiedTaskManager 服务未找到');
-            }
             
             // 检查 Step3 是否完成
             const validation = validateStepPrerequisites(projectPath, 4);
@@ -2227,12 +2323,23 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step5] 模块关联分析 - ${projectPath}`);
           
+          // 检查服务可用性
+          const { unifiedTaskManager } = serviceContainer;
+          if (!unifiedTaskManager) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: 'UnifiedTaskManager 服务未找到',
+                  tool: name,
+                  step: 5
+                }, null, 2)
+              }]
+            };
+          }
+
           try {
-            // 使用 UnifiedTaskManager 创建 Step5 任务
-            const { unifiedTaskManager, unifiedTaskValidator } = serviceContainer;
-            if (!unifiedTaskManager) {
-              throw new Error('UnifiedTaskManager 服务未找到');
-            }
             
             // 使用增强的验证逻辑
             const validation = validateStepPrerequisites(projectPath, 5);
@@ -2467,12 +2574,23 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step6] 架构文档生成 - ${projectPath}`);
           
+          // 检查服务可用性
+          const { unifiedTaskManager } = serviceContainer;
+          if (!unifiedTaskManager) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: 'UnifiedTaskManager 服务未找到',
+                  tool: name,
+                  step: 6
+                }, null, 2)
+              }]
+            };
+          }
+
           try {
-            // 使用 UnifiedTaskManager 创建 Step6 任务
-            const { unifiedTaskManager, unifiedTaskValidator } = serviceContainer;
-            if (!unifiedTaskManager) {
-              throw new Error('UnifiedTaskManager 服务未找到');
-            }
             
             // 使用增强的验证逻辑
             const validation = validateStepPrerequisites(projectPath, 6);
@@ -3141,6 +3259,56 @@ ${docsDir}/
   console.log("🚀 重新设计的完整6步Init工作流已就绪");
   console.log("🤖 支持工具: workflow_guide, init_step1-6 (文件分析→模块整合→关联分析→架构文档)");
   console.log("📡 等待Claude Code客户端连接...\n");
+}
+
+// ========== Step3文件路径计算函数 ==========
+
+/**
+ * 根据批次策略生成期望的文件路径
+ * @param {string} taskId - 任务ID
+ * @param {string} batchStrategy - 批次策略
+ * @param {string} fileName - 文件名
+ * @param {string} projectPath - 项目路径
+ * @returns {Object} 包含expectedFilePath和expectedFileName的对象
+ */
+function generateExpectedFilePath(taskId, batchStrategy, fileName, projectPath) {
+    const filesDir = resolve(projectPath, 'mg_kiro', 'files');
+    
+    function getFileBaseName(filePath) {
+        const name = filePath.split('/').pop();
+        return name.substring(0, name.lastIndexOf('.')) || name;
+    }
+    
+    let expectedFileName;
+    const baseName = fileName ? getFileBaseName(fileName) : '';
+    
+    switch (batchStrategy) {
+        case 'CombinedFileBatch':
+            expectedFileName = `${taskId}_combined_analysis.md`;
+            break;
+        case 'SingleFileBatch':
+            expectedFileName = `${taskId}_${baseName}_analysis.md`;
+            break;
+        case 'LargeFileMultiBatch':
+            // 从taskId中提取子批次编号 (task_3_1, task_3_2)
+            const subBatchMatch = taskId.match(/_(\d+)$/);
+            const subBatchId = subBatchMatch ? subBatchMatch[1] : '1';
+            expectedFileName = `${taskId}_${subBatchId}_${baseName}_analysis.md`;
+            break;
+        default:
+            // 通用格式
+            expectedFileName = `${taskId}_analysis.md`;
+            break;
+    }
+    
+    const expectedFilePath = resolve(filesDir, expectedFileName);
+    
+    return {
+        expectedFilePath,
+        expectedFileName,
+        filesDir,
+        relativePath: `mg_kiro/files/${expectedFileName}`
+    };
 }
 
 // WebSocket消息处理
