@@ -2083,7 +2083,68 @@ async function startServer() {
               });
             }
             
-            // 🎯 精简响应 - 明确告诉AI下一步要做什么
+            // 🎯 修复批次逻辑 - 检查批次信息决定下一步行动
+            
+            // 🔥 关键修复：获取并分析批次信息
+            const batchInfo = taskContext?.batchInfo || {};
+            const isBatchTask = batchInfo.totalFiles > 1;
+            const currentFileName = taskContext?.fileName || '文件';
+            const allFiles = batchInfo.allFiles || [];
+            const currentFileIndex = allFiles.indexOf(taskContext?.relativePath || '') + 1;
+            
+            // 🔥 计算批次进度和验证时机
+            const batchProgress = {
+              current: currentFileIndex,
+              total: batchInfo.totalFiles || 1,
+              isLastFile: currentFileIndex === (batchInfo.totalFiles || 1),
+              remaining: (batchInfo.totalFiles || 1) - currentFileIndex
+            };
+            
+            // 🔥 根据批次情况决定下一步行动
+            const nextActions = [];
+            const allowedTools = ["Write"];
+            const forbiddenTools = ["init_step3_get_file_content", "init_step4_module_integration"];
+            
+            // 始终需要创建文件
+            nextActions.push({
+              action: "create_file",
+              tool: "Write", 
+              file_path: expectedFilePath,
+              relative_path: `mg_kiro/files/${expectedFileName}`,
+              content: "analysisContent from context",
+              description: `创建文件 ${expectedFileName}`
+            });
+            
+            // 🔥 关键修复：根据批次进度决定验证时机
+            if (isBatchTask && !batchProgress.isLastFile) {
+              // 批次任务且非最后一个文件：禁止验证，提示继续下一个文件
+              forbiddenTools.push("init_step3_check_task_completion");
+              nextActions.push({
+                action: "continue_batch",
+                tool: "init_step3_get_next_task", 
+                condition: "after file creation",
+                description: `继续处理批次中的下一个文件 (${batchProgress.remaining}个待处理)`
+              });
+            } else {
+              // 单文件任务 或 批次任务的最后一个文件：允许验证
+              nextActions.push({
+                action: "verify_completion",
+                tool: "init_step3_check_task_completion",
+                condition: "after file creation",
+                description: isBatchTask ? "验证整个批次任务完成" : "验证文件创建完成"
+              });
+              forbiddenTools.push("init_step3_get_next_task");
+            }
+            
+            // 🔥 构建智能AI指引
+            const progressInfo = isBatchTask 
+              ? `【批次${batchProgress.current}/${batchProgress.total}】`
+              : `【单文件任务】`;
+              
+            const nextStepHint = isBatchTask && !batchProgress.isLastFile
+              ? `⚠️ 批次未完成！还需处理${batchProgress.remaining}个文件，勿验证！`
+              : `✅ ${isBatchTask ? '批次任务完成' : '文件处理完成'}，可以验证`;
+            
             return {
               content: [{
                 type: "text",
@@ -2098,38 +2159,27 @@ async function startServer() {
                     style: analysisStyle || 'comprehensive',
                     includeCodeExamples: includeCodeExamples !== false
                   },
+                  
+                  // 🔥 新增：批次进度信息
+                  batchProgress: batchProgress,
                   success: true,
                   
-                  // 🎯 AI状态可视化 - 分析内容已准备，现在必须创建文件
+                  // 🎯 AI状态可视化 - 智能批次感知
                   workflow_status: {
                     current_step: 3,
-                    step_name: "文档文件创建", 
-                    progress: `已接收${taskContext?.fileName || '文件'}分析内容，现在需要创建文档文件`,
+                    step_name: "智能批次文档创建", 
+                    progress: `${progressInfo}已接收${currentFileName}分析内容，现在需要创建文档文件`,
                     
-                    // 🚨 关键修正：明确下一步是创建文件，而不是直接验证
-                    allowed_next_tools: ["Write"],
-                    required_actions: [
-                      {
-                        action: "create_file",
-                        tool: "Write", 
-                        file_path: expectedFilePath,
-                        relative_path: `mg_kiro/files/${expectedFileName}`,
-                        content: "analysisContent from context",
-                        description: `创建文件 ${expectedFileName}`
-                      },
-                      {
-                        action: "verify_completion",
-                        tool: "init_step3_check_task_completion",
-                        condition: "after file creation",
-                        description: "验证文件创建完成"
-                      }
-                    ],
-                    forbidden_tools: ["init_step3_get_next_task", "init_step3_get_file_content", "init_step4_module_integration"],
+                    // 🔥 修复后的智能行动指引
+                    allowed_next_tools: allowedTools,
+                    required_actions: nextActions,
+                    forbidden_tools: forbiddenTools,
                     
-                    // 🧠 修正的AI认知提示
-                    ai_context: "✅ 分析内容已准备完毕，但文件尚未创建到磁盘",
-                    ai_instruction: `🎯 下一步：使用 Write 工具创建文件 ${expectedFilePath}，内容为刚才提供的 analysisContent`,
-                    file_creation_pending: true
+                    // 🧠 智能AI认知提示
+                    ai_context: `✅ 分析内容已准备完毕 ${progressInfo}`,
+                    ai_instruction: `🎯 下一步：使用 Write 工具创建文件 ${expectedFilePath}\n${nextStepHint}`,
+                    file_creation_pending: true,
+                    batch_aware: isBatchTask
                   },
                   
                   // 新增：明确的文件创建指导
@@ -2200,6 +2250,54 @@ async function startServer() {
                   }, null, 2)
                 }]
               };
+            }
+
+            // 🔥 关键防护：批次完整性验证
+            if (actualStepType === 'step3' && taskContext?.batchInfo) {
+              const batchInfo = taskContext.batchInfo;
+              const isBatchTask = batchInfo.totalFiles > 1;
+              
+              if (isBatchTask) {
+                // 获取当前文件在批次中的位置
+                const allFiles = batchInfo.allFiles || [];
+                const currentFileIndex = allFiles.indexOf(taskContext.relativePath || '') + 1;
+                const isLastFile = currentFileIndex === batchInfo.totalFiles;
+                
+                if (!isLastFile) {
+                  // 🚫 批次任务未完成，禁止验证
+                  return {
+                    content: [{
+                      type: "text",
+                      text: JSON.stringify({
+                        error: true,
+                        code: "BATCH_INCOMPLETE",
+                        message: `❌ 批次任务未完成，无法验证！`,
+                        details: {
+                          currentFile: currentFileIndex,
+                          totalFiles: batchInfo.totalFiles,
+                          remaining: batchInfo.totalFiles - currentFileIndex,
+                          allFiles: allFiles
+                        },
+                        suggestion: `请先完成批次中剩余的${batchInfo.totalFiles - currentFileIndex}个文件`,
+                        nextAction: {
+                          tool: "init_step3_get_next_task",
+                          description: "获取下一个文件任务",
+                          why: "批次任务必须全部完成才能验证"
+                        },
+                        batchProgress: {
+                          current: currentFileIndex,
+                          total: batchInfo.totalFiles,
+                          completed: false,
+                          remaining: batchInfo.totalFiles - currentFileIndex
+                        }
+                      }, null, 2)
+                    }]
+                  };
+                } else {
+                  // ✅ 批次任务最后一个文件，可以验证
+                  console.log(`[BatchValidation] 批次任务最后一个文件，允许验证: ${currentFileIndex}/${batchInfo.totalFiles}`);
+                }
+              }
             }
             
             // 构造任务定义（简化版）
