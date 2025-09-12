@@ -5,7 +5,6 @@
 
 import { getServiceBus } from './service-bus.js';
 import ConfigService from './config-service.js';
-import AITodoManager from './ai-todo-manager.js';
 import CompleteTaskMonitor from './complete-task-monitor.js';
 
 import LanguageDetector from '../language/detector.js';
@@ -51,7 +50,6 @@ export function registerServices(configDir = './config') {
         .register('languageDetector', LanguageDetector, {}, [])
         
         .register('languageIntelligence', LanguageIntelligenceService, {}, [])
-        .register('aiTodoManager', AITodoManager, {}, [])
         .register('completeTaskMonitor', CompleteTaskMonitor, {}, [])
         .register('projectOverviewGenerator', ProjectOverviewGenerator, {}, [])
         .register('smartContentTrimmer', SmartContentTrimmer, {}, [])
@@ -183,7 +181,6 @@ export function getServices() {
         configService: serviceBus.get('configService'),
         
         // Create模式所需服务
-        aiTodoManager: serviceBus.get('aiTodoManager'),
         completeTaskMonitor: serviceBus.get('completeTaskMonitor'),
         
         // Init模式所需服务

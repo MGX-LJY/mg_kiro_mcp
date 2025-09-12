@@ -23,7 +23,6 @@ import fs from 'fs';
 import path from 'path';
 import { success, error } from '../../services/response-service.js';
 import { ProjectOverviewGenerator } from '../../services/project-overview-generator.js';
-import { AITodoManager } from '../../services/ai-todo-manager.js';
 import { FileQueryService } from '../../services/file-query-service.js';
 import { resolve } from 'path';
 
@@ -37,7 +36,6 @@ export function createClaudeCodeInitRoutes(services) {
     
     // 服务实例
     const projectOverviewGenerator = new ProjectOverviewGenerator();
-    const aiTodoManager = new AITodoManager();
     const fileQueryService = new FileQueryService();
     
     // 全局状态管理 - 改为项目隔离状态

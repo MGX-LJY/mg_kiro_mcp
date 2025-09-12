@@ -20,7 +20,7 @@ import http from 'http';
 import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
-import { dirname, join, resolve } from 'path';
+import path, { dirname, join, resolve } from 'path';
 import fs, { existsSync, mkdirSync, writeFileSync, readFileSync, rmSync, readdirSync, unlinkSync } from 'fs';
 import { createAppRoutes } from './server/routes/index.js';
 import { initializeServices } from './server/services/service-registry.js';
@@ -41,13 +41,8 @@ function getServiceContainer(serviceBus) {
     languageIntelligence: serviceBus.get('languageIntelligence'),
     configService: serviceBus.get('configService'),
     
-    // Create模式所需服务
-    aiTodoManager: serviceBus.get('aiTodoManager'),
-    completeTaskMonitor: serviceBus.get('completeTaskMonitor'),
-    
-    // Init模式所需服务
+    // 核心业务服务
     projectOverviewGenerator: serviceBus.get('projectOverviewGenerator'),
-    fileQueryService: serviceBus.get('fileQueryService'),
     
     // 新的文件分析模块和任务管理服务
     fileAnalysisModule: serviceBus.get('fileAnalysisModule'),
@@ -61,9 +56,6 @@ function getServiceContainer(serviceBus) {
     singleFileBatchStrategy: serviceBus.get('singleFileBatchStrategy'),
     largeFileMultiBatchStrategy: serviceBus.get('largeFileMultiBatchStrategy'),
     
-    // 向后兼容的别名（指向新服务）
-    promptService: serviceBus.get('masterTemplateService'),
-    unifiedTemplateService: serviceBus.get('masterTemplateService'),
     
     // ServiceBus工具方法
     getService: (name) => serviceBus.get(name),
@@ -454,7 +446,7 @@ async function startServer() {
       // 保存到内存
       currentTaskContexts.set(normalizedPath, contextData);
       
-      // 🔥 修复：同时保存到文件系统，确保持久化
+      // 同时保存到文件系统进行持久化
       try {
         const tempDir = join(projectPath, 'mg_kiro', '.tmp');
         if (!existsSync(tempDir)) {
@@ -482,7 +474,7 @@ async function startServer() {
         return context;
       }
       
-      // 🔥 修复：如果内存中没有，尝试从文件系统恢复
+      // 如果内存中没有，尝试从文件系统恢复
       try {
         const contextFile = join(projectPath, 'mg_kiro', '.tmp', 'current-task-context.json');
         if (existsSync(contextFile)) {
@@ -510,7 +502,7 @@ async function startServer() {
       // 从内存清除
       currentTaskContexts.delete(normalizedPath);
       
-      // 🔥 修复：同时清除文件系统中的任务上下文
+      // 同时清除文件系统中的任务上下文
       try {
         const contextFile = join(projectPath, 'mg_kiro', '.tmp', 'current-task-context.json');
         if (existsSync(contextFile)) {
@@ -571,16 +563,11 @@ async function startServer() {
       }
     }
     
-    // 获取或创建项目状态（保留原函数用于向后兼容）
-    function getProjectState(projectPath) {
-      // 现在使用增强版本，总是从文件加载最新状态
-      return getProjectStateEnhanced(projectPath);
-    }
     
     // 更新并保存项目状态
     function updateProjectState(projectPath, updates) {
       const normalizedPath = resolve(projectPath);
-      const state = getProjectState(normalizedPath);
+      const state = getProjectStateEnhanced(normalizedPath);
       
       Object.assign(state, updates);
       projectStates.set(normalizedPath, state);
@@ -630,22 +617,6 @@ async function startServer() {
       }
     }
     
-    // 加载步骤结果从临时文件 (保留以备未来使用)
-    // function loadStepResult(projectPath, stepName) {
-    //   const tempDir = getTempDirectory(projectPath);
-    //   const stepFile = join(tempDir, `${stepName}-result.json`);
-    //   
-    //   if (existsSync(stepFile)) {
-    //     try {
-    //       const stepData = JSON.parse(readFileSync(stepFile, 'utf8'));
-    //       return stepData.data;
-    //     } catch (error) {
-    //       console.warn(`[TempFile] 加载Step结果失败: ${error.message}`);
-    //       return null;
-    //     }
-    //   }
-    //   return null;
-    // }
     
     // 检查步骤是否已完成（通过临时文件验证）
     function isStepCompleted(projectPath, stepName) {
@@ -755,10 +726,8 @@ async function startServer() {
       return fileState;
     }
     
-    // 使用共享的serviceBus获取服务实例（修复状态管理问题）
+    // 获取必要的服务实例
     const projectOverviewGenerator = serviceBus.get('projectOverviewGenerator');
-    const aiTodoManager = serviceBus.get('aiTodoManager');
-    const fileQueryService = serviceBus.get('fileQueryService');
     
     const claudeCodeInit = {
       getProgress: () => ({ percentage: 0, message: 'Ready' }),
@@ -880,7 +849,7 @@ async function startServer() {
         }
         
         case "init_step2_create_todos": {
-          const { projectPath, batchSize, includeAnalysisTasks, includeSummaryTasks } = args;
+          const { projectPath, batchSize, includeAnalysisTasks = true, includeSummaryTasks = true } = args;
           
           if (!projectPath) {
             return {
@@ -891,9 +860,9 @@ async function startServer() {
             };
           }
           
-          console.log(`[MCP-Init-Step2] 创建AI任务列表 - ${projectPath}`);
+          console.log(`[MCP-Init-Step2] 创建AI任务列表（新架构） - ${projectPath}`);
           
-          // 使用增强的验证逻辑（新增）
+          // 使用增强的验证逻辑
           const validation = validateStepPrerequisites(projectPath, 2);
           if (!validation.valid) {
             return {
@@ -903,80 +872,150 @@ async function startServer() {
               }]
             };
           }
-          
+
+          // 检查服务可用性
+          const { fileAnalysisModule, unifiedTaskManager } = serviceContainer;
+          if (!fileAnalysisModule) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: 'FileAnalysisModule 服务未找到',
+                  tool: name,
+                  step: 2
+                }, null, 2)
+              }]
+            };
+          }
+
+          if (!unifiedTaskManager) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: 'UnifiedTaskManager 服务未找到',
+                  tool: name,
+                  step: 2
+                }, null, 2)
+              }]
+            };
+          }
+
           const initState = getProjectStateEnhanced(projectPath);
           
           // 更新当前步骤
           updateProjectState(projectPath, { currentStep: 2 });
+
+          // 获取Step1的结果
+          const step1Results = initState.stepResults.step1.projectOverview;
           
-          // 初始化文件查询服务
-          await fileQueryService.initializeProject(resolve(projectPath));
-          
-          // 获取处理计划
-          const processingPlan = await fileQueryService.getProcessingPlan(resolve(projectPath), {
-            batchSize: batchSize || 3,
-            priorityOrder: true,
-            estimateOnly: false
-          });
-          
-          // 创建AI任务列表
-          const todoResult = await aiTodoManager.createProjectTodoList(
-            resolve(projectPath),
-            processingPlan,
-            {
-              includeAnalysisTasks: includeAnalysisTasks !== false,
-              includeSummaryTasks: includeSummaryTasks !== false
+          // 准备FileAnalysisModule所需的数据
+          const analysisInput = {
+            projectPath: resolve(projectPath),
+            fileList: step1Results.fileAnalysisInput?.fileList || [],
+            projectMetadata: step1Results.projectMetadata,
+            languageProfile: step1Results.languageProfile,
+            options: {
+              smallFileThreshold: 15000,
+              largeFileThreshold: 20000,
+              batchTargetSize: batchSize ? batchSize * 6000 : 18000, // 转换批次大小为token目标
+              includeAnalysisTasks,
+              includeSummaryTasks
             }
-          );
-          
-          // 存储Step2结果到临时文件（新增）
-          saveStepResult(projectPath, 'step2', {
-            todoList: todoResult,
-            processingPlan: processingPlan,
-            completedAt: new Date().toISOString()
-          });
-          
-          // 存储Step2结果到主状态文件（保持兼容）
-          updateProjectState(projectPath, {
-            stepResults: {
-              ...initState.stepResults,
-              step2: {
-                todoList: todoResult,
-                processingPlan: processingPlan,
-                completedAt: new Date().toISOString()
-              }
-            },
-            stepsCompleted: [...initState.stepsCompleted, 'step2']
-          });
-          
-          return {
-            content: [
+          };
+
+          try {
+            // 使用FileAnalysisModule进行智能分析
+            console.log(`[MCP-Init-Step2] FileAnalysisModule 分析开始:`, {
+              fileCount: analysisInput.fileList.length,
+              projectName: analysisInput.projectMetadata?.name,
+              language: analysisInput.languageProfile?.primary,
+              targetBatchSize: analysisInput.options.batchTargetSize
+            });
+
+            const analysisResult = await fileAnalysisModule.analyzeProject(
+              analysisInput.projectPath,
+              analysisInput.fileList,
               {
+                projectMetadata: analysisInput.projectMetadata,
+                languageProfile: analysisInput.languageProfile,
+                options: analysisInput.options
+              }
+            );
+
+            // 解构分析结果以避免IDE未解析变量警告
+            const { fileAnalysis, batchStrategy, taskManagement } = analysisResult;
+            const { tokenSummary } = fileAnalysis || {};
+            
+            // 使用UnifiedTaskManager创建批次任务
+            console.log(`[MCP-Init-Step2] 使用UnifiedTaskManager创建任务...`);
+            
+            const batchResults = await unifiedTaskManager.createBatchTasks(
+              taskManagement?.batches || [], 
+              resolve(projectPath),
+              'step3'
+            );
+
+            console.log(`[MCP-Init-Step2] 任务创建完成:`, {
+              success: batchResults.success,
+              taskCount: batchResults.count || 0,
+              totalBatches: batchStrategy?.totalBatches || 0
+            });
+
+            // 存储Step2结果
+            const step2Results = {
+              analysisResult,
+              batchResults,
+              fileAnalysisInput: analysisInput,
+              completedAt: new Date().toISOString(),
+              // 兼容性字段
+              todoList: {
+                totalTasks: batchResults.count || 0,
+                batchTasks: batchResults.tasks || []
+              }
+            };
+
+            // 存储到临时文件和主状态
+            saveStepResult(projectPath, 'step2', step2Results);
+            updateProjectState(projectPath, {
+              stepResults: {
+                ...initState.stepResults,
+                step2: step2Results
+              },
+              stepsCompleted: [...initState.stepsCompleted, 'step2']
+            });
+
+            return {
+              content: [{
                 type: "text",
                 text: JSON.stringify({
                   currentStep: 2,
-                  stepName: 'create-todo',
+                  stepName: 'create-todo-with-new-architecture',
                   
-                  // Step2输出摘要
+                  // 新架构输出摘要
                   todoCreationResults: {
-                    totalTasks: todoResult.todoList?.totalTasks || 0,
-                    fileProcessingTasks: todoResult.summary?.fileProcessingTasks || 0,
-                    analysisTasks: todoResult.summary?.analysisTasks || 0,
-                    summaryTasks: todoResult.summary?.summaryTasks || 0,
-                    estimatedTime: todoResult.summary?.estimatedTotalTime || '30-60分钟'
+                    totalTasks: batchResults.count || 0,
+                    totalFiles: fileAnalysis?.totalFiles || 0,
+                    analyzedFiles: fileAnalysis?.analyzedFiles || 0,
+                    totalBatches: batchStrategy?.totalBatches || 0,
+                    totalTokens: tokenSummary?.totalTokens || 0,
+                    estimatedTime: taskManagement?.estimatedTime || '30-60分钟'
                   },
                   
                   // 下一步指导
                   workflow: {
-                    current_step: "2/6 - AI任务创建",
+                    current_step: "2/6 - AI任务创建（新架构）",
                     status: "completed",
+                    architecture: "FileAnalysisModule + UnifiedTaskManager",
                     next_steps: [{
                       tool: "init_step3_get_next_task",
-                      description: "获取下一个文件处理任务，开始文档生成循环",
+                      description: "开始智能批次文件处理循环，基于FileAnalysisModule的精确分析结果",
                       suggested_params: {
                         projectPath: resolve(projectPath)
                       },
-                      why: "AI任务列表已创建，现在需要逐个处理文件生成文档"
+                      why: "智能任务批次已创建，现在可以开始精确的文件处理流程"
                     }],
                     progress: {
                       completed: 2,
@@ -986,11 +1025,27 @@ async function startServer() {
                   },
                   
                   success: true,
-                  message: "Step2: AI任务列表创建完成，可以开始文件文档生成"
+                  message: "Step2: 智能任务列表创建完成（新架构），可以开始文档生成"
                 }, null, 2)
-              }
-            ]
-          };
+              }]
+            };
+
+          } catch (error) {
+            console.error('[MCP-Init-Step2] 新架构任务创建失败:', error);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: `新架构任务创建失败: ${error.message}`,
+                  tool: name,
+                  step: 2,
+                  architecture: "FileAnalysisModule + UnifiedTaskManager",
+                  suggestion: "请检查FileAnalysisModule和UnifiedTaskManager服务状态"
+                }, null, 2)
+              }]
+            };
+          }
         }
 
         case "init_step2_file_analysis": {
@@ -1176,9 +1231,9 @@ async function startServer() {
             };
           }
           
-          console.log(`[MCP-Init-Step3] 获取下一个文件任务 - ${projectPath}`);
+          console.log(`[MCP-Init-Step3] 获取下一个文件任务（新架构） - ${projectPath}`);
           
-          // 使用增强的验证逻辑（新增）
+          // 使用增强的验证逻辑
           const validation = validateStepPrerequisites(projectPath, 3);
           if (!validation.valid) {
             return {
@@ -1193,77 +1248,28 @@ async function startServer() {
           
           initState.currentStep = 3;
           
-          // 修复：使用aiTodoManager获取下一个待处理的任务，并添加状态恢复逻辑
-          let nextTaskResult = null;
-          
-          try {
-            // 首先尝试从aiTodoManager获取任务
-            nextTaskResult = await aiTodoManager.getNextTask(resolve(projectPath));
-          } catch (error) {
-            console.log(`[Step3-Fix] aiTodoManager中没有找到todoList，尝试从临时文件恢复: ${error.message}`);
-            
-            // 如果失败，尝试从.tmp文件恢复todoList状态
-            try {
-              const tempDir = join(resolve(projectPath), 'mg_kiro', '.tmp');
-              const step2File = join(tempDir, 'step2-result.json');
-              
-              if (existsSync(step2File)) {
-                const step2Data = JSON.parse(readFileSync(step2File, 'utf8'));
-                const savedTodoList = step2Data.data?.todoList?.todoList; // 修复双重嵌套问题
-                
-                if (savedTodoList && savedTodoList.totalTasks > 0) {
-                  console.log(`[Step3-Fix] 正在恢复todoList状态，包含 ${savedTodoList.totalTasks} 个任务`);
-                  console.log(`[Step3-Fix] 任务分布: fileProcessing=${savedTodoList.tasks?.fileProcessing?.length || 0}, analysis=${savedTodoList.tasks?.analysis?.length || 0}, summary=${savedTodoList.tasks?.summary?.length || 0}`);
-                  
-                  // 确保所有必需的属性都存在，特别是optimization数组
-                  if (!savedTodoList.tasks) {
-                    savedTodoList.tasks = {
-                      fileProcessing: [],
-                      analysis: [],
-                      summary: [],
-                      optimization: []
-                    };
-                  } else {
-                    // 确保optimization数组存在，这很关键
-                    if (!savedTodoList.tasks.optimization) {
-                      savedTodoList.tasks.optimization = [];
-                    }
-                  }
-                  
-                  // 验证数据完整性
-                  const totalExpectedTasks = (savedTodoList.tasks.fileProcessing?.length || 0) + 
-                                           (savedTodoList.tasks.analysis?.length || 0) + 
-                                           (savedTodoList.tasks.summary?.length || 0) + 
-                                           (savedTodoList.tasks.optimization?.length || 0);
-                  
-                  console.log(`[Step3-Fix] 数据验证: 期望任务数=${savedTodoList.totalTasks}, 实际任务数=${totalExpectedTasks}`);
-                  
-                  // 直接设置到aiTodoManager的内部Map中
-                  aiTodoManager.projectTodos.set(resolve(projectPath), savedTodoList);
-                  console.log(`[Step3-Fix] 状态恢复完成，设置了 ${savedTodoList.totalTasks} 个任务到projectTodos Map`);
-                  
-                  // 调试: 检查恢复的数据结构
-                  const restoredData = aiTodoManager.projectTodos.get(resolve(projectPath));
-                  console.log(`[Step3-Debug] 恢复的数据结构:`, {
-                    hasFileProcessing: !!restoredData?.tasks?.fileProcessing,
-                    fileProcessingLength: restoredData?.tasks?.fileProcessing?.length || 0,
-                    hasOptimization: !!restoredData?.tasks?.optimization,
-                    optimizationLength: restoredData?.tasks?.optimization?.length || 0,
-                    firstTaskStatus: restoredData?.tasks?.fileProcessing?.[0]?.status
-                  });
-                  
-                  // 再次尝试获取任务
-                  nextTaskResult = await aiTodoManager.getNextTask(resolve(projectPath));
-                  console.log(`[Step3-Fix] 恢复后的getNextTask结果:`, nextTaskResult.completed ? 'completed' : 'has_tasks');
-                }
-              }
-            } catch (restoreError) {
-              console.error(`[Step3-Fix] 恢复todoList状态失败: ${restoreError.message}`);
-              nextTaskResult = { completed: true, success: true };
-            }
+          // 检查服务可用性
+          const { unifiedTaskManager } = serviceContainer;
+          if (!unifiedTaskManager) {
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: 'UnifiedTaskManager 服务未找到',
+                  tool: name,
+                  step: 3
+                }, null, 2)
+              }]
+            };
           }
 
-          if (!nextTaskResult || nextTaskResult.completed === true) {
+          try {
+            // 使用UnifiedTaskManager获取下一个任务
+            const nextTask = await unifiedTaskManager.getNextTask(resolve(projectPath), 'step3');
+            
+            if (!nextTask) {
+              // 没有更多任务，Step3完成
             // 所有文件处理任务完成，准备进入Step4
             initState.stepsCompleted.push('step3');
             
@@ -1310,100 +1316,111 @@ async function startServer() {
             };
           }
           
-          // 返回下一个任务（修复：使用新的aiTodoManager结果格式）
-          const task = nextTaskResult.task;
-          
-          // 🔥 新增：自动设置当前任务上下文，解决AI调用断档问题
-          console.log('[DEBUG] 准备设置任务上下文，task结构:', JSON.stringify(task, null, 2));
-          const contextData = {
-            taskId: task?.id || 'unknown',
-            relativePath: task?.file?.relativePath || 'unknown',
-            fileName: task?.file?.name || 'unknown',
-            fileSize: task?.file?.estimatedSize || 0,
-            priority: task?.priority || 0,
-            estimatedTime: task?.estimatedTime || '未知',
-            title: task?.title || '未知任务',
-            description: task?.description || '无描述',
-            step: 'get_next_task_completed'
-          };
-          console.log('[DEBUG] 任务上下文数据:', JSON.stringify(contextData, null, 2));
-          console.log('[DEBUG] projectPath:', projectPath);
-          
-          setCurrentTaskContext(projectPath, contextData);
-          
-          return {
-            content: [
-              {
-                type: "text", 
+            // 获取任务统计信息
+            const taskStats = await unifiedTaskManager.getStepStatistics('step3');
+            
+            // 设置任务上下文
+            const taskMetadata = nextTask.metadata || {};
+            const contextData = {
+              taskId: nextTask.id,
+              relativePath: taskMetadata.relativePath || 'unknown',
+              fileName: taskMetadata.fileName || path.basename(taskMetadata.relativePath || 'unknown'),
+              fileSize: taskMetadata.fileSize || 0,
+              priority: taskMetadata.priority || 0,
+              estimatedTime: taskMetadata.estimatedTime || '未知',
+              title: `处理文件: ${taskMetadata.fileName || 'unknown'}`,
+              description: taskMetadata.description || '文件内容分析和文档生成',
+              step: 'get_next_task_completed'
+            };
+            
+            setCurrentTaskContext(projectPath, contextData);
+            
+            return {
+              content: [{
+                type: "text",
                 text: JSON.stringify({
                   currentStep: 3,
                   stepName: 'file-documentation',
                   status: "task_available",
                   
-                  // 当前任务信息（使用aiTodoManager的格式）
+                  // 当前任务信息（新架构格式）
                   currentTask: {
-                    taskId: task?.id || 'unknown',
-                    filePath: task?.file?.relativePath || 'unknown',
-                    fileName: task?.file?.name || 'unknown',
-                    fileSize: task?.file?.estimatedSize || 0,
-                    priority: task?.priority || 0,
-                    estimatedTime: task?.estimatedTime || '未知',
-                    title: task?.title || '未知任务',
-                    description: task?.description || '无描述'
+                    taskId: nextTask.id,
+                    filePath: taskMetadata.relativePath || 'unknown',
+                    fileName: contextData.fileName,
+                    fileSize: contextData.fileSize,
+                    priority: contextData.priority,
+                    estimatedTime: contextData.estimatedTime,
+                    title: contextData.title,
+                    description: contextData.description,
+                    stepType: nextTask.stepType,
+                    status: nextTask.status
                   },
                   
-                  // 进度信息（使用aiTodoManager的格式）
-                  progress: nextTaskResult.progress || {
-                    completed: 0,
-                    total: 0,
-                    remaining: 0,
-                    percentage: 0
+                  // 进度信息（来自UnifiedTaskManager统计）
+                  progress: {
+                    completed: taskStats.statistics?.completed || 0,
+                    total: taskStats.statistics?.total || 0,
+                    remaining: (taskStats.statistics?.total || 0) - (taskStats.statistics?.completed || 0),
+                    percentage: taskStats.statistics?.total > 0 ? 
+                      Math.round((taskStats.statistics?.completed || 0) / taskStats.statistics.total * 100) : 0
                   },
                   
-                  // 🔥 新增：智能调用指导 - AI现在可以直接调用，无需手动传参
+                  // 工作流指导
                   workflow: {
                     current_step: "3/6 - 文件文档生成（进行中）",
                     status: "in_progress",
                     next_steps: [{
                       tool: "init_step3_get_file_content",
-                      description: "获取文件内容进行文档生成（自动获取任务参数）",
+                      description: "获取文件内容进行文档生成",
                       suggested_params: {
                         projectPath: resolve(projectPath)
-                        // ⚡ 注意：不再需要手动传递 relativePath 和 taskId，会自动从上下文获取
                       },
-                      why: "任务上下文已自动设置，AI可以直接调用获取文件内容"
+                      why: "任务已准备就绪，可以获取文件内容"
                     }],
                     progress: {
                       completed: 3,
                       total: 6,
-                      percentage: Math.round(3/6 * 100)
+                      percentage: 50
                     }
                   },
                   
-                  // 🎯 AI状态可视化 - 明确告诉AI当前可以做什么
+                  // 状态可视化
                   workflow_status: {
                     current_step: 3,
-                    step_name: "文件处理循环", 
-                    progress: `处理${task?.id || 'unknown'} (${(nextTaskResult.progress?.completed || 0) + 1}/${nextTaskResult.progress?.total || 0})`,
+                    step_name: "文件处理循环",
+                    progress: `处理 ${nextTask.id} (${(taskStats.statistics?.completed || 0) + 1}/${taskStats.statistics?.total || 0})`,
                     allowed_next_tools: ["init_step3_get_file_content"],
                     forbidden_tools: ["init_step3_complete_task", "init_step4_module_integration"],
-                    
-                    // 🧠 AI认知提示
-                    ai_context: "✅ 系统已进入step3，任务上下文已设置，现在只能调用get_file_content处理当前任务",
-                    ai_instruction: "🎯 下一步：调用 init_step3_get_file_content (无需传递taskId和relativePath，会自动获取)",
+                    ai_context: "✅ 系统已进入step3，任务上下文已设置",
+                    ai_instruction: "🎯 下一步：调用 init_step3_get_file_content",
                     current_task_ready: true
                   },
                   
                   success: true,
-                  message: "Step3: 获取到下一个文件处理任务，上下文已自动设置"
+                  message: "Step3: 获取到下一个文件处理任务"
                 }, null, 2)
-              }
-            ]
-          };
+              }]
+            };
+            
+          } catch (error) {
+            console.error('[Step3] 获取任务失败:', error.message);
+            return {
+              content: [{
+                type: "text",
+                text: JSON.stringify({
+                  error: true,
+                  message: `获取任务失败: ${error.message}`,
+                  tool: name,
+                  step: 3
+                }, null, 2)
+              }]
+            };
+          }
         }
         
         case "init_step3_get_file_content": {
-          // 🔥 新增：智能参数补全 - 支持自动从上下文获取任务信息
+          // 智能参数补全 - 支持自动从上下文获取任务信息
           let { projectPath, taskId, relativePath} = args;
           
           if (!projectPath) {
@@ -1415,7 +1432,7 @@ async function startServer() {
             };
           }
           
-          // 🔥 智能参数补全：从任务上下文自动获取缺失的参数
+          // 智能参数补全：从任务上下文自动获取缺失的参数
           const taskContext = getCurrentTaskContext(projectPath);
           
           if (!taskId && taskContext) {
@@ -1428,7 +1445,7 @@ async function startServer() {
             console.log(`[Auto-Param] 从上下文自动获取 relativePath: ${relativePath}`);
           }
           
-          // 🔥 容错处理：如果还是缺少关键参数，尝试智能恢复
+          // 容错处理：如果还是缺少关键参数，尝试智能恢复
           if (!taskId || !relativePath) {
             if (taskContext) {
               console.log(`[Auto-Recovery] 任务上下文存在但参数不完整，尝试恢复...`);
@@ -1467,7 +1484,7 @@ async function startServer() {
           
           console.log(`[MCP-Init-Step3] 获取文件内容 - ${projectPath} 任务:${taskId} 文件:${relativePath}`);
           
-          // 🔥 调试：检查文件大小，确保分片逻辑会被触发
+          // 调试：检查文件大小，确保分片逻辑会被触发
           try {
             const fs = await import('fs');
             const fullFilePath = resolve(projectPath, relativePath);
@@ -1482,19 +1499,19 @@ async function startServer() {
           }
           
           try {
-            // 🔥 修复：使用fileQueryService的智能分片功能替代直接文件读取
+            // 使用fileQueryService的智能分片功能
             const fileQueryService = serviceBus.get('fileQueryService');
             
-            // 🔥 强制小分片处理 - 确保每个响应都在MCP token限制内
+            // 强制小分片处理，确保每个响应都在MCP token限制内
             let processingOptions = {
               maxContentLength: 6000,  // 大幅降低，确保安全
               includeTrimming: true,
               includeAnalysis: false, // 关闭分析减少token
               enableChunking: true,   // 强制启用分片
-              maxTokensPerChunk: 1500 // 🔥 保守的分片token限制(约6000字符)
+              maxTokensPerChunk: 1500 // 保守的分片token限制(约6000字符)
             };
             
-            // 🔥 根据文件大小动态调整分片策略
+            // 根据文件大小动态调整分片策略
             try {
               const fs = await import('fs');
               const fullFilePath = resolve(projectPath, relativePath);
@@ -1544,7 +1561,7 @@ async function startServer() {
               fs.mkdirSync(filesDir, { recursive: true });
             }
             
-            // 🔥 更新任务上下文状态
+            // 更新任务上下文状态
             if (taskContext) {
               setCurrentTaskContext(projectPath, {
                 ...taskContext,
@@ -1553,7 +1570,7 @@ async function startServer() {
               });
             }
             
-            // 🔥 超精简响应结构 - 只返回核心内容，减少token消耗
+            // 超精简响应结构 - 只返回核心内容，减少token消耗
             let responseData = {
               currentStep: 3,
               stepName: 'file-documentation',
@@ -1581,7 +1598,7 @@ async function startServer() {
               }
             };
 
-            // 🔥 只在分片模式下添加必要的分片信息
+            // 只在分片模式下添加必要的分片信息
             if (fileDetails.chunking) {
               responseData.chunking = {
                 currentChunk: fileDetails.chunking.currentChunk || 1,
@@ -1594,7 +1611,7 @@ async function startServer() {
               }
             }
 
-            // 🔥 激进截断策略 - 确保绝对不会超过MCP限制
+            // 激进截断策略 - 确保绝对不会超过MCP限制
             const contentSize = fileContent.length;
             const maxSafeContentSize = 10000; // 10KB绝对安全限制
             
@@ -1613,7 +1630,7 @@ async function startServer() {
               responseData.status = 'content_safe_truncated';
             }
             
-            // 🔥 最终安全检查 - 确保整个响应结构也不会过大
+            // 最终安全检查 - 确保整个响应结构也不会过大
             const finalCheckJson = JSON.stringify(responseData);
             const finalTokens = finalCheckJson.length * 0.25;
             console.log(`[MCP-FinalCheck] 最终响应大小: ${finalCheckJson.length}字符, ~${Math.round(finalTokens)} tokens`);
@@ -1661,7 +1678,7 @@ async function startServer() {
               const fileName = relativePath.split('/').pop();
               const originalLength = basicContent.length;
               
-              // 🔥 修复：Fallback模式也需要MCP token限制检查
+              // Fallback模式也需要MCP token限制检查
               let fallbackData = {
                 currentStep: 3,
                 stepName: 'file-documentation',
@@ -1754,7 +1771,7 @@ async function startServer() {
             };
           }
           
-          // 🔥 自动参数补全：从上下文获取taskId和文件信息
+          // 自动参数补全：从上下文获取taskId和文件信息
           const taskContext = getCurrentTaskContext(projectPath);
           if (!taskId && taskContext) {
             taskId = taskContext.taskId;
@@ -1787,7 +1804,7 @@ async function startServer() {
               const fileSize = fileContent.length;
               const lineCount = fileContent.split('\n').length;
               
-              // 🔥 新增：计算期望的文件路径和名称
+              // 新增：计算期望的文件路径和名称
               const batchStrategy = taskContext?.batchStrategy || 'Unknown';
               const { expectedFilePath, expectedFileName } = generateExpectedFilePath(
                 taskId, batchStrategy, fileName, projectPath
@@ -1808,7 +1825,7 @@ async function startServer() {
                       template_usage: "使用模板中的结构，替换{{变量}}为实际内容",
                       next_action: "再次调用 init_step3_generate_analysis，提供 analysisContent 参数",
                       
-                      // 🔥 新增：明确的文件创建指导
+                      // 新增：明确的文件创建指导
                       file_creation_workflow: {
                         step1: "基于模板生成分析内容",
                         step2: "调用 init_step3_generate_analysis 提供 analysisContent",
@@ -1889,14 +1906,14 @@ async function startServer() {
             // 模式2：AI提供了分析内容，保存到上下文并指导文件创建
             console.log(`[MCP-Init-Step3] 接收AI生成的分析文档 - ${projectPath} 任务:${taskId}`);
             
-            // 🔥 计算文件路径信息
+            // 计算文件路径信息
             const batchStrategy = taskContext?.batchStrategy || 'Unknown';
             const fileName = taskContext?.fileName || '未知文件';
             const { expectedFilePath, expectedFileName } = generateExpectedFilePath(
               taskId, batchStrategy, fileName, projectPath
             );
             
-            // 🔥 保存AI生成的分析文档到任务上下文，包含文件路径信息
+            // 保存AI生成的分析文档到任务上下文，包含文件路径信息
             if (taskContext) {
               setCurrentTaskContext(projectPath, {
                 ...taskContext,
@@ -1958,7 +1975,7 @@ async function startServer() {
                     file_creation_pending: true
                   },
                   
-                  // 🔥 新增：明确的文件创建指导
+                  // 新增：明确的文件创建指导
                   file_creation_required: {
                     tool: "Write",
                     file_path: expectedFilePath,
@@ -3064,7 +3081,7 @@ ${docsDir}/
           
           if (projectPath) {
             // 获取特定项目的状态
-            const projectState = getProjectState(projectPath);
+            const projectState = getProjectStateEnhanced(projectPath);
             
             return {
               content: [
@@ -3139,7 +3156,7 @@ ${docsDir}/
           let cleanupResults = {};
           if (projectPath) {
             try {
-              // 🔥 新增：清理任务上下文（解决AI调用断档问题）
+              // 新增：清理任务上下文（解决AI调用断档问题）
               const normalizedPath = resolve(projectPath);
               const hadContext = currentTaskContexts.has(normalizedPath);
               clearCurrentTaskContext(projectPath);
@@ -3151,11 +3168,8 @@ ${docsDir}/
               // 清除内存状态
               projectStates.delete(normalizedPath);
               
-              // 清理aiTodoManager中的项目数据
-              if (aiTodoManager && aiTodoManager.projectTodos) {
-                aiTodoManager.projectTodos.delete(normalizedPath);
-                console.log(`[Reset] 已清理aiTodoManager中的项目数据: ${normalizedPath}`);
-              }
+              // 清理UnifiedTaskManager中的项目数据（如果支持特定项目清理）
+              // UnifiedTaskManager目前使用全局重置，项目级清理在全局重置中处理
               
               cleanupResults.taskContextCleared = hadContext;
               cleanupResults.projectStateCleared = true;
@@ -3165,16 +3179,18 @@ ${docsDir}/
               cleanupResults.error = error.message;
             }
           } else {
-            // 🔥 全局重置：清理所有内存状态和任务上下文
+            // 全局重置：清理所有内存状态和任务上下文
             const projectCount = projectStates.size;
             const contextCount = currentTaskContexts.size;
             
             projectStates.clear();
             currentTaskContexts.clear(); // 清理所有任务上下文
             
-            // 清理所有aiTodoManager数据
-            if (aiTodoManager && aiTodoManager.projectTodos) {
-              aiTodoManager.projectTodos.clear();
+            // 清理UnifiedTaskManager数据
+            const { unifiedTaskManager } = serviceContainer;
+            if (unifiedTaskManager) {
+              await unifiedTaskManager.reset();
+              console.log(`[Reset] UnifiedTaskManager已重置`);
             }
             
             console.log(`[Reset] 全局清理完成: ${projectCount}个项目状态，${contextCount}个任务上下文`);
@@ -3199,7 +3215,7 @@ ${docsDir}/
                   version: "4.0-complete-6-steps-automated",
                   cleanupResults: cleanupResults, // 增强的清理结果信息
                   
-                  // 🔥 新增：自动化功能说明
+                  // 新增：自动化功能说明
                   automationFeatures: {
                     smartParameterCompletion: "AI调用工具时自动补全参数",
                     contextManagement: "自动维护任务上下文，避免断档",
