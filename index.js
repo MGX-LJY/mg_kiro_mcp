@@ -261,7 +261,7 @@ async function startServer() {
         },
         {
           name: "init_step3_get_next_task",
-          description: "🚀 [工作流入口] 启动文件处理流程 - ⚠️ 只能在完成step1+step2后调用！调用后系统进入step3状态，返回第一个文件任务(如file_1_1)。✅ 必须严格按照：此工具→get_file_content→complete_task 的顺序执行，不可跳过！",
+          description: "🚀 [批次任务入口] 启动文件处理流程 - ⚠️ 只能在完成step1+step2后调用！🔄 【批次任务 - 必须完成所有文件】系统进入step3状态，返回第一个文件任务。📋 任务要求：必须处理完所有文件才算完成！✅ 完整流程：get_next_task→get_file_content→generate_analysis→check_completion→【循环直到所有文件完成】",
           inputSchema: {
             type: "object",
             properties: {
@@ -1492,9 +1492,14 @@ async function startServer() {
                       `✅ 系统已进入step3，批次任务已设置 (${taskMetadata.files?.length || 0}个文件)` : 
                       "✅ 系统已进入step3，任务上下文已设置",
                     ai_instruction: taskMetadata.type === 'file_batch' ? 
-                      `🔄 批次任务：需处理${taskMetadata.files?.length || 0}个文件 [${(taskMetadata.files || []).join(', ')}]
+                      `🔄 【批次任务 - 必须完成所有${taskMetadata.files?.length || 0}个文件】
+📋 文件列表：[${(taskMetadata.files || []).join(', ')}]
+⚠️ 重要：每个文件都必须生成 文件名.md 文档！
 🎯 下一步：调用 init_step3_get_file_content 开始处理第1个文件: ${relativePath}` :
-                      "🎯 下一步：调用 init_step3_get_file_content",
+                      `🔄 【批次任务开始 - 必须处理完所有文件】
+📋 任务流程：1→2→3→4 每个文件都重复
+⚠️ 重要：每个文件都必须生成 文件名.md 文档！
+🎯 下一步：调用 init_step3_get_file_content 处理第一个文件`,
                     current_task_ready: true
                   },
                   
@@ -1724,10 +1729,13 @@ async function startServer() {
                   `✅ 文件内容已获取，批次任务进行中 (处理${taskMetadata.allFiles.length}个文件中的: ${fileName})` :
                   "✅ 文件内容已获取，任务上下文已更新，现在必须调用generate_analysis生成分析文档",
                 ai_instruction: taskMetadata.allFiles && taskMetadata.allFiles.length > 1 ?
-                  `📋 批次进度：处理第${taskMetadata.allFiles.indexOf(relativePath) + 1}/${taskMetadata.allFiles.length}个文件
+                  `📋 【批次进度 ${taskMetadata.allFiles.indexOf(relativePath) + 1}/${taskMetadata.allFiles.length}】还需要处理第${taskMetadata.allFiles.indexOf(relativePath) + 2 <= taskMetadata.allFiles.length ? taskMetadata.allFiles.indexOf(relativePath) + 2 + '个文件' : '0个文件（即将完成）'}
 🔄 当前文件：${fileName}
+⚠️ 批次任务完成条件：所有 ${taskMetadata.allFiles.length} 个文件都必须生成分析文档！
 🎯 下一步：调用 init_step3_generate_analysis 生成此文件的分析文档` :
-                  `🎯 下一步：调用 init_step3_generate_analysis 基于文件内容生成分析文档`,
+                  `📋 【批次任务进行中】文件内容已获取，现在必须生成分析文档
+⚠️ 重要：必须为每个文件都生成完整的 文件名.md 文档！
+🎯 下一步：调用 init_step3_generate_analysis 生成分析文档`,
                 content_ready: true
               }
             };
@@ -2231,6 +2239,20 @@ async function startServer() {
                       current_step: `${actualStepType}/6 - 任务自动完成`,
                       status: "auto_completed",
                       next_action: validation.nextAction
+                    },
+                    // 🔄 批次任务循环指导
+                    batchTaskGuidance: {
+                      ai_instruction: validation.nextAction === 'continue_next_file' ?
+                        `✅ 当前文件已完成！
+🔄 【批次任务继续】现在需要处理下一个文件
+🎯 下一步：立即调用 init_step3_get_next_task 获取下一个文件任务
+⚠️ 重要：批次任务未完成，必须继续处理所有文件！` :
+                        validation.nextAction === 'step_completed' ?
+                        `🎉 【Step3批次任务完成】所有文件已处理完毕！
+🚀 下一步：调用 init_step4_module_integration 进入模块整合阶段` :
+                        `✅ 任务已完成，请根据nextAction继续操作: ${validation.nextAction}`,
+                      continue_batch: validation.nextAction === 'continue_next_file',
+                      step_completed: validation.nextAction === 'step_completed'
                     }
                   }, null, 2)
                 }]
@@ -2251,11 +2273,15 @@ async function startServer() {
                     missingInfo: validation.details,
                     // 🧠 增强批次感知反馈
                     aiInstruction: taskContext?.metadata?.allFiles && taskContext.metadata.allFiles.length > 1 ?
-                      `📋 批次任务未完成 (${taskContext.metadata.allFiles.length}个文件)：
-🔍 检查批次中所有文件是否都已生成分析文档
-📁 批次文件列表：${taskContext.metadata.allFiles.join(', ')}
-🎯 请确保每个文件都有对应的 *_analysis.md 文档，然后再次调用此工具验证` :
-                      `请生成缺失的文档或文件，然后再次调用此工具检查完成状态`,
+                      `❌ 【批次任务未完成】还有文件缺少分析文档！
+📋 批次文件 (${taskContext.metadata.allFiles.length}个)：${taskContext.metadata.allFiles.join(', ')}
+🔍 检查：mg_kiro/files/ 文件夹中每个文件都必须有对应的 文件名.md 文档
+⚠️ 如果发现缺失文档，请使用 Write 工具创建
+✅ 完成后再次调用 init_step3_check_task_completion 验证` :
+                      `❌ 【任务未完成】当前文件缺少分析文档
+🔍 请检查是否已生成完整的 文件名.md 文档
+⚠️ 如果缺失，请使用 Write 工具创建文档
+✅ 完成后再次调用 init_step3_check_task_completion 验证`,
                     retryAdvice: taskContext?.metadata?.allFiles && taskContext.metadata.allFiles.length > 1 ?
                       "确保批次中所有文件都已生成分析文档后再次验证" :
                       "生成文件后请再次调用 init_step3_check_task_completion"
