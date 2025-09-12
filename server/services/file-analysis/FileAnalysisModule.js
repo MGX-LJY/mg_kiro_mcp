@@ -19,6 +19,10 @@
  * - 大文件 (>20K tokens) -> 大文件多批次策略
  */
 
+import { TokenResultHelper, TokenResultFactory } from '../../interfaces/TokenResult.js';
+import { ErrorResultFactory } from '../../interfaces/ErrorResult.js';
+import { TaskDefinitionFactory, TaskDefinitionHelper } from '../../interfaces/TaskDefinition.js';
+
 export class FileAnalysisModule {
     constructor(config = {}, dependencies = {}, serviceBus = null) {
         // 配置合并（ServiceBus格式）
@@ -39,108 +43,7 @@ export class FileAnalysisModule {
             single: dependencies.singleFileBatchStrategy,
             largeMulti: dependencies.largeFileMultiBatchStrategy
         };
-        this.taskGenerator = {
-            generateTaskDefinitions: async (batchPlans, projectMetadata, config) => {
-                const taskDefinitions = [];
-                let taskCounter = 1;
-                
-                console.log('[FileAnalysisModule] 开始生成任务定义 - 使用统一BatchResult接口');
-                
-                // 统一处理所有批次类型 - 所有批次现在都有统一的BatchResult格式
-                const allBatches = [
-                    ...(batchPlans.combinedBatches || []),
-                    ...(batchPlans.singleBatches || []),
-                    ...(batchPlans.multiBatches || [])
-                ];
-                
-                for (const batch of allBatches) {
-                    // 统一验证：所有批次都应该有files数组和基础字段
-                    if (!batch.files || batch.files.length === 0) {
-                        console.warn('[FileAnalysisModule] 批次缺少files数组，跳过:', batch.batchId, batch.type);
-                        continue;
-                    }
-                    
-                    // 获取主要文件信息（用于元数据）
-                    const primaryFile = batch.files[0];
-                    
-                    // 创建统一的任务定义
-                    const taskDefinition = {
-                        id: `task_${taskCounter}`,
-                        type: this._mapBatchTypeToTaskType(batch.type),
-                        strategy: batch.strategy,
-                        files: batch.files.map(f => f.path), // 统一提取文件路径
-                        estimatedTokens: batch.estimatedTokens,
-                        metadata: {
-                            // 基础批次信息
-                            batchId: batch.batchId,
-                            strategy: batch.strategy,
-                            fileCount: batch.fileCount,
-                            type: batch.type,
-                            
-                            // 主要文件信息
-                            relativePath: primaryFile.path,
-                            fileName: primaryFile.path.split('/').pop() || 'unknown',
-                            fileSize: primaryFile.size || 0,
-                            language: primaryFile.language || 'javascript',
-                            
-                            // 分片建议（从batch metadata继承）
-                            chunkingAdvice: batch.metadata?.processingHints || {
-                                recommended: false,
-                                strategy: 'default'
-                            }
-                        }
-                    };
-                    
-                    // 根据批次类型添加特殊元数据
-                    if (batch.type === 'large_file_chunk' && batch.chunkInfo) {
-                        // 大文件分片的特殊元数据
-                        taskDefinition.metadata.chunkIndex = batch.chunkInfo.chunkIndex;
-                        taskDefinition.metadata.totalChunks = batch.chunkInfo.totalChunks;
-                        taskDefinition.metadata.startLine = batch.chunkInfo.startLine;
-                        taskDefinition.metadata.endLine = batch.chunkInfo.endLine;
-                        taskDefinition.metadata.parentFileInfo = batch.parentFileInfo;
-                        
-                        console.log(`[FileAnalysisModule] 创建大文件chunk任务: ${batch.batchId} (${batch.chunkInfo.chunkIndex}/${batch.chunkInfo.totalChunks})`);
-                    } else if (batch.type === 'combined_batch') {
-                        // 组合批次的特殊元数据
-                        taskDefinition.metadata.allFiles = batch.files.map(f => ({
-                            path: f.path,
-                            tokenCount: f.tokenCount,
-                            size: f.size,
-                            language: f.language
-                        }));
-                        
-                        console.log(`[FileAnalysisModule] 创建组合批次任务: ${batch.batchId} (${batch.files.length}个文件)`);
-                    } else if (batch.type === 'single_batch') {
-                        // 单文件批次的特殊元数据
-                        taskDefinition.metadata.singleFileInfo = primaryFile;
-                        
-                        console.log(`[FileAnalysisModule] 创建单文件任务: ${batch.batchId} (${primaryFile.path})`);
-                    }
-                    
-                    taskDefinitions.push(taskDefinition);
-                    taskCounter++;
-                }
-                
-                console.log(`[FileAnalysisModule] 任务定义生成完成: 总计${taskDefinitions.length}个任务`);
-                return taskDefinitions;
-            },
-            
-            /**
-             * 将BatchResult类型映射为TaskDefinition类型
-             * @private
-             */
-            _mapBatchTypeToTaskType: (batchType) => {
-                switch (batchType) {
-                    case 'combined_batch': return 'file_batch';
-                    case 'single_batch': return 'single_file';
-                    case 'large_file_chunk': return 'large_file_chunk';
-                    default: 
-                        console.warn(`[FileAnalysisModule] 未知的批次类型: ${batchType}`);
-                        return 'file_batch';
-                }
-            }
-        };
+        
         this.progressTracker = null; // 暂时不需要
         this.serviceBus = serviceBus;
         
@@ -168,7 +71,6 @@ export class FileAnalysisModule {
         this.batchStrategies.combined = combinedStrategy;
         this.batchStrategies.single = singleStrategy;
         this.batchStrategies.largeMulti = largeMultiStrategy;
-        this.taskGenerator = taskGenerator;
         this.progressTracker = progressTracker;
     }
 
@@ -199,12 +101,12 @@ export class FileAnalysisModule {
         const startTime = Date.now();
         
         try {
-            // Step 1: 文件Token分析
-            console.log(`[FileAnalysisModule] 执行文件Token分析...`);
+            // Step 1: 分析文件Token数量
+            console.log(`[FileAnalysisModule] 分析文件Token数量...`);
             const fileAnalyses = await this._analyzeFileTokens(projectPath, fileList, projectMetadata);
             
-            // Step 2: 文件分类和策略分配
-            console.log(`[FileAnalysisModule] 执行文件分类和策略分配...`);
+            // Step 2: 文件分类
+            console.log(`[FileAnalysisModule] 文件分类...`);
             const fileCategories = this._categorizeFiles(fileAnalyses);
             
             // Step 3: 生成批次计划
@@ -222,12 +124,11 @@ export class FileAnalysisModule {
             const strategySummary = this._generateStrategySummary(fileCategories, batchPlans);
             
             const processingTime = Date.now() - startTime;
-            
-            console.log(`[FileAnalysisModule] 分析完成，耗时: ${processingTime}ms`);
+            console.log(`[FileAnalysisModule] 项目分析完成: ${processingTime}ms`);
             
             return {
                 success: true,
-                analysisResult: {
+                data: {
                     fileAnalyses,
                     fileCategories,
                     batchPlans,
@@ -245,15 +146,15 @@ export class FileAnalysisModule {
         } catch (error) {
             console.error(`[FileAnalysisModule] 分析失败:`, error);
             
-            return {
-                success: false,
-                error: {
-                    message: error.message,
-                    type: 'ANALYSIS_ERROR',
+            return ErrorResultFactory.createAnalysisError(
+                error.message,
+                {
+                    service: 'FileAnalysisModule',
+                    method: 'analyzeProject',
                     projectPath,
                     timestamp: new Date().toISOString()
                 }
-            };
+            );
         }
     }
 
@@ -329,8 +230,8 @@ export class FileAnalysisModule {
                     extension: file.extension,
                     isSourceCode: file.isSourceCode,
                     language: file.language,
-                    // 错误处理结果
-                    tokenCount: 0,
+                    // 错误处理结果 - 使用统一TokenResult格式
+                    tokenCount: TokenResultFactory.createErrorTokenResult(file.path, error.message),
                     codeStructure: null,
                     analysisError: error.message,
                     analysisTimestamp: new Date().toISOString()
@@ -363,10 +264,8 @@ export class FileAnalysisModule {
                 continue;
             }
             
-            // Fix: tokenCount is an object, extract the actual token count
-            const actualTokenCount = analysis.tokenCount?.totalTokens || 
-                                   analysis.tokenCount?.safeTokenCount || 
-                                   analysis.tokenCount || 0;
+            // 使用TokenResultHelper统一提取Token数量
+            const actualTokenCount = TokenResultHelper.getTokenCount(analysis.tokenCount);
             
             let category;
             if (actualTokenCount < this.config.smallFileThreshold) {
@@ -443,11 +342,87 @@ export class FileAnalysisModule {
      * @private
      */
     async _createTaskDefinitions(batchPlans, projectMetadata) {
-        return await this.taskGenerator.generateTaskDefinitions(
-            batchPlans,
-            projectMetadata,
-            this.config
-        );
+        const taskDefinitions = [];
+        let taskCounter = 1;
+        
+        console.log('[FileAnalysisModule] 开始生成任务定义 - 使用统一BatchResult接口');
+        
+        // 统一处理所有批次类型
+        const allBatches = [
+            ...(batchPlans.combinedBatches || []),
+            ...(batchPlans.singleBatches || []),
+            ...(batchPlans.multiBatches || [])
+        ];
+        
+        for (const batch of allBatches) {
+            // 统一验证：所有批次都应该有files数组和基础字段
+            if (!batch.files || batch.files.length === 0) {
+                console.warn('[FileAnalysisModule] 批次缺少files数组，跳过:', batch.batchId, batch.type);
+                continue;
+            }
+            
+            // 获取主要文件信息（用于元数据）
+            const primaryFile = batch.files[0];
+            
+            // 创建统一的任务定义 - 使用TaskDefinitionFactory
+            const taskDefinition = TaskDefinitionFactory.createTaskDefinition(
+                `task_${taskCounter}`,
+                FileAnalysisModule._mapBatchTypeToTaskType(batch.type),
+                batch.strategy || 'default',
+                batch.files.map(f => f.path),
+                batch.estimatedTokens,
+                {
+                    batchId: batch.batchId,
+                    projectPath: projectMetadata.projectPath,
+                    fileInfo: {
+                        path: primaryFile.path,
+                        name: primaryFile.path.split('/').pop() || 'unknown',
+                        size: primaryFile.size || 0,
+                        language: primaryFile.language || 'javascript'
+                    },
+                    chunkingAdvice: batch.metadata?.processingHints || {
+                        recommended: false,
+                        strategy: 'default'
+                    },
+                    strategySpecific: {
+                        fileCount: batch.fileCount,
+                        batchType: batch.type
+                    }
+                }
+            );
+            
+            // 根据批次类型添加特殊元数据
+            if (batch.type === 'large_file_chunk' && batch.chunkInfo) {
+                TaskDefinitionHelper.addChunkInfo(taskDefinition, {
+                    chunkIndex: batch.chunkInfo.chunkIndex,
+                    totalChunks: batch.chunkInfo.totalChunks,
+                    startLine: batch.chunkInfo.startLine,
+                    endLine: batch.chunkInfo.endLine,
+                    parentFileInfo: batch.parentFileInfo
+                });
+                
+                console.log(`[FileAnalysisModule] 创建大文件chunk任务: ${batch.batchId} (${batch.chunkInfo.chunkIndex}/${batch.chunkInfo.totalChunks})`);
+            } else if (batch.type === 'combined_batch') {
+                TaskDefinitionHelper.addMultiFileInfo(taskDefinition, batch.files.map(f => ({
+                    path: f.path,
+                    tokenCount: TokenResultHelper.getTokenCount(f.tokenCount),
+                    size: f.size,
+                    language: f.language
+                })));
+                
+                console.log(`[FileAnalysisModule] 创建组合批次任务: ${batch.batchId} (${batch.files.length}个文件)`);
+            } else if (batch.type === 'single_batch') {
+                TaskDefinitionHelper.addSingleFileInfo(taskDefinition, primaryFile);
+                
+                console.log(`[FileAnalysisModule] 创建单文件任务: ${batch.batchId} (${primaryFile.path})`);
+            }
+            
+            taskDefinitions.push(taskDefinition);
+            taskCounter++;
+        }
+        
+        console.log(`[FileAnalysisModule] 任务定义生成完成: 总计${taskDefinitions.length}个任务`);
+        return taskDefinitions;
     }
 
     /**
@@ -493,10 +468,7 @@ export class FileAnalysisModule {
         // 计算优化前后的Token使用效率
         const totalTokens = [...fileCategories.small, ...fileCategories.medium, ...fileCategories.large]
             .reduce((sum, file) => {
-                const actualTokenCount = file.tokenCount?.totalTokens || 
-                                       file.tokenCount?.safeTokenCount || 
-                                       file.tokenCount || 0;
-                return sum + actualTokenCount;
+                return sum + TokenResultHelper.getTokenCount(file.tokenCount);
             }, 0);
         
         const batchTokenEfficiency = this._calculateBatchEfficiency(batchPlans);
@@ -513,15 +485,13 @@ export class FileAnalysisModule {
      * @private
      */
     _calculateBatchEfficiency(batchPlans) {
-        let totalEffectiveTokens = 0;
+        const allBatches = [
+            ...batchPlans.combinedBatches,
+            ...batchPlans.singleBatches,
+            ...batchPlans.multiBatches
+        ];
         
-        // 计算各种批次的有效Token使用
-        [...batchPlans.combinedBatches, ...batchPlans.singleBatches, ...batchPlans.multiBatches]
-            .forEach(batch => {
-                totalEffectiveTokens += batch.estimatedTokens || 0;
-            });
-        
-        return totalEffectiveTokens;
+        return allBatches.reduce((sum, batch) => sum + (batch.estimatedTokens || 0), 0);
     }
 
     /**
@@ -531,32 +501,21 @@ export class FileAnalysisModule {
     _generateProcessingRecommendations(fileCategories, batchPlans) {
         const recommendations = [];
         
-        if (fileCategories.large.length > 0) {
-            recommendations.push({
-                type: 'large_file_attention',
-                message: `发现 ${fileCategories.large.length} 个大文件，建议优先处理`,
-                priority: 'high'
-            });
+        // 基于文件分布的建议
+        if (fileCategories.large.length > 5) {
+            recommendations.push('考虑增加并发处理数量以处理大量大文件');
         }
         
         if (fileCategories.error.length > 0) {
-            recommendations.push({
-                type: 'error_files',
-                message: `${fileCategories.error.length} 个文件分析失败，需要手动检查`,
-                priority: 'medium'
-            });
+            recommendations.push(`${fileCategories.error.length}个文件需要手动处理`);
         }
         
-        const totalBatches = batchPlans.combinedBatches.length + 
-                            batchPlans.singleBatches.length + 
+        const totalBatches = batchPlans.combinedBatches.length +
+                            batchPlans.singleBatches.length +
                             batchPlans.multiBatches.length;
-        
+                            
         if (totalBatches > 20) {
-            recommendations.push({
-                type: 'batch_optimization',
-                message: `批次数量较多（${totalBatches}），建议分阶段处理`,
-                priority: 'low'
-            });
+            recommendations.push('批次数量较多，建议分阶段处理');
         }
         
         return recommendations;
@@ -594,9 +553,7 @@ export class FileAnalysisModule {
     }
 
     /**
-     * 获取任务定义 - 供UnifiedTaskValidator调用
-     * @param {string} taskId - 任务ID
-     * @returns {Promise<Object|null>} 任务定义或null
+     * 获取任务定义（公共接口）
      */
     async getTaskDefinition(taskId) {
         try {
@@ -628,17 +585,13 @@ export class FileAnalysisModule {
 
     /**
      * 获取项目的所有任务ID
-     * @param {string} projectPath - 项目路径
-     * @returns {Array<string>} 任务ID列表
      */
     getProjectTaskIds(projectPath) {
-        const projectTasks = this.projectTaskMapping.get(projectPath);
-        return projectTasks ? Array.from(projectTasks) : [];
+        return Array.from(this.projectTaskMapping.get(projectPath) || []);
     }
 
     /**
-     * 清理项目的任务定义
-     * @param {string} projectPath - 项目路径
+     * 清理项目任务定义
      */
     clearProjectTasks(projectPath) {
         const projectTasks = this.projectTaskMapping.get(projectPath);
@@ -654,13 +607,10 @@ export class FileAnalysisModule {
     }
 
     /**
-     * 获取模块状态信息
+     * 获取模块状态
      */
     getModuleStatus() {
         return {
-            moduleName: 'FileAnalysisModule',
-            version: '1.0.0',
-            config: this.config,
             dependencies: {
                 tokenCalculator: !!this.tokenCalculator,
                 codeStructureAnalyzer: !!this.codeStructureAnalyzer,
@@ -668,9 +618,13 @@ export class FileAnalysisModule {
                 combinedStrategy: !!this.batchStrategies.combined,
                 singleStrategy: !!this.batchStrategies.single,
                 largeMultiStrategy: !!this.batchStrategies.largeMulti,
-                taskGenerator: !!this.taskGenerator,
                 progressTracker: !!this.progressTracker
             },
+            storage: {
+                taskDefinitions: this.taskDefinitionStorage.size,
+                projectMappings: this.projectTaskMapping.size
+            },
+            config: this.config,
             isReady: this._checkDependenciesReady()
         };
     }
@@ -682,14 +636,26 @@ export class FileAnalysisModule {
     _checkDependenciesReady() {
         return !!(
             this.tokenCalculator &&
-            this.codeStructureAnalyzer &&
-            this.boundaryDetector &&
             this.batchStrategies.combined &&
             this.batchStrategies.single &&
-            this.batchStrategies.largeMulti &&
-            this.taskGenerator &&
-            this.progressTracker
+            this.batchStrategies.largeMulti
         );
+    }
+
+    /**
+     * 将BatchResult类型映射为TaskDefinition类型
+     * @static
+     * @private
+     */
+    static _mapBatchTypeToTaskType(batchType) {
+        switch (batchType) {
+            case 'combined_batch': return 'file_batch';
+            case 'single_batch': return 'single_file';
+            case 'large_file_chunk': return 'large_file_chunk';
+            default: 
+                console.warn(`[FileAnalysisModule] 未知的批次类型: ${batchType}`);
+                return 'file_batch';
+        }
     }
 }
 

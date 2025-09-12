@@ -11,6 +11,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
+import { ErrorResultFactory, ResultHelper } from '../../interfaces/ErrorResult.js';
 
 export class UnifiedTaskManager {
     constructor(config = {}, dependencies = {}, serviceBus = null) {
@@ -165,12 +166,11 @@ export class UnifiedTaskManager {
                 });
                 
                 this.logger.info(`Task ${taskId} validation passed - auto-completed`);
-                return {
-                    success: true,
+                return ErrorResultFactory.createSuccess({
                     status: 'completed',
                     autoCompleted: validationResult.autoCompleted,
                     message: validationResult.message
-                };
+                });
             } else {
                 // 验证失败，更新任务状态
                 task.status = 'validation_failed';
@@ -178,21 +178,27 @@ export class UnifiedTaskManager {
                 task.lastError = validationResult.message;
                 
                 this.logger.warn(`Task ${taskId} validation failed: ${validationResult.message}`);
-                return {
-                    success: false,
-                    status: 'validation_failed',
-                    message: validationResult.message,
-                    missingFiles: validationResult.missingFiles
-                };
+                return ErrorResultFactory.createValidationError(
+                    validationResult.message,
+                    {
+                        service: 'UnifiedTaskManager',
+                        method: 'checkTaskCompletion',
+                        params: { taskId },
+                        details: { missingFiles: validationResult.missingFiles }
+                    }
+                );
             }
             
         } catch (error) {
             this.logger.error(`Failed to check task completion: ${error.message}`);
-            return {
-                success: false,
-                status: 'error',
-                message: error.message
-            };
+            return ErrorResultFactory.fromJavaScriptError(
+                error,
+                {
+                    service: 'UnifiedTaskManager',
+                    method: 'checkTaskCompletion',
+                    params: { taskId }
+                }
+            );
         }
     }
 
@@ -250,7 +256,14 @@ export class UnifiedTaskManager {
                 this.statistics.failedTasks++;
                 
                 this.logger.warn(`Task ${taskId} exceeded max retries (${actualMaxRetries})`);
-                return { success: false, message: 'Max retries exceeded' };
+                return ErrorResultFactory.createProcessingError(
+                    `Task exceeded max retries (${actualMaxRetries})`,
+                    {
+                        service: 'UnifiedTaskManager',
+                        method: 'processTask',
+                        params: { taskId, maxRetries: actualMaxRetries }
+                    }
+                );
             }
             
             // 重置任务状态进行重试
@@ -282,7 +295,14 @@ export class UnifiedTaskManager {
                 const task = currentTask || completedTask;
                 
                 if (!task) {
-                    return { success: false, message: 'Task not found' };
+                    return ErrorResultFactory.createValidationError(
+                        'Task not found',
+                        {
+                            service: 'UnifiedTaskManager',
+                            method: 'getTaskStatus',
+                            params: { taskId }
+                        }
+                    );
                 }
                 
                 return {
@@ -312,7 +332,14 @@ export class UnifiedTaskManager {
             
         } catch (error) {
             this.logger.error(`Failed to get task status: ${error.message}`);
-            return { success: false, message: error.message };
+            return ErrorResultFactory.fromJavaScriptError(
+                error,
+                {
+                    service: 'UnifiedTaskManager',
+                    method: 'getTaskStatus',
+                    params: { taskId }
+                }
+            );
         }
     }
 
@@ -441,7 +468,13 @@ export class UnifiedTaskManager {
             
         } catch (error) {
             this.logger.error(`Failed to get step statistics: ${error.message}`);
-            return { success: false, message: error.message };
+            return ErrorResultFactory.fromJavaScriptError(
+                error,
+                {
+                    service: 'UnifiedTaskManager',
+                    method: 'getStepStatistics'
+                }
+            );
         }
     }
 }
