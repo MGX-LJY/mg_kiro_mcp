@@ -16,7 +16,7 @@
  * @version 2.0.0 - 使用统一BatchResult接口
  */
 
-import { BatchResultFactory } from '../../interfaces/BatchResult.js';
+import { BatchResultFactory } from '../../../interfaces/BatchResult.js';
 
 export class CombinedFileBatchStrategy {
     constructor(config = {}) {

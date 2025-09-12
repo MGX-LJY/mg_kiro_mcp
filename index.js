@@ -946,7 +946,7 @@ async function startServer() {
             );
 
             // 解构分析结果 - 修复数据结构访问
-            const { analysisResult: analysisData } = analysisResult;
+            const { data: analysisData } = analysisResult;
             const { fileAnalyses, batchPlans, taskDefinitions, strategySummary } = analysisData || {};
             
             // 构建统计信息
@@ -1151,7 +1151,7 @@ async function startServer() {
             );
 
             // 解构分析结果 - 修复数据结构访问
-            const { analysisResult: analysisData } = analysisResult;
+            const { data: analysisData } = analysisResult;
             const { fileAnalyses, batchPlans, taskDefinitions, strategySummary } = analysisData || {};
             
             // 构建统计信息
@@ -1316,8 +1316,8 @@ async function startServer() {
               // UnifiedTaskManager中没有任务，需要从init-state.json加载taskDefinitions
               console.log('[MCP-Init-Step3] 检测到UnifiedTaskManager无任务，正在从Step2结果加载...');
               
-              if (initState.stepResults?.step2?.analysisResult?.analysisResult?.taskDefinitions) {
-                const taskDefinitions = initState.stepResults.step2.analysisResult.analysisResult.taskDefinitions;
+              if (initState.stepResults?.step2?.analysisResult?.data?.taskDefinitions) {
+                const taskDefinitions = initState.stepResults.step2.analysisResult.data.taskDefinitions;
                 console.log(`[MCP-Init-Step3] 找到${taskDefinitions.length}个任务定义，正在创建任务...`);
                 
                 // 批量创建任务到UnifiedTaskManager

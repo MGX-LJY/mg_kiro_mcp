@@ -274,6 +274,15 @@ export class TokenResultHelper {
     }
 
     /**
+     * 检查Token计算是否成功
+     * @param {TokenResult} tokenResult - Token结果
+     * @returns {boolean}
+     */
+    static isSuccess(tokenResult) {
+        return !this.hasError(tokenResult);
+    }
+
+    /**
      * 是否来自缓存
      * @param {TokenResult} tokenResult - Token结果
      * @returns {boolean}

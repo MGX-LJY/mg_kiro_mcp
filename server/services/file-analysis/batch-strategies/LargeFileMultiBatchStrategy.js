@@ -17,7 +17,7 @@
  */
 
 import FunctionBoundaryDetector from '../token-analysis/FunctionBoundaryDetector.js';
-import { BatchResultFactory } from '../../interfaces/BatchResult.js';
+import { BatchResultFactory } from '../../../interfaces/BatchResult.js';
 
 export class LargeFileMultiBatchStrategy {
     constructor(config = {}) {
