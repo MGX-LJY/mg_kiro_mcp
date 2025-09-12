@@ -426,8 +426,7 @@ async function startServer() {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     
-    // 获取服务容器实例
-    const serviceContainer = getServiceContainer(serviceBus);
+    // 直接使用serviceBus获取服务实例（避免过度包装）
     
     // 全局状态管理 - 持久化到文件系统
     const projectStates = new Map();
@@ -874,7 +873,8 @@ async function startServer() {
           }
 
           // 检查服务可用性
-          const { fileAnalysisModule, unifiedTaskManager } = serviceContainer;
+          const fileAnalysisModule = serviceBus.get('fileAnalysisModule');
+          const unifiedTaskManager = serviceBus.get('unifiedTaskManager');
           if (!fileAnalysisModule) {
             return {
               content: [{
@@ -1094,7 +1094,7 @@ async function startServer() {
           };
 
           // 检查服务可用性
-          const { fileAnalysisModule } = serviceContainer;
+          const fileAnalysisModule = serviceBus.get('fileAnalysisModule');
           if (!fileAnalysisModule) {
             return {
               content: [{
@@ -1249,7 +1249,7 @@ async function startServer() {
           initState.currentStep = 3;
           
           // 检查服务可用性
-          const { unifiedTaskManager } = serviceContainer;
+          const unifiedTaskManager = serviceBus.get('unifiedTaskManager');
           if (!unifiedTaskManager) {
             return {
               content: [{
@@ -1319,7 +1319,7 @@ async function startServer() {
             // 获取任务统计信息
             const taskStats = await unifiedTaskManager.getStepStatistics('step3');
             
-            // 设置任务上下文
+            // ✅ 设置增强的任务上下文，包含预分析数据
             const taskMetadata = nextTask.metadata || {};
             const contextData = {
               taskId: nextTask.id,
@@ -1330,7 +1330,17 @@ async function startServer() {
               estimatedTime: taskMetadata.estimatedTime || '未知',
               title: `处理文件: ${taskMetadata.fileName || 'unknown'}`,
               description: taskMetadata.description || '文件内容分析和文档生成',
-              step: 'get_next_task_completed'
+              step: 'get_next_task_completed',
+              // ✅ 新增: 传递完整的元数据（包括预分析数据）
+              metadata: {
+                ...taskMetadata,
+                // 确保关键预分析数据存在
+                chunkingAdvice: taskMetadata.chunkingAdvice,
+                estimatedFileTokens: taskMetadata.estimatedFileTokens || taskMetadata.estimatedTokens,
+                language: taskMetadata.language,
+                strategy: taskMetadata.strategy,
+                allFiles: taskMetadata.allFiles // 用于多文件批次
+              }
             };
             
             setCurrentTaskContext(projectPath, contextData);
@@ -1502,47 +1512,74 @@ async function startServer() {
             // 使用fileQueryService的智能分片功能
             const fileQueryService = serviceBus.get('fileQueryService');
             
-            // 强制小分片处理，确保每个响应都在MCP token限制内
+            // ✅ 智能分片处理，优先使用预分析数据
+            const taskContext = getCurrentTaskContext(projectPath);
+            const taskMetadata = taskContext?.metadata || {};
+            
             let processingOptions = {
-              maxContentLength: 6000,  // 大幅降低，确保安全
+              maxContentLength: 6000,
               includeTrimming: true,
-              includeAnalysis: false, // 关闭分析减少token
-              enableChunking: true,   // 强制启用分片
-              maxTokensPerChunk: 1500 // 保守的分片token限制(约6000字符)
+              includeAnalysis: false,
+              enableChunking: true,
+              maxTokensPerChunk: 1500
             };
             
-            // 根据文件大小动态调整分片策略
-            try {
-              const fs = await import('fs');
-              const fullFilePath = resolve(projectPath, relativePath);
-              const fileStats = fs.statSync(fullFilePath);
+            // ✅ 智能联动：优先使用FileAnalysisModule的预分析结果
+            if (taskMetadata.chunkingAdvice && taskMetadata.estimatedFileTokens) {
+              const chunkingAdvice = taskMetadata.chunkingAdvice;
+              const preAnalysisTokens = taskMetadata.estimatedFileTokens;
+              const fileSize = taskMetadata.fileSize || 0;
               
-              console.log(`[Auto-Chunk] 检测文件 ${relativePath} 大小: ${fileStats.size}字节`);
+              console.log(`[✅ Smart-Chunk] 使用预分析数据: ${relativePath}`);
+              console.log(`[✅ Smart-Chunk] 预估Token: ${preAnalysisTokens}, 文件大小: ${fileSize}字节`);
               
-              // 任何超过20KB的文件都强制使用超小分片
-              if (fileStats.size > 20000) {
-                processingOptions.maxTokensPerChunk = 1200; // 约4800字符
+              // 使用预分析的分片建议
+              processingOptions = {
+                ...processingOptions,
+                enableChunking: chunkingAdvice.recommended,
+                maxTokensPerChunk: chunkingAdvice.maxTokensPerChunk || 1500,
+                maxContentLength: Math.min(8000, chunkingAdvice.maxTokensPerChunk * 4 || 6000),
+                // ✅ 新增: 传递预分析数据
+                preAnalysisData: {
+                  estimatedTokens: preAnalysisTokens,
+                  fileSize: fileSize,
+                  chunkingAdvice: chunkingAdvice,
+                  strategy: taskMetadata.strategy,
+                  language: taskMetadata.language
+                }
+              };
+              
+              console.log(`[✅ Smart-Chunk] 使用智能分片: 启用=${processingOptions.enableChunking}, 每片Token=${processingOptions.maxTokensPerChunk}`);
+              
+            } else {
+              // ☔ 降级到传统文件大小检测（用于向后兼容）
+              console.log(`[☔ Fallback-Chunk] 无预分析数据，降级到文件大小检测: ${relativePath}`);
+              
+              try {
+                const fs = await import('fs');
+                const fullFilePath = resolve(projectPath, relativePath);
+                const fileStats = fs.statSync(fullFilePath);
+                
+                console.log(`[☔ Fallback-Chunk] 检测文件 ${relativePath} 大小: ${fileStats.size}字节`);
+                
+                if (fileStats.size > 20000) {
+                  processingOptions.maxTokensPerChunk = 1200;
+                  processingOptions.maxContentLength = 4800;
+                  console.log(`[☔ Fallback-Chunk] 大文件超小分片: ${processingOptions.maxTokensPerChunk} tokens/片`);
+                } else if (fileStats.size > 10000) {
+                  processingOptions.maxTokensPerChunk = 1500;
+                  processingOptions.maxContentLength = 6000;
+                  console.log(`[☔ Fallback-Chunk] 中等文件小分片: ${processingOptions.maxTokensPerChunk} tokens/片`);
+                } else {
+                  processingOptions.maxContentLength = 8000;
+                  processingOptions.enableChunking = false;
+                  console.log(`[☔ Fallback-Chunk] 小文件直接处理，限制8000字符`);
+                }
+              } catch (statsError) {
+                processingOptions.maxTokensPerChunk = 1200;
                 processingOptions.maxContentLength = 4800;
-                console.log(`[Auto-Chunk] 大文件强制超小分片: ${processingOptions.maxTokensPerChunk} tokens/片`);
+                console.log(`[☔ Fallback-Chunk] 无法检测文件，使用保守设置: ${statsError.message}`);
               }
-              // 超过10KB的文件使用小分片
-              else if (fileStats.size > 10000) {
-                processingOptions.maxTokensPerChunk = 1500; // 约6000字符
-                processingOptions.maxContentLength = 6000;
-                console.log(`[Auto-Chunk] 中等文件使用小分片: ${processingOptions.maxTokensPerChunk} tokens/片`);
-              }
-              // 小文件也限制大小，避免响应结构开销
-              else {
-                processingOptions.maxContentLength = 8000;
-                processingOptions.enableChunking = false; // 小文件可以不分片
-                console.log(`[Auto-Chunk] 小文件直接处理，限制8000字符`);
-              }
-              
-            } catch (statsError) {
-              // 无法获取文件信息时使用最保守设置
-              processingOptions.maxTokensPerChunk = 1200;
-              processingOptions.maxContentLength = 4800;
-              console.log(`[Auto-Chunk] 无法检测文件，使用最保守分片: ${statsError.message}`);
             }
             
             // 使用fileQueryService获取文件详情
@@ -2009,7 +2046,7 @@ async function startServer() {
           console.log(`[MCP-Init-Step3] 检查任务完成状态 - ${projectPath} 任务:${taskId || '自动获取'} 类型:${stepType || 'step3'}`);
           
           // 检查服务可用性
-          const { unifiedTaskValidator } = serviceContainer;
+          const unifiedTaskValidator = serviceBus.get('unifiedTaskValidator');
           if (!unifiedTaskValidator) {
             return {
               content: [{
@@ -2138,7 +2175,7 @@ async function startServer() {
           console.log(`[MCP-Init-Step4] 模块整合 - ${projectPath}`);
           
           // 检查服务可用性
-          const { unifiedTaskManager } = serviceContainer;
+          const unifiedTaskManager = serviceBus.get('unifiedTaskManager');
           if (!unifiedTaskManager) {
             return {
               content: [{
@@ -2341,7 +2378,7 @@ async function startServer() {
           console.log(`[MCP-Init-Step5] 模块关联分析 - ${projectPath}`);
           
           // 检查服务可用性
-          const { unifiedTaskManager } = serviceContainer;
+          const unifiedTaskManager = serviceBus.get('unifiedTaskManager');
           if (!unifiedTaskManager) {
             return {
               content: [{
@@ -2592,7 +2629,7 @@ async function startServer() {
           console.log(`[MCP-Init-Step6] 架构文档生成 - ${projectPath}`);
           
           // 检查服务可用性
-          const { unifiedTaskManager } = serviceContainer;
+          const unifiedTaskManager = serviceBus.get('unifiedTaskManager');
           if (!unifiedTaskManager) {
             return {
               content: [{
@@ -3187,7 +3224,7 @@ ${docsDir}/
             currentTaskContexts.clear(); // 清理所有任务上下文
             
             // 清理UnifiedTaskManager数据
-            const { unifiedTaskManager } = serviceContainer;
+            const unifiedTaskManager = serviceBus.get('unifiedTaskManager');
             if (unifiedTaskManager) {
               await unifiedTaskManager.reset();
               console.log(`[Reset] UnifiedTaskManager已重置`);

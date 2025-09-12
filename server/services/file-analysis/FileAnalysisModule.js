@@ -46,6 +46,7 @@ export class FileAnalysisModule {
                 
                 // 处理综合批次
                 for (const batch of batchPlans.combinedBatches || []) {
+                    const primaryFile = batch.files[0]; // 主要文件用于上下文设置
                     taskDefinitions.push({
                         id: `task_${taskCounter}_${Date.now().toString().slice(-6)}`,
                         type: 'file_batch',
@@ -55,7 +56,26 @@ export class FileAnalysisModule {
                         metadata: {
                             batchId: batch.id,
                             strategy: 'combined',
-                            fileCount: batch.files.length
+                            fileCount: batch.files.length,
+                            // ✅ 新增: 详细文件信息
+                            relativePath: primaryFile?.path || batch.files[0]?.path,
+                            fileName: primaryFile?.name || 'combined_batch',
+                            fileSize: primaryFile?.size || 0,
+                            language: primaryFile?.language || 'javascript',
+                            // ✅ 新增: 分片建议
+                            chunkingAdvice: {
+                                recommended: batch.estimatedTokens > 8000,
+                                maxTokensPerChunk: Math.min(1500, Math.floor(batch.estimatedTokens / 3)),
+                                strategy: 'combined_files'
+                            },
+                            // ✅ 新增: 所有文件详情
+                            allFiles: batch.files.map(f => ({
+                                path: f.path,
+                                name: f.name,
+                                size: f.size || 0,
+                                estimatedTokens: f.estimatedTokens || 0,
+                                language: f.language || 'javascript'
+                            }))
                         }
                     });
                     taskCounter++;
@@ -63,6 +83,7 @@ export class FileAnalysisModule {
                 
                 // 处理单文件批次
                 for (const batch of batchPlans.singleBatches || []) {
+                    const singleFile = batch.files[0]; // 单文件批次
                     taskDefinitions.push({
                         id: `task_${taskCounter}_${Date.now().toString().slice(-6)}`,
                         type: 'single_file',
@@ -72,7 +93,20 @@ export class FileAnalysisModule {
                         metadata: {
                             batchId: batch.id,
                             strategy: 'single',
-                            fileCount: batch.files.length
+                            fileCount: batch.files.length,
+                            // ✅ 新增: 单文件详细信息
+                            relativePath: singleFile?.path || batch.files[0]?.path,
+                            fileName: singleFile?.name || 'single_file',
+                            fileSize: singleFile?.size || 0,
+                            language: singleFile?.language || 'javascript',
+                            estimatedFileTokens: singleFile?.estimatedTokens || batch.estimatedTokens,
+                            // ✅ 新增: 单文件分片建议
+                            chunkingAdvice: {
+                                recommended: batch.estimatedTokens > 12000,
+                                maxTokensPerChunk: 1500,
+                                strategy: 'function_boundary',
+                                enableSmartChunking: true
+                            }
                         }
                     });
                     taskCounter++;
@@ -80,6 +114,7 @@ export class FileAnalysisModule {
                 
                 // 处理多批次大文件
                 for (const batch of batchPlans.multiBatches || []) {
+                    const largeFile = batch.files[0]; // 大文件
                     taskDefinitions.push({
                         id: `task_${taskCounter}_${Date.now().toString().slice(-6)}`,
                         type: 'large_file_multi',
@@ -89,7 +124,22 @@ export class FileAnalysisModule {
                         metadata: {
                             batchId: batch.id,
                             strategy: 'largeMulti',
-                            fileCount: batch.files.length
+                            fileCount: batch.files.length,
+                            // ✅ 新增: 大文件详细信息
+                            relativePath: largeFile?.path || batch.files[0]?.path,
+                            fileName: largeFile?.name || 'large_file',
+                            fileSize: largeFile?.size || 0,
+                            language: largeFile?.language || 'javascript',
+                            estimatedFileTokens: largeFile?.estimatedTokens || batch.estimatedTokens,
+                            // ✅ 新增: 大文件专用分片建议
+                            chunkingAdvice: {
+                                recommended: true, // 大文件必须分片
+                                maxTokensPerChunk: 1200, // 更小的分片
+                                strategy: 'smart_boundary_detection',
+                                enableBoundaryDetection: true,
+                                multiChunkRequired: true,
+                                estimatedChunks: Math.ceil(batch.estimatedTokens / 1200)
+                            }
                         }
                     });
                     taskCounter++;

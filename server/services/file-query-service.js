@@ -449,26 +449,52 @@ export class FileQueryService {
             let content = await fs.readFile(filePath, 'utf8');
             
             const {
-                maxContentLength = this.config.maxContentLength,  // 最大内容长度
-                includeTrimming = true,    // 是否包含裁切信息
-                includeAnalysis = true,    // 是否包含文件分析
-                enableChunking = false,    // 是否启用智能分片
-                maxTokensPerChunk = 60000, // 每个分片的最大token数
-                chunkIndex = null          // 请求特定分片（从1开始）
+                maxContentLength = this.config.maxContentLength,
+                includeTrimming = true,
+                includeAnalysis = true,
+                enableChunking = false,
+                maxTokensPerChunk = 60000,
+                chunkIndex = null,
+                // ✅ 新增: 预分析数据支持
+                preAnalysisData = null
             } = options;
 
             let trimming = null;
             let chunking = null;
             const originalLength = content.length;
-            const estimatedTokens = this.tokenCalculator.estimateCodeTokens(content, this.detectLanguage(extname(filePath)));
             
-            // 🔥 强制分片检查 - 确保MCP响应在安全token范围内
-            const mcpSafeLimit = 8000; // 🔥 大幅降低安全限制，为响应结构预留空间
-            const shouldForceChunk = enableChunking && (
-                estimatedTokens > mcpSafeLimit || 
-                originalLength > 20000 || // 20KB以上强制分片
-                this.tokenCalculator.exceedsLimit(estimatedTokens)
-            );
+            // ✅ 智能 Token 估算：优先使用预分析结果
+            let estimatedTokens;
+            let shouldForceChunk;
+            let effectiveMaxTokensPerChunk = maxTokensPerChunk;
+            
+            if (preAnalysisData && preAnalysisData.estimatedTokens) {
+                // ✅ 使用预分析的精确结果
+                estimatedTokens = preAnalysisData.estimatedTokens;
+                const chunkingAdvice = preAnalysisData.chunkingAdvice || {};
+                
+                console.log(`[✅ FileQueryService] 使用预分析数据: Token=${estimatedTokens}, 文件=${preAnalysisData.fileSize}字节`);
+                
+                // 使用预分析的分片建议
+                shouldForceChunk = enableChunking && chunkingAdvice.recommended;
+                effectiveMaxTokensPerChunk = chunkingAdvice.maxTokensPerChunk || maxTokensPerChunk;
+                
+                console.log(`[✅ FileQueryService] 预分析分片建议: 启用=${shouldForceChunk}, 每片Token=${effectiveMaxTokensPerChunk}`);
+                
+            } else {
+                // ☔ 降级到传统计算方式
+                console.log(`[☔ FileQueryService] 无预分析数据，实时计算Token: ${relativePath}`);
+                estimatedTokens = this.tokenCalculator.estimateCodeTokens(content, this.detectLanguage(extname(filePath)));
+                
+                const mcpSafeLimit = 8000;
+                shouldForceChunk = enableChunking && (
+                    estimatedTokens > mcpSafeLimit || 
+                    originalLength > 20000 ||
+                    this.tokenCalculator.exceedsLimit(estimatedTokens)
+                );
+                
+                console.log(`[☔ FileQueryService] 实时计算结果: Token=${estimatedTokens}, 强制分片=${shouldForceChunk}`);
+            }
             
             if (shouldForceChunk) {
                 const chunks = await this.smartChunker.chunkFileContent(content, basename(filePath), maxTokensPerChunk);

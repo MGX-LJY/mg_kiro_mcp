@@ -5,7 +5,6 @@
 
 import { getServiceBus } from './service-bus.js';
 import ConfigService from './config-service.js';
-import CompleteTaskMonitor from './complete-task-monitor.js';
 
 import LanguageDetector from '../language/detector.js';
 import LanguageIntelligenceService from './language-intelligence-service.js';
@@ -50,7 +49,6 @@ export function registerServices(configDir = './config') {
         .register('languageDetector', LanguageDetector, {}, [])
         
         .register('languageIntelligence', LanguageIntelligenceService, {}, [])
-        .register('completeTaskMonitor', CompleteTaskMonitor, {}, [])
         .register('projectOverviewGenerator', ProjectOverviewGenerator, {}, [])
         .register('smartContentTrimmer', SmartContentTrimmer, {}, [])
         .register('fileQueryService', FileQueryService, {}, ['smartContentTrimmer']);
@@ -180,8 +178,7 @@ export function getServices() {
         languageIntelligence: serviceBus.get('languageIntelligence'),
         configService: serviceBus.get('configService'),
         
-        // Create模式所需服务
-        completeTaskMonitor: serviceBus.get('completeTaskMonitor'),
+        // Create模式所需服务 (已精简)
         
         // Init模式所需服务
         projectOverviewGenerator: serviceBus.get('projectOverviewGenerator'),
