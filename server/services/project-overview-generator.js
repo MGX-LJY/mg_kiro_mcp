@@ -735,35 +735,51 @@ export class ProjectOverviewGenerator {
      */
     extractFileListFromStructure(directoryStructure) {
         const fileList = [];
+        console.log('[DEBUG] extractFileListFromStructure - 输入结构:', JSON.stringify(directoryStructure, null, 2).slice(0, 500) + '...');
         
         const processDirectory = (dir, basePath = '') => {
+            console.log(`[DEBUG] processDirectory - dir.type: ${dir.type}, dir.name: ${dir.name}, basePath: ${basePath}`);
+            
             if (dir.type === 'file') {
+                console.log(`[DEBUG] 处理文件: ${dir.name}, 是否源码文件: ${this.isSourceCodeFile(dir.name)}`);
                 // 只处理源代码文件，过滤掉临时文件和日志
                 if (this.isSourceCodeFile(dir.name)) {
-                    fileList.push({
+                    const fileInfo = {
                         path: basePath ? `${basePath}/${dir.name}` : dir.name,
                         name: dir.name,
                         size: dir.size || 0,
                         extension: this.getFileExtension(dir.name),
                         isSourceCode: true
-                    });
+                    };
+                    console.log(`[DEBUG] 添加文件到列表:`, fileInfo);
+                    fileList.push(fileInfo);
                 }
-            } else if (dir.children) {
-                // 递归处理子目录
-                Object.entries(dir.children).forEach(([childName, childDir]) => {
-                    const childPath = basePath ? `${basePath}/${childName}` : childName;
+            } else if (dir.children && Array.isArray(dir.children)) {
+                console.log(`[DEBUG] 处理目录: ${dir.name}, 子项数量: ${dir.children.length}`);
+                // 递归处理子目录 - 修复：正确构建子目录路径
+                dir.children.forEach(childDir => {
+                    const childPath = basePath ? `${basePath}/${dir.name}` : dir.name;
                     processDirectory(childDir, childPath);
                 });
             }
         };
 
-        // 处理根目录结构
-        if (directoryStructure.children) {
-            Object.entries(directoryStructure.children).forEach(([name, dir]) => {
-                processDirectory(dir, name);
+        // 处理根目录结构 - 修复：使用structure.children，且children是数组
+        const rootStructure = directoryStructure.structure || directoryStructure;
+        console.log('[DEBUG] rootStructure存在?', !!rootStructure);
+        console.log('[DEBUG] rootStructure.children存在?', !!rootStructure.children);
+        console.log('[DEBUG] rootStructure.children是数组?', Array.isArray(rootStructure.children));
+        
+        if (rootStructure.children && Array.isArray(rootStructure.children)) {
+            console.log(`[DEBUG] 处理根目录，子项数量: ${rootStructure.children.length}`);
+            rootStructure.children.forEach((dir, index) => {
+                console.log(`[DEBUG] 处理根子项[${index}]: ${dir.name}, type: ${dir.type}`);
+                // 修复：根级别的文件和目录不需要额外的basePath
+                processDirectory(dir, '');
             });
         }
         
+        console.log(`[DEBUG] 最终文件列表长度: ${fileList.length}`);
         // 按文件大小排序，方便FileAnalysisModule进行智能分组
         return fileList.sort((a, b) => (b.size || 0) - (a.size || 0));
     }

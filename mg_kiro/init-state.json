@@ -1,5 +1,5 @@
 {
-  "currentStep": 2,
+  "currentStep": 1,
   "projectPath": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
   "stepsCompleted": [
     "step1"
@@ -7,21 +7,20 @@
   "stepResults": {
     "step1": {
       "projectOverview": {
-        "generatedAt": "2025-09-12T02:54:46.670Z",
-        "generationTime": "8ms",
+        "generatedAt": "2025-09-12T03:14:34.676Z",
+        "generationTime": "11ms",
         "projectMetadata": {
           "name": "mg_kiro_mcp",
           "path": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
-          "lastModified": "2025-09-12T02:53:30.000Z",
+          "lastModified": "2025-09-12T03:14:17.000Z",
           "createdAt": "2025-09-06T14:38:08.793Z",
-          "totalFiles": 14,
-          "totalSize": "1.17 MB",
-          "totalSizeBytes": 1222420,
+          "totalFiles": 13,
+          "totalSize": "1.03 MB",
+          "totalSizeBytes": 1080478,
           "fileTypeDistribution": {
             ".md": 8,
             ".js": 2,
             ".json": 2,
-            ".backup": 1,
             ".xmind": 1
           }
         },
@@ -227,12 +226,6 @@
                 "ext": ".js"
               },
               {
-                "name": "index.js.backup",
-                "type": "file",
-                "size": 141942,
-                "ext": ".backup"
-              },
-              {
                 "name": "jest.config.js",
                 "type": "file",
                 "size": 826,
@@ -403,7 +396,7 @@
                       {
                         "name": "project-overview-generator.js",
                         "type": "file",
-                        "size": 39072,
+                        "size": 40521,
                         "ext": ".js"
                       },
                       {
@@ -543,14 +536,14 @@
         },
         "architectureDocument": {
           "title": "mg_kiro_mcp - 系统架构文档",
-          "generatedAt": "2025-09-12T02:54:46.670Z",
+          "generatedAt": "2025-09-12T03:14:34.676Z",
           "version": "1.0-auto",
           "overview": {
             "name": "mg_kiro_mcp",
             "primaryLanguage": "javascript",
             "architecture": "unknown",
             "complexity": "medium",
-            "totalFiles": 14
+            "totalFiles": 13
           },
           "techStack": {
             "primary": "javascript",
@@ -599,7 +592,7 @@
           "recommendations": []
         },
         "aiTaskContext": {
-          "generatedAt": "2025-09-12T02:54:46.670Z",
+          "generatedAt": "2025-09-12T03:14:34.676Z",
           "projectName": "mg_kiro_mcp",
           "fileProcessingGuide": {
             "totalFilesToProcess": 0,
@@ -673,7 +666,7 @@
           },
           "aiCollaborationGuide": {
             "contextSize": {
-              "estimatedSize": 14336,
+              "estimatedSize": 13312,
               "maxFileSize": 51200,
               "compressionNeeded": false
             },
@@ -701,31 +694,122 @@
               {
                 "stage": "75%",
                 "description": "支持模块文档完成",
-                "fileCount": 11
+                "fileCount": 10
               },
               {
                 "stage": "100%",
                 "description": "所有文档和整合完成",
-                "fileCount": 14
+                "fileCount": 13
               }
             ]
           }
         },
         "fileAnalysisInput": {
-          "fileList": [],
+          "fileList": [
+            {
+              "path": "index.js/index.js",
+              "name": "index.js",
+              "size": 136525,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/services/file-query-service.js/file-query-service.js",
+              "name": "file-query-service.js",
+              "size": 40615,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/services/project-overview-generator.js/project-overview-generator.js",
+              "name": "project-overview-generator.js",
+              "size": 40521,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/services/language-intelligence-service.js/language-intelligence-service.js",
+              "name": "language-intelligence-service.js",
+              "size": 22062,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/language/prompt-intelligence.js/prompt-intelligence.js",
+              "name": "prompt-intelligence.js",
+              "size": 19744,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/language/detector.js/detector.js",
+              "name": "detector.js",
+              "size": 14782,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/services/smart-content-trimmer.js/smart-content-trimmer.js",
+              "name": "smart-content-trimmer.js",
+              "size": 11576,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/services/config-service.js/config-service.js",
+              "name": "config-service.js",
+              "size": 9827,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/services/service-bus.js/service-bus.js",
+              "name": "service-bus.js",
+              "size": 8689,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/services/service-registry.js/service-registry.js",
+              "name": "service-registry.js",
+              "size": 8571,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "scripts/test-service-registry.js/test-service-registry.js",
+              "name": "test-service-registry.js",
+              "size": 5271,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "server/services/response-service.js/response-service.js",
+              "name": "response-service.js",
+              "size": 2668,
+              "extension": ".js",
+              "isSourceCode": true
+            },
+            {
+              "path": "jest.config.js/jest.config.js",
+              "name": "jest.config.js",
+              "size": 826,
+              "extension": ".js",
+              "isSourceCode": true
+            }
+          ],
           "projectMetadata": {
             "name": "mg_kiro_mcp",
             "path": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp",
-            "lastModified": "2025-09-12T02:53:30.000Z",
+            "lastModified": "2025-09-12T03:14:17.000Z",
             "createdAt": "2025-09-06T14:38:08.793Z",
-            "totalFiles": 14,
-            "totalSize": "1.17 MB",
-            "totalSizeBytes": 1222420,
+            "totalFiles": 13,
+            "totalSize": "1.03 MB",
+            "totalSizeBytes": 1080478,
             "fileTypeDistribution": {
               ".md": 8,
               ".js": 2,
               ".json": 2,
-              ".backup": 1,
               ".xmind": 1
             }
           },
@@ -761,11 +845,11 @@
           }
         }
       },
-      "completedAt": "2025-09-12T02:54:46.670Z",
+      "completedAt": "2025-09-12T03:14:34.678Z",
       "docsDirectory": "/Users/martinezdavid/Documents/MG/code/mg_kiro_mcp/mg_kiro"
     }
   },
-  "startedAt": "2025-09-12T02:54:46.660Z",
+  "startedAt": "2025-09-12T03:14:34.662Z",
   "error": null,
   "documentCount": 0,
   "generatedDocs": []
