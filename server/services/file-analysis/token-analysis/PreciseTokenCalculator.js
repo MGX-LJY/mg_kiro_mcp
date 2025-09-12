@@ -17,6 +17,7 @@
 import { promises as fs } from 'fs';
 import { extname, basename } from 'path';
 import { TokenResultFactory, TOKEN_CALCULATION_METHODS, TOKEN_CONFIDENCE_LEVELS } from '../../../interfaces/TokenResult.js';
+import { LoggerFactory } from '../../../utils/Logger.js';
 
 export class PreciseTokenCalculator {
     constructor(config = {}) {
@@ -145,6 +146,15 @@ export class PreciseTokenCalculator {
             'gpt-3.5-turbo': 16000,
             default: 100000
         };
+
+        // 初始化Logger
+        this.logger = LoggerFactory.getLogger('PreciseTokenCalculator');
+        this.logger.info('PreciseTokenCalculator初始化', {
+            cacheEnabled: this.config.cacheEnabled,
+            maxCacheSize: this.config.maxCacheSize,
+            tokenSafetyBuffer: this.config.tokenSafetyBuffer,
+            supportedLanguages: Object.keys(this.languageRules).length
+        });
     }
 
     /**
@@ -155,6 +165,8 @@ export class PreciseTokenCalculator {
      * @returns {Promise<TokenResult>} 统一Token计算结果
      */
     async calculateTokens(filePath, content = null, languageProfile = null) {
+        const timerId = this.logger.methodStart('calculateTokens', { filePath, hasContent: !!content });
+        
         try {
             // 生成缓存键
             const cacheKey = this._generateCacheKey(filePath, content);
@@ -162,25 +174,73 @@ export class PreciseTokenCalculator {
             // 检查缓存
             if (this.config.cacheEnabled && this.tokenCache.has(cacheKey)) {
                 const cached = this.tokenCache.get(cacheKey);
-                console.log(`[TokenCalculator] 命中缓存: ${filePath}`);
+                
+                this.logger.info('Token缓存命中', {
+                    filePath,
+                    cacheKey: cacheKey.substring(0, 20) + '...',
+                    cachedTokens: cached.totalTokens,
+                    calculationMethod: cached.calculationMethod
+                });
+                
                 // 转换为TokenResult格式
-                return TokenResultFactory.fromComplexTokenResult({
+                const result = TokenResultFactory.fromComplexTokenResult({
                     ...cached,
                     fromCache: true
                 });
+                
+                this.logger.logTokenCalculation(filePath, result, { source: 'cache' });
+                this.logger.methodEnd(timerId, 'calculateTokens', result);
+                return result;
             }
+
+            this.logger.debug('Token缓存未命中', {
+                filePath,
+                cacheEnabled: this.config.cacheEnabled,
+                cacheSize: this.tokenCache.size
+            });
 
             // 读取文件内容（如果未提供）
             if (!content) {
+                this.logger.debug('读取文件内容', { filePath });
                 content = await fs.readFile(filePath, 'utf8');
+                this.logger.debug('文件读取完成', { 
+                    filePath, 
+                    contentLength: content.length,
+                    contentPreview: content.substring(0, 100) + '...'
+                });
             }
 
             // 检测语言
             const language = this._detectLanguage(filePath, languageProfile);
             const rules = this.languageRules[language] || this.languageRules.default;
+            
+            this.logger.debug('语言检测完成', {
+                filePath,
+                detectedLanguage: language,
+                languageRules: {
+                    tokenRatio: rules.tokenRatio,
+                    commentWeight: rules.commentWeight,
+                    stringWeight: rules.stringWeight
+                },
+                hasLanguageProfile: !!languageProfile
+            });
 
             // 执行精确计算
+            this.logger.debug('开始精确Token计算', { filePath, contentLength: content.length });
             const tokenResult = this._calculatePreciseTokens(content, language, rules);
+
+            this.logger.debug('Token计算完成', {
+                filePath,
+                totalTokens: tokenResult.totalTokens,
+                estimatedTokens: tokenResult.estimatedTokens,
+                confidence: tokenResult.confidence,
+                breakdown: {
+                    totalChars: tokenResult.breakdown?.totalChars,
+                    lines: tokenResult.breakdown?.lines,
+                    comments: tokenResult.breakdown?.comments,
+                    strings: tokenResult.breakdown?.strings
+                }
+            });
 
             // 创建统一TokenResult格式
             const result = TokenResultFactory.createTokenResult(tokenResult.totalTokens, {
@@ -200,7 +260,7 @@ export class PreciseTokenCalculator {
             });
 
             // 更新缓存（缓存原始格式，便于后续转换）
-            this._updateCache(cacheKey, {
+            const cacheData = {
                 totalTokens: tokenResult.totalTokens,
                 estimatedTokens: tokenResult.estimatedTokens,
                 breakdown: tokenResult.breakdown,
@@ -210,15 +270,36 @@ export class PreciseTokenCalculator {
                 calculationMethod: TOKEN_CALCULATION_METHODS.PRECISE,
                 safeTokenCount: Math.ceil(tokenResult.totalTokens * (1 + this.config.tokenSafetyBuffer)),
                 analysisTimestamp: new Date().toISOString()
+            };
+            
+            this._updateCache(cacheKey, cacheData);
+            this.logger.debug('Token结果已缓存', {
+                filePath,
+                cacheKey: cacheKey.substring(0, 20) + '...',
+                cacheSize: this.tokenCache.size
             });
 
+            this.logger.logTokenCalculation(filePath, result, { source: 'calculation' });
+            this.logger.methodEnd(timerId, 'calculateTokens', result);
             return result;
 
         } catch (error) {
-            console.error(`[TokenCalculator] 计算Token失败: ${filePath}`, error);
+            this.logger.methodError(timerId, 'calculateTokens', error, {
+                filePath,
+                hasContent: !!content,
+                contentLength: content?.length,
+                errorType: error.name,
+                errorCode: error.code
+            });
             
             // 使用TokenResult工厂创建错误结果
-            return TokenResultFactory.createErrorTokenResult(filePath, error.message);
+            const errorResult = TokenResultFactory.createErrorTokenResult(filePath, error.message);
+            this.logger.logTokenCalculation(filePath, errorResult, { 
+                source: 'error',
+                errorType: error.name 
+            });
+            
+            return errorResult;
         }
     }
 
@@ -229,13 +310,33 @@ export class PreciseTokenCalculator {
      * @returns {Promise<Array<TokenResult>>} 统一Token计算结果数组
      */
     async batchCalculateTokens(files, languageProfile = null) {
-        console.log(`[TokenCalculator] 开始批量计算Token: ${files.length} 个文件`);
+        const timerId = this.logger.methodStart('batchCalculateTokens', { 
+            fileCount: files.length,
+            hasLanguageProfile: !!languageProfile 
+        });
+        
+        this.logger.info('开始批量Token计算', {
+            totalFiles: files.length,
+            languageProfile: languageProfile?.primary,
+            batchSize: 10
+        });
         
         const results = [];
         const batchSize = 10; // 并发批次大小
+        let processedFiles = 0;
+        let successCount = 0;
+        let errorCount = 0;
         
         for (let i = 0; i < files.length; i += batchSize) {
             const batch = files.slice(i, i + batchSize);
+            const batchNumber = Math.floor(i / batchSize) + 1;
+            
+            this.logger.debug(`处理批次 ${batchNumber}`, {
+                batchIndex: batchNumber,
+                batchSize: batch.length,
+                startIndex: i,
+                endIndex: Math.min(i + batchSize - 1, files.length - 1)
+            });
             
             const batchPromises = batch.map(file => 
                 this.calculateTokens(file.path, file.content, languageProfile)
@@ -244,17 +345,48 @@ export class PreciseTokenCalculator {
             const batchResults = await Promise.allSettled(batchPromises);
             
             batchResults.forEach((result, index) => {
+                processedFiles++;
                 if (result.status === 'fulfilled') {
                     results.push(result.value);
+                    successCount++;
                 } else {
-                    console.error(`[TokenCalculator] 批量计算失败: ${batch[index].path}`, result.reason);
+                    errorCount++;
+                    this.logger.warn('批量计算单个文件失败', {
+                        filePath: batch[index].path,
+                        batchNumber,
+                        fileIndex: index,
+                        error: result.reason.message,
+                        errorType: result.reason.name
+                    });
+                    
                     results.push(TokenResultFactory.createErrorTokenResult(
                         batch[index].path, 
                         result.reason.message || 'Unknown batch calculation error'
                     ));
                 }
             });
+            
+            this.logger.debug(`批次 ${batchNumber} 完成`, {
+                batchNumber,
+                processedInBatch: batch.length,
+                totalProcessed: processedFiles,
+                remaining: files.length - processedFiles,
+                progressPercent: Math.round((processedFiles / files.length) * 100)
+            });
         }
+        
+        this.logger.info('批量Token计算完成', {
+            totalFiles: files.length,
+            successCount,
+            errorCount,
+            successRate: `${Math.round((successCount / files.length) * 100)}%`
+        });
+        
+        this.logger.methodEnd(timerId, 'batchCalculateTokens', {
+            resultCount: results.length,
+            successCount,
+            errorCount
+        });
         
         return results;
     }
